@@ -344,6 +344,17 @@ Code: `Spikes/03-transparent-window/` (`run.sh` launches it as its own LSUIEleme
 - **Dock / position:** `visibleFrame` bottom-right is correct for Dock bottom (above it), left, right (left of it), and auto-hide (bottom edge). Every change, including the Dock growing 2 pt when an app launches, arrives as `didChangeScreenParametersNotification`; the 5 s cross-check never caught a missed change.
 - **Memory:** ~48 MB RSS (debug build), above the 40 MB target. Re-measure with a release build in spike 4.
 
+### Spike 4 result: pixel animation rendering (2026-10-12)
+
+Code: `Spikes/04-pixel-animation/` (`run.sh` builds **release** by default). It loads `manifest.json` + `sprites.png`, crops all frames once, and plays each clip as a `CAKeyframeAnimation` on `contents` (`calculationMode = .discrete`, `keyTimes` with one more entry than frames, `repeatCount = .infinity`), with `magnificationFilter = .nearest` and implicit actions disabled. The process has no timers. Test hook: the distributed notification `com.tidepool.spike.anim` (object = command) switches clips so measurements need no clicking.
+
+- **Crisp?** Yes. At 4× (64 pt, 128 device px on Retina) every clip is sharp, with no blur, flicker, or cross-fade between frames. Speeds from the manifest (1–6 fps) look fine.
+- **CPU when still or animating:** measured with `top` over ~12 s per case for `still`, all six clips, `music` + layer bob, and paused: **0.0 % CPU and 0 idle wakeups** in every case. Core Animation's render server drives the frames; our process sleeps.
+- **WindowServer cost:** not measurable. It stayed at ~38 % with Pibbo still, animating, or quit (the baseline load comes from other apps on the test Mac), so the difference is below noise (< 1 %).
+- **Memory:** **11 MB** physical footprint (`top` MEM, what Activity Monitor shows) in a release build. The ~48 MB from spike 3 was RSS, which counts shared system frameworks. Well under the 40 MB target.
+- **Pause / resume:** `layer.speed = 0` with `timeOffset`, then restoring `beginTime`, freezes and resumes all animations exactly (for fullscreen / lock / sleep).
+- **Layer-level bob: do not use.** Moving the sprite layer also moves the water rows at the bottom of every frame, which breaks the "frames line up with the tide pool strip" rule (Section 11). The placeholder `music` clip already bobs inside its frames, and the extra layer bob was indistinguishable from it. Motion belongs in the skin's frames.
+
 ## 15. Working rules for Claude Code
 
 - Prototype before production code. Spikes live in `Spikes/` and are never mixed into the main project.
@@ -360,7 +371,6 @@ Code: `Spikes/03-transparent-window/` (`run.sh` launches it as its own LSUIEleme
 - [ ] Final bundle ID
 - [ ] Exact timing values for state transitions (tune after real use)
 - [ ] Follow-up test for the fullscreen-Space probe (Section 8): rapid Space switching, switching between two fullscreen apps, split-view fullscreen, Finder desktop icons disabled (`CreateDesktop = false`)
-- [ ] Memory: spike 3 debug build used ~48 MB RSS (target < 40 MB); measure a release build in spike 4
 - [ ] IP lookup service
 - [ ] Built-in lofi tracks
 - [ ] Final Pibbo sprite art (placeholder exists)
