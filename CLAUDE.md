@@ -164,9 +164,9 @@ Goal: **the app never triggers a system permission prompt.**
 | Dock position | Compare `NSScreen.frame` with `visibleFrame`; reposition on `NSApplication.didChangeScreenParametersNotification` | VERIFIED: bottom / left / right / auto-hide all handled by placing at `visibleFrame` bottom-right (spike 3) |
 | External music | Observe distributed notifications `com.apple.Music.playerInfo` and `com.spotify.client.PlaybackStateChanged` | Apple Music: VERIFIED, no prompt, state + track info but no position, no state at launch (spike 1). Spotify: [UNVERIFIED], not installed on test Mac |
 | Built-in music playback | `AVAudioPlayer` | — |
-| Approximate location | System time zone (`TimeZone.current`) + IP-based city lookup. **Do not use CoreLocation.** | [UNVERIFIED] choose an IP lookup service |
-| Weather | Open-Meteo (free, no API key), request every 1–3 hours | [UNVERIFIED] |
-| Region for holidays | `Locale.current.region` | — |
+| Approximate location | `https://ipwho.is/` (free, no key, HTTPS, commercial use allowed, 1,000 req/day) when its `timezone.id` matches `TimeZone.current`; otherwise (offline, VPN) the zone's city coordinate from a bundled tzdb `zone.tab` (public domain, 19 KB). **Do not use CoreLocation.** | VERIFIED (spike 5) |
+| Weather | MET Norway `locationforecast/2.0/compact` (free, commercial OK, CC BY 4.0), request every 1–3 hours and never before `Expires`; coordinates rounded to 2 decimals; identifying `User-Agent` required. ~~Open-Meteo~~: free tier is non-commercial only | VERIFIED (spike 5) |
+| Region for holidays | `Locale.current.region` (confirmed: the user's region setting, not the physical location) | — |
 | Launch at login | `SMAppService.mainApp.register()`, registered automatically on first launch | [UNVERIFIED] does it require user confirmation? |
 
 **Forbidden:** CoreLocation, AppleScript / Apple Events to control other apps, Accessibility permission, Screen Recording permission, Apple private frameworks (e.g. MediaRemote).
@@ -212,9 +212,9 @@ Implementations: `BuiltInLofiSource`, `AppleMusicWatcher`, `SpotifyWatcher`. `Br
 
 ## 10. Weather, seasons, holidays
 
-- **Season:** from the date and hemisphere (inferred from time zone)
-- **Time of day:** dawn / day / dusk / night; affects actions and lighting on the water
-- **Weather:** map Open-Meteo weather codes to `clear / cloudy / rain / snow / storm`
+- **Season:** from the date and hemisphere (sign of the latitude from Section 8's coordinate)
+- **Time of day:** dawn / day / dusk / night, computed locally from the coordinate with the sunrise equation (civil twilight = −6°); no network needed; affects actions and lighting on the water
+- **Weather:** map MET Norway `symbol_code` to `clear / cloudy / rain / snow / storm` (mapping in the spike 5 result)
 - **Holidays:** a bundled holiday table, per region. No remote updates in v1.
 - Examples: snow → hot cocoa, steam rising; rain → Pibbo happily catches raindrops; Christmas → Santa hat
 
@@ -285,7 +285,7 @@ Each item is an independent minimal prototype that answers one question. Write t
 | 2 | User state signals | Can idle time, frontmost app, fullscreen detection, and screen lock all be read without permission? |
 | 3 | Transparent window | Always on top, transparent, only the sprite area receives mouse events; behavior with fullscreen apps and multiple Spaces |
 | 4 | Pixel animation rendering | Is CALayer frame animation crisp at integer scale? Is CPU truly ~0 when still? |
-| 5 | Location and weather | Pick an IP lookup service; Open-Meteo requests and weather-code mapping |
+| 5 | Location and weather | Pick an IP lookup service; weather requests and weather-code mapping |
 | 6 | Launch at login | Does the first `SMAppService` registration require any user action? |
 | 7 | Steamworks | Viable way to call Steamworks UGC from Swift on macOS |
 
@@ -355,6 +355,18 @@ Code: `Spikes/04-pixel-animation/` (`run.sh` builds **release** by default). It 
 - **Pause / resume:** `layer.speed = 0` with `timeOffset`, then restoring `beginTime`, freezes and resumes all animations exactly (for fullscreen / lock / sleep).
 - **Layer-level bob: do not use.** Moving the sprite layer also moves the water rows at the bottom of every frame, which breaks the "frames line up with the tide pool strip" rule (Section 11). The placeholder `music` clip already bobs inside its frames, and the extra layer bob was indistinguishable from it. Motion belongs in the skin's frames.
 
+### Spike 5 result: location and weather (2026-10-12)
+
+Code: `Spikes/05-location-weather/` (`swift run`). No permission prompt; outbound HTTPS needs none.
+
+- **Approximate location:** `https://ipwho.is/` returned city, region, country, latitude, longitude and `timezone.id` in ~40 ms (≈950 bytes). Its free tier allows commercial use (1,000 req/day, no key, HTTPS works). Use its coordinate only when `timezone.id == TimeZone.current.identifier`; otherwise, and when offline, fall back to the zone's main-city coordinate from tzdb `zone.tab`. In the test the IP city and the zone's main city were ~300 km apart, which is fine for weather. Zone coordinates alone are too coarse for large zones (e.g. `Asia/Shanghai` covers all of China), so IP lookup stays the primary source.
+- **Weather provider: changed, with approval.** Open-Meteo works (533 bytes, ~380 ms), but its free API is for non-commercial use only, and a paid Steam app counts as commercial (paid plans start around $29/month). **Use MET Norway** `https://api.met.no/weatherapi/locationforecast/2.0/compact?lat=…&lon=…` instead: free, commercial use OK under CC BY 4.0, global. ~40 KB per response (~310 ms). Rules: identifying `User-Agent` with a real contact, honour `Expires` / send `If-Modified-Since`, at most 4 decimals of coordinates, ≤ 20 req/s for the whole app (hourly refresh with random jitter covers roughly 70k–200k concurrent users; beyond that needs an agreement or a proxy), attribution required.
+- **Weather mapping** (MET `properties.timeseries[0].data.next_1_hours.summary.symbol_code`, drop the `_day` / `_night` / `_polartwilight` suffix): contains `thunder` → `storm`; contains `snow` → `snow`; contains `rain` or `sleet` → `rain`; `clearsky`, `fair` → `clear`; `partlycloudy`, `cloudy`, `fog` → `cloudy`; anything else → keep the previous category. (Open-Meteo WMO mapping, for reference: 0–1 clear, 2–3 / 45 / 48 cloudy, 51–67 / 80–82 rain, 71–77 / 85–86 snow, 95–99 storm.)
+- **Season / time of day:** computed locally. The sunrise-equation implementation matched Open-Meteo's sunrise/sunset within 1 minute, so no sun API is needed. Polar day/night returns no events (treat as day / night).
+- **Offline:** every request failed within 5 ms ("Internet connection appears to be offline"), the zone coordinate was used, and season and time of day were still computed. Weather should then stay at its last known value or `unknown` (no weather actions).
+- **Holidays:** `Locale.current.region` can differ from the physical location (the test Mac's region setting was a different country from its time zone). Confirmed by the developer: holidays follow the region setting.
+- **Privacy:** the IP address reaches ipwho.is; a coordinate rounded to 2 decimals (~1 km) reaches MET Norway. The spike never prints the IP.
+
 ## 15. Working rules for Claude Code
 
 - Prototype before production code. Spikes live in `Spikes/` and are never mixed into the main project.
@@ -371,7 +383,10 @@ Code: `Spikes/04-pixel-animation/` (`run.sh` builds **release** by default). It 
 - [ ] Final bundle ID
 - [ ] Exact timing values for state transitions (tune after real use)
 - [ ] Follow-up test for the fullscreen-Space probe (Section 8): rapid Space switching, switching between two fullscreen apps, split-view fullscreen, Finder desktop icons disabled (`CreateDesktop = false`)
-- [ ] IP lookup service
+- [x] IP lookup service: ipwho.is (spike 5)
+- [ ] MET Norway `User-Agent` needs the real app name + a contact email or website (developer to provide)
+- [ ] MET Norway attribution (CC BY 4.0): decide where the credit lives (e.g. bundled credits file + Steam / GitHub page)
+- [ ] Privacy note: the IP goes to ipwho.is and a ~1 km coordinate to MET Norway; disclose on the store page / README
 - [ ] Built-in lofi tracks
 - [ ] Final Pibbo sprite art (placeholder exists)
 - [ ] Display name: "Tidepool" or "Pibbo's Tidepool"
