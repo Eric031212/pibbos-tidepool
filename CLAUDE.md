@@ -19,10 +19,27 @@ Tidepool is a standalone, pixel-art desktop companion for macOS. Its mascot is *
 
 ```
 CLAUDE.md                          this plan
+README.md, LICENSE                 public intro (casual, emoji) and GPL-3.0
 docs/design-notes.md               background: market research and why decisions were made
-Assets/Placeholder/pibbo/          placeholder skin pack (manifest.json, sprites.png, previews)
+Package.swift                      TidepoolCore: Brain, Content, Strings (Foundation only) + tests
+project.yml                        XcodeGen spec for the macOS app (Tidepool.xcodeproj is generated, not committed)
+Sources/                           modules from Section 7 (App, PetWindow, Renderer, Signals, Music = macOS; Brain, Content, Strings = core)
+Tests/                             BrainTests, ContentTests
+Spikes/                            research prototypes from Section 14 (never part of the app)
+Assets/Placeholder/pibbo/          placeholder skin pack (manifest.json, sprites.png, previews), bundled into the app
 Tools/generate_placeholder_sprites.py   regenerates the placeholder pack (requires Pillow)
 ```
+
+### Building
+
+```sh
+swift test                                   # core unit tests (Brain, Content)
+xcodegen generate                            # after changing project.yml or adding files
+xcodebuild -scheme Tidepool -configuration Debug -derivedDataPath build build
+open build/Build/Products/Debug/Tidepool.app
+```
+
+Builds are ad-hoc signed until a Developer ID certificate exists. Login-item registration only happens when the app runs from `/Applications` or `~/Applications`, so development builds never register themselves.
 
 ## 2. Design principles (use these to make decisions)
 
@@ -400,7 +417,7 @@ Code: `Spikes/06-launch-at-login/`. `run.sh register|unregister|status` installs
 - [ ] MET Norway `User-Agent` needs the real app name + a contact email or website (developer to provide)
 - [ ] MET Norway attribution (CC BY 4.0): decide where the credit lives (e.g. bundled credits file + Steam / GitHub page)
 - [x] "Login Item Added" notification on first launch: accepted (spike 6)
-- [ ] Choose an open-source license for the GitHub release
+- [x] Open-source license: GPL-3.0; public repo `pibbos-tidepool` on GitHub, first tag v0.1.0
 - [ ] Re-test launch at login with a Developer ID-signed build in `/Applications` (spike 6 used an ad-hoc-signed app in `~/Applications`)
 - [ ] Privacy note: the IP goes to ipwho.is and a ~1 km coordinate to MET Norway; disclose on the store page / README
 - [ ] Built-in lofi tracks

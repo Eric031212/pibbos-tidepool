@@ -1,0 +1,53 @@
+# XcodeGen spec for the macOS app. Generate with `xcodegen generate`, build
+# with `xcodebuild` (see CLAUDE.md "Building"). The generated
+# Tidepool.xcodeproj is not committed.
+name: Tidepool
+options:
+  bundleIdPrefix: com.tidepool
+  deploymentTarget:
+    macOS: "13.0"
+  createIntermediateGroups: true
+
+packages:
+  TidepoolCore:
+    path: .
+
+settings:
+  base:
+    SWIFT_VERSION: "5.0"
+    MARKETING_VERSION: "0.1.0"
+    CURRENT_PROJECT_VERSION: "1"
+
+targets:
+  Tidepool:
+    type: application
+    platform: macOS
+    sources:
+      - path: Sources/App
+      - path: Sources/PetWindow
+      - path: Sources/Renderer
+      - path: Sources/Signals
+      - path: Sources/Music
+      - path: Assets/Placeholder/pibbo
+        type: folder
+        buildPhase: resources
+    dependencies:
+      - package: TidepoolCore
+        products: [Brain, Content, Strings]
+    info:
+      path: Sources/App/Info.plist
+      properties:
+        CFBundleName: Tidepool
+        CFBundleDisplayName: Tidepool
+        LSUIElement: true
+        LSMinimumSystemVersion: "13.0"
+        NSHumanReadableCopyright: ""
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: com.tidepool.app  # placeholder, Section 16
+        PRODUCT_NAME: Tidepool
+        ENABLE_HARDENED_RUNTIME: YES
+        # Ad-hoc signing until a Developer ID certificate exists (human task).
+        CODE_SIGN_STYLE: Manual
+        CODE_SIGN_IDENTITY: "-"
+        DEVELOPMENT_TEAM: ""
