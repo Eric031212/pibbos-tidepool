@@ -271,6 +271,7 @@ Example `manifest.json`:
 
 ## 13. Distribution
 
+- **First release (decided 2026-10-12):** open source on GitHub, used by the developer and friends for a while. The Steam build and spike 7 are deferred until then.
 - **GitHub build:** Developer ID signing + notarization; consider Sparkle for updates later
 - **Steam build:** integrate the Steamworks SDK (C++, bridged into Swift) and use the UGC API for the Workshop. Note: requires the Steam client to be running.
 - Both builds share one codebase; a build flag enables the `Steam/` module
@@ -287,7 +288,7 @@ Each item is an independent minimal prototype that answers one question. Write t
 | 4 | Pixel animation rendering | Is CALayer frame animation crisp at integer scale? Is CPU truly ~0 when still? |
 | 5 | Location and weather | Pick an IP lookup service; weather requests and weather-code mapping |
 | 6 | Launch at login | Does the first `SMAppService` registration require any user action? |
-| 7 | Steamworks | Viable way to call Steamworks UGC from Swift on macOS |
+| 7 | Steamworks | Viable way to call Steamworks UGC from Swift on macOS (**deferred**: GitHub release first, see Section 13) |
 
 ### Spike 1 result: external music notifications (2026-10-12)
 
@@ -377,7 +378,7 @@ Code: `Spikes/06-launch-at-login/`. `run.sh register|unregister|status` installs
 - **Unregister:** `unregister()` returned without error, status `notRegistered`.
 - **Status before registering** was `notFound` (not `notRegistered`), so don't treat `notFound` as an error on first launch.
 - **Limitations:** tested with an ad-hoc signature in `~/Applications`; re-test with the Developer ID-signed, notarized build in `/Applications` before release.
-- **Conflict with Section 1 ("zero setup", Principle 2 "quiet"):** the notification is unavoidable on the first launch. Open decision in Section 16.
+- **Conflict with Section 1 ("zero setup", Principle 2 "quiet"):** the notification is unavoidable on the first launch. **Decided:** accept it (it appears once and is transparent to the user); keep registering automatically on first launch, no menu toggle.
 
 ## 15. Working rules for Claude Code
 
@@ -398,7 +399,8 @@ Code: `Spikes/06-launch-at-login/`. `run.sh register|unregister|status` installs
 - [x] IP lookup service: ipwho.is (spike 5)
 - [ ] MET Norway `User-Agent` needs the real app name + a contact email or website (developer to provide)
 - [ ] MET Norway attribution (CC BY 4.0): decide where the credit lives (e.g. bundled credits file + Steam / GitHub page)
-- [ ] Decide how to handle the unavoidable "Login Item Added" notification on first launch (spike 6)
+- [x] "Login Item Added" notification on first launch: accepted (spike 6)
+- [ ] Choose an open-source license for the GitHub release
 - [ ] Re-test launch at login with a Developer ID-signed build in `/Applications` (spike 6 used an ad-hoc-signed app in `~/Applications`)
 - [ ] Privacy note: the IP goes to ipwho.is and a ~1 km coordinate to MET Norway; disclose on the store page / README
 - [ ] Built-in lofi tracks
