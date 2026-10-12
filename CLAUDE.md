@@ -101,7 +101,7 @@ launch → peek (~5 s) → chill → no interaction for a while → hidden
 | External music starts playing | Switch to `music`; return to the previous state when it stops |
 | No keyboard/mouse input for ~10 minutes | `sleep` |
 | Late night | Stronger tendency toward `sleep` |
-| Frontmost app is fullscreen / screen locked / system asleep | Fully hidden; pause all timers and animations |
+| Pibbo's panel is not visible (fullscreen Space, display off) / screen locked / system asleep | Fully hidden; pause all timers and animations |
 | Click on Pibbo | Open the menu |
 
 ### Click menu
@@ -157,10 +157,10 @@ Goal: **the app never triggers a system permission prompt.**
 | Need | Approach | Status |
 |---|---|---|
 | Transparent always-on-top window | `NSPanel`, borderless + nonactivating, clear background, window only as large as the sprite area | [UNVERIFIED] |
-| User idle time | `CGEventSource.secondsSinceLastEventType` | [UNVERIFIED] no permission needed? |
-| Frontmost app changes | `NSWorkspace.didActivateApplicationNotification` | [UNVERIFIED] |
-| Is the frontmost app fullscreen | `CGWindowListCopyWindowInfo`, compare window bounds to screen frame (bounds only, no window titles, so no Screen Recording permission) | [UNVERIFIED] |
-| Screen lock / sleep | Distributed notification `com.apple.screenIsLocked` etc., `NSWorkspace.didWakeNotification` | [UNVERIFIED] |
+| User idle time | `CGEventSource.secondsSinceLastEventType(.combinedSessionState, kCGAnyInputEventType)` | VERIFIED, no prompt; resets on any input, keeps counting while locked (spike 2) |
+| Frontmost app changes | `NSWorkspace.didActivateApplicationNotification` | VERIFIED, no prompt; fires on every switch incl. `loginwindow` on lock (spike 2) |
+| Hide during fullscreen | ~~`CGWindowListCopyWindowInfo` bounds check~~ FAILED in spike 2 (on notched Macs fullscreen windows start below the notch; indistinguishable from a zoomed window). **Replaced:** the panel does not join fullscreen Spaces (no `.fullScreenAuxiliary`), and `NSWindow.didChangeOcclusionStateNotification` on our own panel tells us when Pibbo is not visible | [UNVERIFIED] test in spike 3 |
+| Screen lock / sleep | Distributed `com.apple.screenIsLocked` / `screenIsUnlocked`; `NSWorkspace` `willSleep` / `didWake` / `screensDidSleep` / `screensDidWake`; lock state at launch from `CGSessionCopyCurrentDictionary` | VERIFIED, no prompt (spike 2) |
 | Dock position | Compare `NSScreen.frame` with `visibleFrame` | [UNVERIFIED] |
 | External music | Observe distributed notifications `com.apple.Music.playerInfo` and `com.spotify.client.PlaybackStateChanged` | Apple Music: VERIFIED, no prompt, state + track info but no position, no state at launch (spike 1). Spotify: [UNVERIFIED], not installed on test Mac |
 | Built-in music playback | `AVAudioPlayer` | — |
@@ -306,6 +306,20 @@ Code: `Spikes/01-music-notifications/` (`DistributedNotificationCenter` only). T
 - Debounce stop events (e.g. ~1–2 s) so a transient `Stopped` during a track change does not flicker Pibbo out of `music`.
 - A 1-key notification can mean "app quit"; treat it as stopped and keep no stale track info.
 - Spotify (`com.spotify.client.PlaybackStateChanged`) remains unverified; re-run this spike with Spotify installed before relying on it.
+
+### Spike 2 result: user state signals (2026-10-12)
+
+Code: `Spikes/02-user-state-signals/`. `run.sh` wraps the binary in a minimal ad-hoc-signed `LSUIElement` .app and starts it with `open`, so permission checks apply to the spike itself, not to the terminal. Tested on macOS 27.0.1, 14" MacBook Pro (notch, 1512×982 points).
+
+- **Permission prompt?** None. After the test the spike did not appear under Screen Recording, Accessibility, or Input Monitoring. `CGWindowListCopyWindowInfo` exposed a window name only for one Window Server window, confirming we ran without Screen Recording.
+- **Idle time:** `CGEventSource.secondsSinceLastEventType(.combinedSessionState, eventType: kCGAnyInputEventType)` works. Readable at launch, resets on mouse or keyboard input, keeps counting while locked. Video playback does not reset it (Chrome holds a display-sleep assertion, but HID idle keeps growing), so Pibbo may fall asleep while the user watches a video. Accepted: that is quiet behavior.
+- **Frontmost app:** `didActivateApplicationNotification` fires on every switch (click, ⌘Tab, Space switch) with an `NSRunningApplication` (name, bundle ID, PID). On lock, `loginwindow` becomes frontmost. Initial value from `NSWorkspace.shared.frontmostApplication`.
+- **Fullscreen: the planned check FAILED.** On a notched Mac a native-fullscreen window sits at `0,33 1512×949`, not `0,0 1512×982`; it matches the full screen only for a moment during the Space transition. A "below the notch" rule would also match a zoomed window when the Dock is hidden. Approved design change: stop detecting other apps' fullscreen; keep Pibbo's panel out of fullscreen Spaces and pause on our own panel's occlusion state. Verify in spike 3, including fullscreen video in a browser (not tested here: the video never entered fullscreen).
+- **Lock:** `com.apple.screenIsLocked` / `com.apple.screenIsUnlocked` arrive immediately, with empty `userInfo`. Lock state at launch: `CGSessionCopyCurrentDictionary()` contains `CGSSessionScreenIsLocked = true` only while locked. The function is public; this key is **undocumented**, so treat a missing key as "unlocked" and rely on the notifications afterwards.
+- **Sleep:** closing the lid produced `willSleep` → `screensDidSleep` → `screenIsLocked` → (sleep) → `screensDidWake` → `didWake` → `screenIsUnlocked`. Our 5 s timer simply stopped during sleep and resumed after wake. `willSleep` can fire **without** the system actually sleeping (first lid close: an app held a sleep assertion, `didWake` came 30 s later with no gap in timer ticks), so treat `willSleep`…`didWake` as "pause", never as proof of real sleep. Apple menu → Sleep did nothing while the Claude desktop app held a keep-awake assertion.
+- **Events vs polling:** only idle time needs polling (planned ~30 s with tolerance). Everything else is event-driven, and the spike's timer never caught a lock change that the notifications missed.
+
+**APIs we will use:** `CGEventSource.secondsSinceLastEventType`, `NSWorkspace.didActivateApplicationNotification`, `com.apple.screenIsLocked` / `screenIsUnlocked`, `NSWorkspace` `willSleep` / `didWake` / `screensDidSleep` / `screensDidWake`, `CGSessionCopyCurrentDictionary` (launch only). Drop `CGWindowListCopyWindowInfo`.
 
 ## 15. Working rules for Claude Code
 
