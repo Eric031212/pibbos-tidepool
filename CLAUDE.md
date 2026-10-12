@@ -167,7 +167,7 @@ Goal: **the app never triggers a system permission prompt.**
 | Approximate location | `https://ipwho.is/` (free, no key, HTTPS, commercial use allowed, 1,000 req/day) when its `timezone.id` matches `TimeZone.current`; otherwise (offline, VPN) the zone's city coordinate from a bundled tzdb `zone.tab` (public domain, 19 KB). **Do not use CoreLocation.** | VERIFIED (spike 5) |
 | Weather | MET Norway `locationforecast/2.0/compact` (free, commercial OK, CC BY 4.0), request every 1–3 hours and never before `Expires`; coordinates rounded to 2 decimals; identifying `User-Agent` required. ~~Open-Meteo~~: free tier is non-commercial only | VERIFIED (spike 5) |
 | Region for holidays | `Locale.current.region` (confirmed: the user's region setting, not the physical location) | — |
-| Launch at login | `SMAppService.mainApp.register()`, registered automatically on first launch | [UNVERIFIED] does it require user confirmation? |
+| Launch at login | `SMAppService.mainApp.register()`, registered automatically on first launch | VERIFIED: no prompt, no approval needed, status `enabled` at once; macOS shows a one-time "Login Item Added" notification (cannot be suppressed); app started automatically after reboot (spike 6) |
 
 **Forbidden:** CoreLocation, AppleScript / Apple Events to control other apps, Accessibility permission, Screen Recording permission, Apple private frameworks (e.g. MediaRemote).
 
@@ -367,6 +367,18 @@ Code: `Spikes/05-location-weather/` (`swift run`). No permission prompt; outboun
 - **Holidays:** `Locale.current.region` can differ from the physical location (the test Mac's region setting was a different country from its time zone). Confirmed by the developer: holidays follow the region setting.
 - **Privacy:** the IP address reaches ipwho.is; a coordinate rounded to 2 decimals (~1 km) reaches MET Norway. The spike never prints the IP.
 
+### Spike 6 result: launch at login (2026-10-12)
+
+Code: `Spikes/06-launch-at-login/`. `run.sh register|unregister|status` installs an ad-hoc-signed LSUIElement app at `~/Applications/Tidepool Login Spike.app` and launches it with one command; every launch appends to `~/Library/Logs/TidepoolLoginSpike.log`. The test app was unregistered and deleted afterwards.
+
+- **Does the first registration need user action?** No. `SMAppService.mainApp.register()` returned without error and the status went from `notFound` to `enabled` immediately (never `requiresApproval`). No permission prompt.
+- **But it is not silent:** macOS immediately shows a system notification: *"Login Item Added — "<app name>" will open automatically when you log in. You can manage this in Login Items & Extensions."* It needs no click and disappears by itself, but the app cannot suppress it. The app then appears under System Settings → General → Login Items & Extensions → Open at Login, with its `CFBundleName`.
+- **Does it really start at login?** Yes. After a reboot the app launched with no arguments, parent PID 1 (launchd), 44 s after boot, status `enabled`.
+- **Unregister:** `unregister()` returned without error, status `notRegistered`.
+- **Status before registering** was `notFound` (not `notRegistered`), so don't treat `notFound` as an error on first launch.
+- **Limitations:** tested with an ad-hoc signature in `~/Applications`; re-test with the Developer ID-signed, notarized build in `/Applications` before release.
+- **Conflict with Section 1 ("zero setup", Principle 2 "quiet"):** the notification is unavoidable on the first launch. Open decision in Section 16.
+
 ## 15. Working rules for Claude Code
 
 - Prototype before production code. Spikes live in `Spikes/` and are never mixed into the main project.
@@ -386,6 +398,8 @@ Code: `Spikes/05-location-weather/` (`swift run`). No permission prompt; outboun
 - [x] IP lookup service: ipwho.is (spike 5)
 - [ ] MET Norway `User-Agent` needs the real app name + a contact email or website (developer to provide)
 - [ ] MET Norway attribution (CC BY 4.0): decide where the credit lives (e.g. bundled credits file + Steam / GitHub page)
+- [ ] Decide how to handle the unavoidable "Login Item Added" notification on first launch (spike 6)
+- [ ] Re-test launch at login with a Developer ID-signed build in `/Applications` (spike 6 used an ad-hoc-signed app in `~/Applications`)
 - [ ] Privacy note: the IP goes to ipwho.is and a ~1 km coordinate to MET Norway; disclose on the store page / README
 - [ ] Built-in lofi tracks
 - [ ] Final Pibbo sprite art (placeholder exists)
