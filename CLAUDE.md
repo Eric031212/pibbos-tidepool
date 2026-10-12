@@ -176,7 +176,7 @@ Goal: **the app never triggers a system permission prompt.**
 ### External music
 - Read playback state and track info only. Never control playback.
 - Supports Apple Music and Spotify. Other sources (browsers, etc.) are out of scope for v1.
-- For external music, Pibbo only does a generic gentle bob, no precise beat sync.
+- For external music, Pibbo only does a generic gentle bob, no precise beat sync. The bob is drawn in the `music` clip's frames; the app never moves the sprite layer, because that would move the water strip too (spike 4).
 
 ### Built-in lofi
 - Tracks generated with Suno, roughly 1–2 hours total, looped
