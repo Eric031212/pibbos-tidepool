@@ -101,7 +101,7 @@ launch → peek (~5 s) → chill → no interaction for a while → hidden
 | External music starts playing | Switch to `music`; return to the previous state when it stops |
 | No keyboard/mouse input for ~10 minutes | `sleep` |
 | Late night | Stronger tendency toward `sleep` |
-| Pibbo's panel is not visible (fullscreen Space, display off) / screen locked / system asleep | Fully hidden; pause all timers and animations |
+| A fullscreen Space is active / screen locked / system asleep | Fully hidden; pause all timers and animations |
 | Click on Pibbo | Open the menu |
 
 ### Click menu
@@ -156,12 +156,12 @@ Goal: **the app never triggers a system permission prompt.**
 
 | Need | Approach | Status |
 |---|---|---|
-| Transparent always-on-top window | `NSPanel`, borderless + nonactivating, clear background, window only as large as the sprite area | [UNVERIFIED] |
+| Transparent always-on-top window | `NSPanel`, borderless + nonactivating, clear background, level `.floating`, `[.canJoinAllSpaces, .stationary, .ignoresCycle]`, `hidesOnDeactivate = false`, window only as large as the sprite area | VERIFIED, no prompt; crisp; clicks on transparent pixels pass through; clicking never activates the app or steals focus (spike 3) |
 | User idle time | `CGEventSource.secondsSinceLastEventType(.combinedSessionState, kCGAnyInputEventType)` | VERIFIED, no prompt; resets on any input, keeps counting while locked (spike 2) |
 | Frontmost app changes | `NSWorkspace.didActivateApplicationNotification` | VERIFIED, no prompt; fires on every switch incl. `loginwindow` on lock (spike 2) |
-| Hide during fullscreen | ~~`CGWindowListCopyWindowInfo` bounds check~~ FAILED in spike 2 (on notched Macs fullscreen windows start below the notch; indistinguishable from a zoomed window). **Replaced:** the panel does not join fullscreen Spaces (no `.fullScreenAuxiliary`), and `NSWindow.didChangeOcclusionStateNotification` on our own panel tells us when Pibbo is not visible | [UNVERIFIED] test in spike 3 |
+| Hide during fullscreen | ~~Bounds check~~ FAILED (spike 2). ~~Keep the panel off fullscreen Spaces + occlusion~~ FAILED (spike 3: every `.canJoinAllSpaces` window shows on fullscreen Spaces, with or without `.fullScreenAuxiliary`). **Chosen (spike 3):** 0.5 s after `activeSpaceDidChange`, read `CGWindowListCopyWindowInfo` layer + owner name + bounds only (no titles): fullscreen Space ⇔ **no** full-screen Finder window at `kCGDesktopIconWindowLevel` **and** a full-screen `WindowManager` window at `kCGDesktopWindowLevel + 1`. Undocumented; if it breaks it fails safe (Pibbo stays visible) | Works in spike 3; [UNVERIFIED] follow-up test pending (Section 16) |
 | Screen lock / sleep | Distributed `com.apple.screenIsLocked` / `screenIsUnlocked`; `NSWorkspace` `willSleep` / `didWake` / `screensDidSleep` / `screensDidWake`; lock state at launch from `CGSessionCopyCurrentDictionary` | VERIFIED, no prompt (spike 2) |
-| Dock position | Compare `NSScreen.frame` with `visibleFrame` | [UNVERIFIED] |
+| Dock position | Compare `NSScreen.frame` with `visibleFrame`; reposition on `NSApplication.didChangeScreenParametersNotification` | VERIFIED: bottom / left / right / auto-hide all handled by placing at `visibleFrame` bottom-right (spike 3) |
 | External music | Observe distributed notifications `com.apple.Music.playerInfo` and `com.spotify.client.PlaybackStateChanged` | Apple Music: VERIFIED, no prompt, state + track info but no position, no state at launch (spike 1). Spotify: [UNVERIFIED], not installed on test Mac |
 | Built-in music playback | `AVAudioPlayer` | — |
 | Approximate location | System time zone (`TimeZone.current`) + IP-based city lookup. **Do not use CoreLocation.** | [UNVERIFIED] choose an IP lookup service |
@@ -321,6 +321,29 @@ Code: `Spikes/02-user-state-signals/`. `run.sh` wraps the binary in a minimal ad
 
 **APIs we will use:** `CGEventSource.secondsSinceLastEventType`, `NSWorkspace.didActivateApplicationNotification`, `com.apple.screenIsLocked` / `screenIsUnlocked`, `NSWorkspace` `willSleep` / `didWake` / `screensDidSleep` / `screensDidWake`, `CGSessionCopyCurrentDictionary` (launch only). Drop `CGWindowListCopyWindowInfo`.
 
+### Spike 3 result: transparent window (2026-10-12)
+
+Code: `Spikes/03-transparent-window/` (`run.sh` launches it as its own LSUIElement .app; `run.sh --variants` adds the window-configuration test squares). Tested on macOS 27.0.1, 14" MacBook Pro (Retina, scale 2).
+
+- **Permission prompt?** None.
+- **Window:** borderless non-activating `NSPanel`, clear background, level `.floating`, `[.canJoinAllSpaces, .stationary, .ignoresCycle]`, `hidesOnDeactivate = false`, app policy `.accessory`. Always on top of normal windows; the Dock (higher level) covers it when an auto-hidden Dock slides up.
+- **Rendering:** one 16×16 frame in a `CALayer` with `magnificationFilter = .nearest` at 4× (64 pt = 128 device px) is crisp. CPU 0.0 % while static.
+- **Mouse:** clicks on fully transparent pixels pass through to the window behind; clicks on the sprite arrive (`acceptsFirstMouse`). An `NSTrackingArea` with `.activeAlways` reports hover while another app is frontmost, but it is purely geometric (it fires over the transparent margin too), so in the app the tracking rect must be the sprite rect only.
+- **Focus:** clicking Pibbo and opening an `NSMenu` (`popUp(positioning:at:in:)`) leaves the frontmost app unchanged, `NSApp.isActive` stays false, the panel never becomes key, and typing continues in the previous app after the menu closes.
+- **Spaces:** Pibbo stays on every normal desktop and in Mission Control.
+- **Fullscreen:** Pibbo appears on fullscreen Spaces (apps and browser video). Six window configurations were compared (panel vs window, `.floating` vs `.normal`, with/without `.stationary`): every `.canJoinAllSpaces` window showed on fullscreen Spaces; only a single-Space window hid, and it also hides on other normal desktops. The panel's occlusion state stays "visible" on fullscreen Spaces, so occlusion cannot detect fullscreen. **Contradicted the spike 2 plan;** replaced, with approval, by the desktop-window probe in Section 8:
+
+  | Space | Finder @ desktop-icon level | `WindowManager` @ desktop level + 1 | `Wallpaper` |
+  |---|---|---|---|
+  | normal desktop 1 | yes | no | yes |
+  | normal desktop 2 | yes (appears ~0.5 s after the switch) | no | **no** |
+  | fullscreen app / video | **no** | **yes** | no |
+
+  Wallpaper is not a usable marker. Require both conditions, and re-check 0.5 s after `activeSpaceDidChange` because the list is mid-transition at the event. Mission Control triggers no Space change.
+- **Occlusion** is still useful for lock and display off: `visible` became false on lock and true after unlock; it flickers false→true for a moment on every Space switch, so debounce it.
+- **Dock / position:** `visibleFrame` bottom-right is correct for Dock bottom (above it), left, right (left of it), and auto-hide (bottom edge). Every change, including the Dock growing 2 pt when an app launches, arrives as `didChangeScreenParametersNotification`; the 5 s cross-check never caught a missed change.
+- **Memory:** ~48 MB RSS (debug build), above the 40 MB target. Re-measure with a release build in spike 4.
+
 ## 15. Working rules for Claude Code
 
 - Prototype before production code. Spikes live in `Spikes/` and are never mixed into the main project.
@@ -336,6 +359,8 @@ Code: `Spikes/02-user-state-signals/`. `run.sh` wraps the binary in a minimal ad
 - [ ] Trademark / name conflict check for "Tidepool" and "Pibbo" before public release
 - [ ] Final bundle ID
 - [ ] Exact timing values for state transitions (tune after real use)
+- [ ] Follow-up test for the fullscreen-Space probe (Section 8): rapid Space switching, switching between two fullscreen apps, split-view fullscreen, Finder desktop icons disabled (`CreateDesktop = false`)
+- [ ] Memory: spike 3 debug build used ~48 MB RSS (target < 40 MB); measure a release build in spike 4
 - [ ] IP lookup service
 - [ ] Built-in lofi tracks
 - [ ] Final Pibbo sprite art (placeholder exists)
