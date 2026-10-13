@@ -34,6 +34,7 @@ Assets/MusicMasters/               WAV masters of the tracks (local only: git-ig
 Assets/Data/zone.tab               tzdb time-zone coordinates (offline location fallback)
 Tools/generate_sprites.py          draws all pixel art from text grids (requires Pillow)
 Tools/import_track.py              WAV master → app-ready CAF + beat map with estimated bpm (numpy + afconvert)
+Tools/generate_promo.py            social-media posters (1080×1350) from the real sprites and pixel font → Marketing/promo/
 Tools/generate_placeholder_lofi.py synthesizes a placeholder lofi loop (stdlib + afconvert), for testing without tracks
 ```
 
