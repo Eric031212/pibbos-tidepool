@@ -1,60 +1,92 @@
 import AVFoundation
+import Brain
+import Content
 
-/// Plays the bundled lofi tracks (CLAUDE.md Section 9). Never starts on its
-/// own: only from the menu or the `music? 🎧` bubble. One track loops
-/// forever; several play in order and wrap around.
+/// The built-in lofi radio (CLAUDE.md Section 9). Never starts on its own:
+/// only from the menu or the `Music Time? 🎧` bubble. The listener never
+/// picks songs: every start is a random theme in shuffled order
+/// (`RadioPlan`), and stopping fades out instead of cutting off.
 final class BuiltInLofiSource: NSObject, MusicSource, AVAudioPlayerDelegate {
-    let id = "built-in"
+    let id = Brain.builtInSource
     let events: AsyncStream<MusicEvent>
 
     private let continuation: AsyncStream<MusicEvent>.Continuation
-    private let tracks: [URL]
+    private let library: MusicLibrary
+    private var plan: RadioPlan?
     private var player: AVAudioPlayer?
-    private var trackIndex = 0
+    private var fadeTimer: Timer?
 
-    var isAvailable: Bool { !tracks.isEmpty }
-    var isPlaying: Bool { player?.isPlaying ?? false }
+    private let volume: Float = 0.5
+    private let fadeInDuration: TimeInterval = 1.0
+
+    /// "theme - track" of what is playing, for the scrolling bubble.
+    private(set) var nowPlaying: String?
+
+    var isAvailable: Bool { !library.isEmpty }
+    /// True while playing, false once a fade-out has begun.
+    private(set) var isPlaying = false
 
     init(directory: URL?) {
         (events, continuation) = AsyncStream.makeStream(of: MusicEvent.self)
-        let audio: Set<String> = ["caf", "m4a", "mp3", "wav", "aiff"]
-        let files = directory.flatMap { try? FileManager.default.contentsOfDirectory(at: $0, includingPropertiesForKeys: nil) } ?? []
-        tracks = files.filter { audio.contains($0.pathExtension.lowercased()) }
-            .sorted { $0.lastPathComponent < $1.lastPathComponent }
+        library = directory.map(MusicLibrary.load) ?? MusicLibrary(themes: [])
         super.init()
     }
 
-    func toggle() {
-        isPlaying ? stop() : play()
-    }
+    private static func random(_ n: Int) -> Int { Int.random(in: 0..<n) }
 
+    /// Starts a fresh random theme, or recovers from a fade that is still running.
     func play() {
         guard isAvailable, !isPlaying else { return }
-        if player == nil { load(trackIndex) }
-        player?.play()
+        if fadeTimer != nil, let player {
+            // Changed our mind mid-fade: bring the same song back up.
+            fadeTimer?.invalidate()
+            fadeTimer = nil
+            player.setVolume(volume, fadeDuration: 0.4)
+            isPlaying = true
+            continuation.yield(.started)
+            return
+        }
+        plan = RadioPlan(library: library, random: Self.random)
+        isPlaying = true
         continuation.yield(.started)
+        playNext()
     }
 
-    func stop() {
-        guard isPlaying else { return }
-        player?.pause()
-        continuation.yield(.paused)
+    /// Fades to silence over `duration`, then pauses.
+    func fadeOut(duration: TimeInterval) {
+        guard isPlaying, let player else { return }
+        isPlaying = false
+        player.setVolume(0, fadeDuration: duration)
+        let timer = Timer(timeInterval: duration, repeats: false) { [weak self] _ in
+            guard let self else { return }
+            self.fadeTimer = nil
+            self.player?.stop()
+            self.player = nil
+            self.nowPlaying = nil
+            self.continuation.yield(.paused)
+        }
+        RunLoop.main.add(timer, forMode: .common)
+        fadeTimer = timer
     }
 
-    private func load(_ index: Int) {
-        guard let player = try? AVAudioPlayer(contentsOf: tracks[index]) else { return }
+    private func playNext() {
+        guard var plan else { return }
+        let (theme, track) = plan.next(random: Self.random)
+        self.plan = plan
+        guard let player = try? AVAudioPlayer(contentsOf: track.url) else { return }
         player.delegate = self
-        player.numberOfLoops = tracks.count == 1 ? -1 : 0
-        player.volume = 0.5
+        player.volume = 0
         player.prepareToPlay()
+        player.play()
+        player.setVolume(volume, fadeDuration: fadeInDuration)
         self.player = player
+        nowPlaying = "\(theme) - \(track.title)"
+        continuation.yield(.trackChanged)
     }
 
     func audioPlayerDidFinishPlaying(_ finished: AVAudioPlayer, successfully flag: Bool) {
-        trackIndex = (trackIndex + 1) % tracks.count
-        load(trackIndex)
-        player?.play()
-        continuation.yield(.trackChanged)
+        guard isPlaying, finished === player else { return }
+        playNext()
     }
 
     deinit {

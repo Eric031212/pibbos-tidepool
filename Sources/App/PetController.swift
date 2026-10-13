@@ -22,6 +22,8 @@ final class PetController {
     private let panel: PetPanel
     private let bubblePanel: BubblePanel
     private let menuPanel: PixelMenuPanel
+    private let marqueePanel: MarqueePanel
+    private let brainConfig: BrainConfig
     private let demo: Bool
 
     private let idleMonitor = IdleMonitor()
@@ -59,11 +61,13 @@ final class PetController {
                          petRect: NSRect(x: petX, y: 0, width: cell, height: cell))
         bubblePanel = BubblePanel(scale: Self.uiScale)
         menuPanel = PixelMenuPanel(renderer: bubbleRenderer, scale: Self.uiScale)
+        marqueePanel = MarqueePanel(renderer: bubbleRenderer, scale: Self.uiScale)
 
         worldMonitor = WorldMonitor(zoneTab: resources.zoneTab)
         lofi = BuiltInLofiSource(directory: resources.music)
         musicSources = [AppleMusicWatcher(), lofi]
-        brain = Brain(config: demo ? .demo : BrainConfig(), now: Date())
+        brainConfig = demo ? .demo : BrainConfig()
+        brain = Brain(config: brainConfig, now: Date())
 
         if UserDefaults.standard.object(forKey: Self.firstLaunchKey) == nil {
             UserDefaults.standard.set(Date(), forKey: Self.firstLaunchKey)
@@ -74,6 +78,8 @@ final class PetController {
         panel.petView.onHoverBegan = { [weak self] in self?.send(.hoverBegan) }
         panel.petView.onHoverEnded = { [weak self] in self?.send(.hoverEnded) }
         panel.petView.onClick = { [weak self] event in self?.clicked(event) }
+        panel.petView.onDrag = { [weak self] x in self?.dragged(toX: x) }
+        panel.petView.onDragEnded = { [weak self] in self?.panel.rememberShorePosition() }
         bubblePanel.onClick = { [weak self] in self?.bubbleClicked() }
 
         idleMonitor.onSample = { [weak self] seconds in self?.send(.userIdle(seconds: seconds)) }
@@ -86,7 +92,7 @@ final class PetController {
         for source in musicSources {
             musicTasks.append(Task { @MainActor [weak self] in
                 for await event in source.events {
-                    self?.send(.musicChanged(source: source.id, playing: event != .paused))
+                    self?.musicEvent(event, from: source)
                 }
             })
         }
@@ -98,13 +104,13 @@ final class PetController {
         screenToken = NotificationCenter.default.addObserver(
             forName: NSApplication.didChangeScreenParametersNotification, object: nil, queue: .main
         ) { [weak self] _ in
-            self?.panel.moveToCorner()
-            self?.apply()
+            self?.panel.moveToShore()
+            self?.followPibbo()
         }
 
         send(.builtInMusicAvailable(lofi.isAvailable))
         worldChanged(worldMonitor.context)
-        panel.moveToCorner()
+        panel.moveToShore()
         apply()
 
         sessionMonitor.start()
@@ -121,6 +127,14 @@ final class PetController {
         apply()
     }
 
+    private func musicEvent(_ event: MusicEvent, from source: MusicSource) {
+        send(.musicChanged(source: source.id, playing: event != .paused))
+        if source === lofi, event == .trackChanged {
+            send(.builtInTrackStarted)
+            if shownBubble == .nowPlaying { showNowPlaying() }  // new title
+        }
+    }
+
     private func worldChanged(_ context: WorldContext) {
         let provided = Set(pack.availableActions)
         let actions = ActionRules.actions(for: context).filter(provided.contains)
@@ -135,6 +149,7 @@ final class PetController {
             renderer.pause()
             panel.orderOut(nil)
             menuPanel.close()
+            marqueePanel.hide()
             idleMonitor.stop()
         } else {
             renderer.resume()
@@ -173,18 +188,50 @@ final class PetController {
     private func updateBubble(_ bubble: Bubble?) {
         guard bubble != shownBubble else { return }
         shownBubble = bubble
-        guard let bubble else {
-            bubblePanel.orderOut(nil)
-            return
-        }
-        let text: String
+        bubblePanel.orderOut(nil)
+        marqueePanel.hide()
         switch bubble {
-        case .musicInvitation: text = Strings.Bubble.musicInvitation
+        case nil:
+            break
+        case .musicInvitation:
+            guard let image = bubbleRenderer.image(for: Strings.Bubble.musicInvitation) else { return }
+            let anchor = bubbleAnchor()
+            bubblePanel.show(image, tailInsetFromRight: bubbleRenderer.tailInsetFromRight,
+                             anchorX: anchor.x, bottomY: anchor.y)
+        case .nowPlaying:
+            showNowPlaying()
         }
-        guard let image = bubbleRenderer.image(for: text) else { return }
-        let anchor = bubbleAnchor()
-        bubblePanel.show(image, tailInsetFromRight: bubbleRenderer.tailInsetFromRight,
-                         anchorX: anchor.x, bottomY: anchor.y)
+    }
+
+    /// The now-playing bubble spans the tide pool, tail over Pibbo's head.
+    private func showNowPlaying() {
+        guard let text = lofi.nowPlaying else { return }
+        let pool = panel.frame
+        marqueePanel.show(text, pool: pool, tailX: pool.maxX - renderer.pointSize / 2,
+                          bottomY: pool.maxY - CGFloat(Self.scale) * 2)
+    }
+
+    // MARK: - Dragging
+
+    private func dragged(toX x: CGFloat) {
+        menuPanel.close()
+        panel.slide(toX: x)
+        followPibbo()
+    }
+
+    /// Moves whatever bubble is up along with Pibbo.
+    private func followPibbo() {
+        let current = shownBubble
+        shownBubble = nil
+        updateBubble(current)
+    }
+
+    /// Stops the built-in radio gently: the volume fades while Pibbo takes
+    /// his headphones off.
+    private func stopRadio() {
+        let duration = brainConfig.unplugDuration
+        send(.musicFadingOut(source: lofi.id, duration: duration))
+        lofi.fadeOut(duration: duration)
     }
 
     /// Where bubbles and the menu point: just right of Pibbo's head, with the
@@ -226,7 +273,10 @@ final class PetController {
         var items: [PixelMenuPanel.Item] = []
         if lofi.isAvailable {
             let title = lofi.isPlaying ? Strings.Menu.stopMusic : Strings.Menu.music
-            items.append(.init(title: title) { [weak self] in self?.lofi.toggle() })
+            items.append(.init(title: title) { [weak self] in
+                guard let self else { return }
+                self.lofi.isPlaying ? self.stopRadio() : self.lofi.play()
+            })
         }
         items.append(.init(title: Strings.Menu.workMode) { [weak self] in self?.send(.workModeEntered) })
         items.append(.init(title: Strings.Menu.quit) { NSApp.terminate(nil) })

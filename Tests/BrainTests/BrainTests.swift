@@ -111,6 +111,8 @@ final class BrainTests: XCTestCase {
         brain.handle(.musicChanged(source: "apple-music", playing: false), at: at(400))
         XCTAssertEqual(brain.output.visual, .state(.music), "stop is debounced")
         run(&brain, until: at(400 + config.musicStopDebounce))
+        XCTAssertEqual(brain.output.visual, .action("unplug"), "takes the headphones off")
+        run(&brain, until: at(400 + config.musicStopDebounce + config.unplugDuration))
         XCTAssertEqual(brain.output.visual, .state(.hidden))
     }
 
@@ -346,5 +348,81 @@ final class BrainTests: XCTestCase {
         let demo = BrainConfig.demo
         XCTAssertLessThan(demo.randomAppearanceInterval.upperBound, BrainConfig().randomAppearanceInterval.lowerBound)
         XCTAssertEqual(demo.musicInvitationChance, 1)
+    }
+
+    // MARK: - Built-in radio: fade out, unplug, now playing
+
+    let radio = Brain.builtInSource
+
+    func testFadeOutUnplugsInSyncAndThenStops() {
+        var brain = makeBrain()
+        run(&brain, until: at(200))
+        brain.handle(.musicChanged(source: radio, playing: true), at: at(300))
+        brain.handle(.musicFadingOut(source: radio, duration: 1.6), at: at(400))
+        XCTAssertEqual(brain.output.visual, .action("unplug"), "headphones come off while the volume fades")
+
+        brain.handle(.musicChanged(source: radio, playing: false), at: at(401.6))
+        run(&brain, until: at(401.6))
+        XCTAssertEqual(brain.output.visual, .state(.hidden), "no second unplug after the fade")
+        XCTAssertNil(brain.nextDeadline.flatMap { $0 <= at(401.6) ? $0 : nil })
+    }
+
+    func testFadeIsCancelledIfMusicStartsAgain() {
+        var brain = makeBrain()
+        brain.handle(.musicChanged(source: radio, playing: true), at: at(10))
+        brain.handle(.musicFadingOut(source: radio, duration: 1.6), at: at(20))
+        brain.handle(.musicChanged(source: radio, playing: true), at: at(20.5))
+        run(&brain, until: at(30))
+        XCTAssertEqual(brain.output.visual, .state(.music))
+    }
+
+    func testUnplugWaitsForEverySource() {
+        var brain = makeBrain()
+        brain.handle(.musicChanged(source: "apple-music", playing: true), at: at(10))
+        brain.handle(.musicChanged(source: radio, playing: true), at: at(11))
+        brain.handle(.musicFadingOut(source: radio, duration: 1.6), at: at(12))
+        XCTAssertEqual(brain.output.visual, .state(.music), "Apple Music still plays")
+    }
+
+    func testNowPlayingShowsWhenATrackStartsThenHides() {
+        var brain = makeBrain()
+        brain.handle(.musicChanged(source: radio, playing: true), at: at(10))
+        XCTAssertNil(brain.output.bubble)
+        brain.handle(.builtInTrackStarted, at: at(10))
+        XCTAssertEqual(brain.output.bubble, .nowPlaying)
+        run(&brain, until: at(10 + config.nowPlayingDuration))
+        XCTAssertNil(brain.output.bubble)
+    }
+
+    func testNowPlayingWhileHovering() {
+        var brain = makeBrain()
+        brain.handle(.musicChanged(source: radio, playing: true), at: at(10))
+        brain.handle(.hoverBegan, at: at(100))
+        XCTAssertEqual(brain.output.bubble, .nowPlaying)
+        run(&brain, until: at(500))
+        XCTAssertEqual(brain.output.bubble, .nowPlaying, "stays while the mouse is on Pibbo")
+        brain.handle(.hoverEnded, at: at(500))
+        run(&brain, until: at(500 + config.nowPlayingAfterHover))
+        XCTAssertNil(brain.output.bubble)
+    }
+
+    func testNowPlayingOnlyForTheBuiltInRadio() {
+        var brain = makeBrain()
+        brain.handle(.musicChanged(source: "apple-music", playing: true), at: at(10))
+        brain.handle(.hoverBegan, at: at(20))
+        XCTAssertNil(brain.output.bubble)
+    }
+
+    func testNowPlayingHidesInWorkModeAndOnFade() {
+        var brain = makeBrain()
+        brain.handle(.musicChanged(source: radio, playing: true), at: at(10))
+        brain.handle(.builtInTrackStarted, at: at(10))
+        brain.handle(.workModeEntered, at: at(11))
+        XCTAssertNil(brain.output.bubble)
+        brain.handle(.clicked, at: at(12))
+        brain.handle(.builtInTrackStarted, at: at(13))
+        XCTAssertEqual(brain.output.bubble, .nowPlaying)
+        brain.handle(.musicFadingOut(source: radio, duration: 1.6), at: at(14))
+        XCTAssertNil(brain.output.bubble)
     }
 }

@@ -218,6 +218,29 @@ def frame_submerged(i):
     return g
 
 
+def frame_unplug(i):
+    """Music stops: lifts the headphones off and sets them aside (plays once)."""
+    g = base()
+    if i == 0:
+        eyes(g, "closed")
+        headphones(g)
+    elif i == 1:  # lifting
+        eyes(g, "closed")
+        put(g, [(0, c) for c in range(4, 12)] + [(1, 3), (1, 12)], "h")
+        put(g, [(r, c) for r in (2, 3) for c in (1, 2, 13, 14)], "H")
+        put(g, [(4, 1), (4, 14)], "p")
+    elif i == 2:  # held above his head
+        eyes(g, "open")
+        put(g, [(0, c) for c in range(3, 13)], "h")
+        put(g, [(r, c) for r in (0, 1) for c in (1, 2, 13, 14)], "H")
+        put(g, [(2, 1), (2, 14)], "p")
+    else:  # set down beside him
+        eyes(g, "lazy")
+        put(g, [(9, 13), (9, 14)], "h")
+        put(g, [(10, 14), (10, 15), (11, 14), (11, 15)], "H")
+    return water(g, 0)
+
+
 def frame_water(i):
     """Idle: waters the flower on his left with a tiny can."""
     g = base()
@@ -397,6 +420,7 @@ STATES = {
 }
 ACTIONS = {
     "submerged": (frame_submerged, 4, 2),  # work mode
+    "unplug": (frame_unplug, 4, 3),        # plays once when music stops
     "water": (frame_water, 4, 3),
     "crack": (frame_crack, 4, 4),
     "groom": (frame_groom, 4, 4),
@@ -410,6 +434,10 @@ ACTIONS = {
     "petal": (frame_petal, 4, 2),
     "stargaze": (frame_stargaze, 4, 2),
 }
+
+
+# Clips that play once and hold their last frame.
+ONE_SHOT = {"unplug"}
 
 
 def to_image(grid, palette=PALETTE):
@@ -517,6 +545,7 @@ ICONS = {
            ".olllllo.", "..ollllo.", "...oooo..", "........."],
     "☕": ["..W..W...", "...W..W..", "oooooo...", "oDDDDooo.", "oMMMMo.o.",
            "oMMMMooo.", "oMMMMo...", ".oooo....", "........."],
+    "♪": ["...hh.", "...hhh", "...h.h", "...h..", "...h..", ".hhh..", "hhhh..", ".hh...", "......"],
     "🐚": [".........", "....o....", "...oso...", "..osSso..", ".osSsSso.",
            "osSsSsSso", "oSsSsSsSo", ".ooooooo.", "........."],
     "🫧": [".....xx..", "....xuux.", "....xuux.", ".....xx..", ".xx......",
@@ -597,6 +626,8 @@ def build_skin():
     for row, (name, (_, n, fps)) in enumerate(entries):
         key = "states" if name in STATES else "actions"
         manifest[key][name] = {"row": row, "frames": n, "fps": fps}
+        if name in ONE_SHOT:
+            manifest[key][name]["loop"] = False
     (SKIN_DIR / "manifest.json").write_text(json.dumps(manifest, indent=2) + "\n")
 
     write_previews(entries, frames, garden, sheet)

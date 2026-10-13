@@ -29,8 +29,8 @@ Tests/                             BrainTests, ContentTests, WorldTests
 Spikes/                            research prototypes from Section 14 (never part of the app)
 Assets/Skins/pibbo/                Pibbo's skin pack (manifest.json, sprites.png, previews)
 Assets/UI/                         pixel font, emoji icons, bubble frame (ui.png + ui.json)
-Assets/Music/                      built-in lofi tracks (AAC in CAF) + beat maps, made by Tools/import_track.py
-Assets/MusicMasters/               WAV masters of the tracks (local only: git-ignored, never bundled)
+Assets/Music/<theme>/              built-in lofi by theme: theme.json, tracks (AAC in CAF), beat maps (Tools/import_track.py)
+Assets/MusicMasters/<Theme Name>/  WAV masters of the tracks (local only: git-ignored, never bundled)
 Assets/Data/zone.tab               tzdb time-zone coordinates (offline location fallback)
 Tools/generate_sprites.py          draws all pixel art from text grids (requires Pillow)
 Tools/import_track.py              WAV master → app-ready CAF + beat map with estimated bpm (numpy + afconvert)
@@ -78,7 +78,7 @@ Builds are ad-hoc signed until a Developer ID certificate exists. Login-item reg
 
 ### Optional actions (skins may omit these; missing ones fall back to `chill`)
 
-Provided by the bundled skin (v0.2.0): `water` (waters his flower), `crack` (cracks a shell with a rock), `groom`, `stretch`, `yawn`, `sunbathe` (sunglasses), `raindrops` (rain), `cocoa` (snow), `huddle` (storm), `leaf` (autumn), `petal` (spring), `stargaze` (clear night). Which ones fit the moment is decided by `World.ActionRules`. Holiday outfits come later.
+System action `unplug` (headphones off, plays once) runs when music stops; it is never picked at random. Provided by the bundled skin (v0.2.0): `water` (waters his flower), `crack` (cracks a shell with a rock), `groom`, `stretch`, `yawn`, `sunbathe` (sunglasses), `raindrops` (rain), `cocoa` (snow), `huddle` (storm), `leaf` (autumn), `petal` (spring), `stargaze` (clear night). Which ones fit the moment is decided by `World.ActionRules`. Holiday outfits come later.
 
 ### The flower (decided 2026-10-12)
 
@@ -115,7 +115,7 @@ Pibbo sinks under the water. Only a few small bubbles rise occasionally. Skins p
 ## 5. Behavior state machine
 
 ### Position
-Bottom-right corner of the main display, above the Dock. If the Dock is on the side or hidden, use the bottom corner that is not covered.
+On the bottom edge of the main display's visible frame (above a bottom Dock, beside a side Dock, at the edge when it auto-hides). Default: the bottom-right corner. The user can drag Pibbo left and right along that edge (v0.3.0); a press becomes a drag after 4 pt of movement, otherwise it is a click. The spot is saved as a fraction of the edge (`shorePosition`), so it survives resolution and Dock changes. Bubbles and the menu follow him and stay on screen.
 
 ### Default flow
 
@@ -218,11 +218,13 @@ Goal: **the app never triggers a system permission prompt.**
 
 ### Built-in lofi
 - Tracks generated with Suno, roughly 1–2 hours total, looped. The developer's Suno plan is **Pro** (commercial use allowed); the Steam store page must still disclose AI-generated content.
-- Workflow: export WAV from Suno → put it in `Assets/MusicMasters/` → `python3 Tools/import_track.py` → AAC 128 kbps CAF (~1 MB/min) + beat map in `Assets/Music/`. Tracks play in file-name order; a single track loops.
-- Current set: 12 tracks, ~37 min, 35 MB (2026-10-13). Estimated tempos are mostly 60–80 bpm; "Pibbo's Night" and "Holding Paws" came out ~120, likely double-time of ~60 (half-time feel). Confirm by ear before writing cues.
+- **Themes (v0.3.0):** tracks are grouped into themes. Workflow: export WAV from Suno → `Assets/MusicMasters/<Theme Name>/` → `python3 Tools/import_track.py` → `Assets/Music/<theme-slug>/` with `theme.json` (`{"title": …}`), AAC 128 kbps CAF (~1 MB/min) and a beat map per track.
+- **No song picking, on purpose:** every start (menu or bubble) is a random theme in shuffled order (`Content.RadioPlan`); when a theme runs out, another theme follows (a different one when there is more than one). Fewer clicks, no choice paralysis.
+- **Now playing:** while the radio plays, a fixed-width pixel bubble above the tide pool (same width and edges as the pool, tail over Pibbo, ♪ icon) scrolls "theme - track" inside a fixed window. The scroll is one discrete Core Animation keyframe animation stepping one art pixel at a time: crisp, and no timers in our process. It shows for ~15 s when a track starts and while the mouse is on Pibbo (+3 s after), so it stays quiet the rest of the time.
+- **Gentle start and stop:** tracks fade in over 1 s. "Tunes off" fades the volume to silence over 1.6 s while Pibbo plays `unplug` (headphones off), then pauses. When external music (Apple Music) stops, Pibbo also plays `unplug`; its volume can't be faded because external playback is read only.
+- Current set: theme "Pibbo's Raft Days", 12 tracks, ~37 min, 35 MB (2026-10-13). Estimated tempos are mostly 60–80 bpm; "Pibbo's Night" and "Holding Paws" came out ~120, likely double-time of ~60 (half-time feel). Confirm by ear before writing cues.
 - `Tools/generate_placeholder_lofi.py` can still synthesize a 27 s placeholder loop for testing.
 - Never plays automatically; the user starts it from the menu or the invitation bubble
-- Note: confirm Suno's commercial-use terms for the plan used to generate the tracks; the Steam store page must disclose AI-generated content
 
 ### Beat maps (built-in tracks only)
 Each built-in track has a JSON file describing tempo and action cues:
@@ -294,6 +296,7 @@ Example `manifest.json`:
 
 - Sheet layout: one row per state/action in manifest order, frames left to right, each `frameSize`×`frameSize`. The sheet is as wide as the longest row; unused cells are transparent. The bottom 3 rows of every frame are water, so frames line up with the tide pool strip.
 - Optional `garden`: one row with one frame per flower growth stage (static, not animated), drawn to sit on Pibbo's left.
+- Optional `"loop": false` on a clip: play once and hold the last frame (used by `unplug`).
 - Validate on load: reject skins missing a required state; missing optional actions fall back to `chill`
 - Packs live in `~/Library/Application Support/Tidepool/Packs/`
 - GitHub build: users drop pack folders into that directory manually

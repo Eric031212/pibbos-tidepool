@@ -60,7 +60,14 @@ final class SpriteRenderer {
         // Discrete mode needs one more key time than values for equal slots.
         animation.keyTimes = (0...frames.count).map { NSNumber(value: Double($0) / Double(frames.count)) }
         animation.duration = Double(frames.count) / clip.fps
-        animation.repeatCount = .infinity
+        if clip.loops {
+            animation.repeatCount = .infinity
+        } else {
+            // Play once and hold the last frame (e.g. `unplug`).
+            animation.fillMode = .forwards
+            animation.isRemovedOnCompletion = false
+            layer.contents = frames.last
+        }
         layer.add(animation, forKey: "frames")
     }
 

@@ -15,8 +15,8 @@ packages:
 settings:
   base:
     SWIFT_VERSION: "5.0"
-    MARKETING_VERSION: "0.2.0"
-    CURRENT_PROJECT_VERSION: "2"
+    MARKETING_VERSION: "0.3.0"
+    CURRENT_PROJECT_VERSION: "3"
 
 targets:
   Tidepool:
@@ -49,6 +49,8 @@ targets:
       properties:
         CFBundleName: Tidepool
         CFBundleDisplayName: Tidepool
+        CFBundleShortVersionString: $(MARKETING_VERSION)
+        CFBundleVersion: $(CURRENT_PROJECT_VERSION)
         LSUIElement: true
         LSMinimumSystemVersion: "13.0"
         NSHumanReadableCopyright: ""

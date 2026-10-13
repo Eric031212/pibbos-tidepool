@@ -5,6 +5,17 @@ public struct Clip: Codable, Equatable, Sendable {
     public let row: Int
     public let frames: Int
     public let fps: Double
+    /// `false`: play once and hold the last frame (e.g. `unplug`). Default true.
+    public let loop: Bool?
+
+    public init(row: Int, frames: Int, fps: Double, loop: Bool? = nil) {
+        self.row = row
+        self.frames = frames
+        self.fps = fps
+        self.loop = loop
+    }
+
+    public var loops: Bool { loop ?? true }
 }
 
 /// Optional flower beside Pibbo: one frame per growth stage in `row`.
@@ -113,9 +124,12 @@ public struct SkinPack: Sendable {
         return (fallback, manifest.states[fallback]!)  // required states exist after validation
     }
 
-    /// Optional actions this skin actually provides (excluding `submerged`).
+    /// Actions the app plays for a reason of its own, never at random.
+    public static let systemActions: Set<String> = ["submerged", "unplug"]
+
+    /// Optional actions this skin provides for random/idle use.
     public var availableActions: [String] {
-        (manifest.actions ?? [:]).keys.filter { $0 != "submerged" }.sorted()
+        (manifest.actions ?? [:]).keys.filter { !SkinPack.systemActions.contains($0) }.sorted()
     }
 
     /// Frame of the flower at a growth stage; nil when the skin has no garden.

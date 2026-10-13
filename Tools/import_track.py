@@ -1,25 +1,27 @@
 #!/usr/bin/env python3
-"""Import a built-in lofi track: WAV master -> app-ready CAF + beat map.
+"""Import built-in lofi tracks: WAV masters -> app-ready CAF + beat maps.
 
-Put masters (e.g. Suno WAV exports) in Assets/MusicMasters/ (git-ignored,
-never bundled). For each one this writes, into Assets/Music/:
+Tracks are grouped into themes. Put masters (e.g. Suno WAV exports) in one
+folder per theme, named after the theme (git-ignored, never bundled):
+    Assets/MusicMasters/Pibbo's Raft Days/Floating Pibbo.wav
+For each theme this writes Assets/Music/<theme-slug>/:
+    theme.json    {"title": "<theme name>"}
     <slug>.caf    AAC 128 kbps in CAF (~1 MB per minute)
     <slug>.json   beat map (CLAUDE.md Section 9): track, title, bpm, offset, cues
+Titles come from the folder and file names (curly apostrophes become ').
 
 BPM and offset are estimated offline from the audio (spectral-flux onsets +
 autocorrelation), never at runtime. Check them by ear; edit the JSON if needed.
 Existing `cues` in a beat map are kept when re-importing.
 
 Usage:
-    python3 Tools/import_track.py                 # every WAV in Assets/MusicMasters/
-    python3 Tools/import_track.py path/to/song.wav
+    python3 Tools/import_track.py                 # every theme folder in Assets/MusicMasters/
 
 Requires: Python 3.10+, numpy, macOS `afconvert`.
 """
 import json
 import re
 import subprocess
-import sys
 import wave
 from pathlib import Path
 
@@ -93,17 +95,20 @@ def estimate_tempo(envelope, rate):
     return round(float(bpm), 1), round(offset, 3)
 
 
-def import_track(master):
-    name = master.stem
+def title(name):
+    return name.replace("\u2019", "'").replace("\u2018", "'")
+
+
+def import_track(master, out_dir):
+    name = title(master.stem)
     out = slug(name)
-    OUT_DIR.mkdir(parents=True, exist_ok=True)
-    caf = OUT_DIR / f"{out}.caf"
+    caf = out_dir / f"{out}.caf"
     subprocess.run(["afconvert", "-f", "caff", "-d", "aac", "-b", "128000", str(master), str(caf)], check=True)
 
     signal, rate = read_mono(master)
     bpm, offset = estimate_tempo(onset_envelope(signal), rate)
 
-    beat_map_path = OUT_DIR / f"{out}.json"
+    beat_map_path = out_dir / f"{out}.json"
     cues = []
     if beat_map_path.exists():
         cues = json.loads(beat_map_path.read_text()).get("cues", [])
@@ -114,11 +119,21 @@ def import_track(master):
 
 
 def main():
-    masters = [Path(p) for p in sys.argv[1:]] or sorted(MASTERS.glob("*.wav"))
-    if not masters:
-        raise SystemExit(f"no WAV files given and none in {MASTERS.relative_to(ROOT)}/")
-    for master in masters:
-        import_track(master)
+    loose = sorted(MASTERS.glob("*.wav"))
+    if loose:
+        raise SystemExit(f"{len(loose)} WAV file(s) are not in a theme folder. Move them into "
+                         f"{MASTERS.relative_to(ROOT)}/<Theme Name>/ first.")
+    themes = sorted(p for p in MASTERS.iterdir() if p.is_dir() and any(p.glob("*.wav")))
+    if not themes:
+        raise SystemExit(f"no theme folders with WAV files in {MASTERS.relative_to(ROOT)}/")
+    for theme_dir in themes:
+        theme = title(theme_dir.name)
+        out_dir = OUT_DIR / slug(theme)
+        out_dir.mkdir(parents=True, exist_ok=True)
+        (out_dir / "theme.json").write_text(json.dumps({"title": theme}, indent=2, ensure_ascii=False) + "\n")
+        print(f"theme: {theme} -> {out_dir.relative_to(ROOT)}")
+        for master in sorted(theme_dir.glob("*.wav")):
+            import_track(master, out_dir)
 
 
 if __name__ == "__main__":

@@ -18,8 +18,10 @@ public enum PetVisual: Equatable, Sendable {
 
 /// A speech bubble above Pibbo.
 public enum Bubble: Equatable, Sendable {
-    /// `music? 🎧`: clicking it starts the built-in lofi.
+    /// `Music Time? 🎧`: clicking it starts the built-in lofi.
     case musicInvitation
+    /// Scrolling "theme - track" while the built-in lofi plays.
+    case nowPlaying
 }
 
 /// Why Pibbo must be fully hidden with everything paused.
@@ -39,6 +41,11 @@ public enum BrainEvent: Equatable, Sendable {
     case userIdle(seconds: TimeInterval)
     /// An external or built-in music source started or stopped.
     case musicChanged(source: String, playing: Bool)
+    /// A source is fading out and stops after `duration`: Pibbo takes his
+    /// headphones off in sync with the fade.
+    case musicFadingOut(source: String, duration: TimeInterval)
+    /// The built-in radio started a new track.
+    case builtInTrackStarted
     case suspended(SuspendReason)
     case resumed(SuspendReason)
     case timeOfDayChanged(TimeOfDay)
@@ -83,6 +90,12 @@ public struct BrainConfig: Sendable {
     /// At most one invitation per hour (CLAUDE.md Section 5).
     public var musicInvitationCooldown: TimeInterval = 60 * 60
     public var bubbleDuration: TimeInterval = 6
+    /// How long "theme - track" shows when a built-in track starts.
+    public var nowPlayingDuration: TimeInterval = 15
+    /// It lingers this long after the mouse leaves Pibbo.
+    public var nowPlayingAfterHover: TimeInterval = 3
+    /// The `unplug` clip (headphones off) when music stops.
+    public var unplugDuration: TimeInterval = 1.6
 
     public init() {}
 

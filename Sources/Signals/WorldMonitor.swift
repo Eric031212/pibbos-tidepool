@@ -13,7 +13,10 @@ final class WorldMonitor {
     var onChange: ((WorldContext) -> Void)?
     private(set) var context: WorldContext
 
-    static let userAgent = "PibbosTidepool/0.2.0 (+https://github.com/Eric031212/pibbos-tidepool)"
+    static let userAgent: String = {
+        let version = Bundle.main.object(forInfoDictionaryKey: "CFBundleShortVersionString") as? String ?? "dev"
+        return "PibbosTidepool/\(version) (+https://github.com/Eric031212/pibbos-tidepool)"
+    }()
     private static let coordinateKey = "lastCoordinate"
 
     private var coordinate: Coordinate

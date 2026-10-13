@@ -12,6 +12,9 @@ import World
 /// (user away) > presence (hidden / peek / chill / random appearance).
 /// Suspension (fullscreen, lock, sleep) hides everything on top of that.
 public struct Brain {
+    /// Source id of the built-in radio (`musicChanged(source:)`).
+    public static let builtInSource = "built-in"
+
     public private(set) var output: BrainOutput
 
     private let config: BrainConfig
@@ -48,6 +51,13 @@ public struct Brain {
     private var bubble: (kind: Bubble, until: Date)?
     private var lastInvitation: Date?
 
+    /// Sources fading out right now; they stop at their `pendingStops` time.
+    private var fadingSources: Set<String> = []
+    /// Headphones-off clip after music stops.
+    private var unplugUntil: Date?
+    /// "theme - track" bubble while the built-in radio plays.
+    private var nowPlayingUntil: Date?
+
     /// Starts in the launch flow: `peek` for a few seconds, then `chill`.
     public init(config: BrainConfig = BrainConfig(), now: Date,
                 random: @escaping (ClosedRange<Double>) -> Double = { Double.random(in: $0) }) {
@@ -65,6 +75,8 @@ public struct Brain {
         guard suspendReasons.isEmpty else { return nil }
         var candidates = Array(pendingStops.values)
         if let bubble { candidates.append(bubble.until) }
+        if let unplugUntil { candidates.append(unplugUntil) }
+        if let nowPlayingUntil, nowPlayingUntil != .distantFuture { candidates.append(nowPlayingUntil) }
         switch presence {
         case .hidden:
             if let nextAppearance, !workMode { candidates.append(nextAppearance) }
@@ -84,6 +96,7 @@ public struct Brain {
         case .hoverBegan:
             guard !workMode else { break }
             hovering = true
+            if isBuiltInPlaying { nowPlayingUntil = .distantFuture }
             isUserAway = false
             lastInteraction = now
             switch presence {
@@ -95,6 +108,7 @@ public struct Brain {
         case .hoverEnded:
             guard hovering else { break }
             hovering = false
+            if nowPlayingUntil == .distantFuture { nowPlayingUntil = now.addingTimeInterval(config.nowPlayingAfterHover) }
             lastInteraction = now
             if presence.isChill {
                 setPresence(.chill(hideAt: now.addingTimeInterval(config.hideAfterNoInteraction)), at: now)
@@ -127,15 +141,28 @@ public struct Brain {
             if playing {
                 playingSources.insert(source)
                 pendingStops[source] = nil
+                fadingSources.remove(source)
+                unplugUntil = nil
                 bubble = nil
-            } else if playingSources.contains(source) {
+            } else if playingSources.contains(source), !fadingSources.contains(source) {
                 pendingStops[source] = now.addingTimeInterval(config.musicStopDebounce)
             }
+
+        case .musicFadingOut(let source, let duration):
+            guard playingSources.contains(source) else { break }
+            fadingSources.insert(source)
+            pendingStops[source] = now.addingTimeInterval(duration)
+            if source == Self.builtInSource { nowPlayingUntil = nil }
+
+        case .builtInTrackStarted:
+            nowPlayingUntil = hovering ? .distantFuture : now.addingTimeInterval(config.nowPlayingDuration)
 
         case .suspended(let reason):
             if suspendReasons.isEmpty {
                 hovering = false
                 bubble = nil
+                unplugUntil = nil
+                nowPlayingUntil = nil
                 setPresence(.hidden, at: now)
                 nextAppearance = nil
             }
@@ -167,6 +194,10 @@ public struct Brain {
 
     // MARK: - Private
 
+    private var isBuiltInPlaying: Bool {
+        playingSources.contains(Self.builtInSource) && !fadingSources.contains(Self.builtInSource)
+    }
+
     private var canAppearOnHisOwn: Bool {
         !workMode && suspendReasons.isEmpty && playingSources.isEmpty && !isUserAway
     }
@@ -192,10 +223,18 @@ public struct Brain {
 
     /// Applies every deadline that is due at `now`, in order.
     private mutating func advance(to now: Date) {
-        for (source, at) in pendingStops where at <= now {
+        for (source, at) in pendingStops.sorted(by: { $0.value < $1.value }) where at <= now {
             pendingStops[source] = nil
             playingSources.remove(source)
+            let faded = fadingSources.remove(source) != nil
+            if playingSources.isEmpty && !faded {
+                // A plain stop: take the headphones off now. (A fade already showed it.)
+                unplugUntil = at.addingTimeInterval(config.unplugDuration)
+            }
         }
+        if !isBuiltInPlaying { nowPlayingUntil = nil }
+        if let until = unplugUntil, until <= now { unplugUntil = nil }
+        if let until = nowPlayingUntil, until <= now { nowPlayingUntil = nil }
         if let current = bubble, current.until <= now { bubble = nil }
 
         // A few passes cover chains such as peek → chill → hidden after a long gap.
@@ -269,8 +308,11 @@ public struct Brain {
 
     private mutating func refreshOutput() {
         let visual: PetVisual
+        let allFading = !playingSources.isEmpty && playingSources.isSubset(of: fadingSources)
         if workMode {
             visual = .submerged
+        } else if allFading || unplugUntil != nil {
+            visual = .action("unplug")
         } else if !playingSources.isEmpty {
             visual = .state(.music)
         } else if isUserAway {
@@ -283,8 +325,14 @@ public struct Brain {
             case .appearance(let action, _): visual = action.map(PetVisual.action) ?? .state(.chill)
             }
         }
-        let showsBubble = suspendReasons.isEmpty && !workMode && playingSources.isEmpty
-        output = BrainOutput(visual: visual, isSuspended: !suspendReasons.isEmpty, isWorkMode: workMode,
-                             bubble: showsBubble ? bubble?.kind : nil)
+        var shown: Bubble?
+        if suspendReasons.isEmpty && !workMode {
+            if playingSources.isEmpty, let bubble {
+                shown = bubble.kind
+            } else if isBuiltInPlaying, nowPlayingUntil != nil {
+                shown = .nowPlaying
+            }
+        }
+        output = BrainOutput(visual: visual, isSuspended: !suspendReasons.isEmpty, isWorkMode: workMode, bubble: shown)
     }
 }

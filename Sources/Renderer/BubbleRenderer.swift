@@ -12,6 +12,12 @@ final class BubbleRenderer {
 
     /// Extra space between menu lines, in art pixels.
     private let lineGap = 3
+
+    enum TailPosition: Equatable {
+        case right
+        /// Tail centred on this x, in art pixels from the left edge.
+        case at(Int)
+    }
     private let tailRightMargin = 4
     private static let highlight = CGColor(red: 207 / 255, green: 234 / 255, blue: 247 / 255, alpha: 1)
 
@@ -51,6 +57,65 @@ final class BubbleRenderer {
         let bodyWidth = textWidth + 2 * padding.x
         let textHeight = lines.count * font.lineHeight + max(0, lines.count - 1) * lineGap
         let bodyHeight = textHeight + padding.top + padding.bottom
+        return drawBubble(bodyWidth: bodyWidth, bodyHeight: bodyHeight, tail: .right) { blit, context, height in
+            // hover highlight, inside the border
+            if let highlighted, lines.indices.contains(highlighted) {
+                let band = self.lineBands(count: lines.count)[highlighted]
+                context.setFillColor(Self.highlight)
+                context.fill(CGRect(x: 2, y: height - band.upperBound - 1, width: bodyWidth - 4, height: band.count))
+            }
+            for (index, layout) in layouts.enumerated() {
+                let top = padding.top + index * (self.font.lineHeight + self.lineGap)
+                for glyph in layout.placed {
+                    blit(glyph.glyph.x, glyph.glyph.y, glyph.glyph.w, self.font.lineHeight,
+                         padding.x + glyph.x, top, glyph.glyph.w, self.font.lineHeight)
+                }
+            }
+        }
+    }
+
+    /// The scrolling now-playing bubble: exactly `width` art pixels wide, with
+    /// `icon` on the left, an empty text window, and the tail centred on
+    /// `tailX`. Returns the frame and the text window (art pixels, top-left
+    /// origin).
+    func marqueeFrame(width: Int, tailX: Int, icon: String) -> (image: CGImage, window: CGRect)? {
+        let padding = font.padding
+        let iconLayout = font.layout(icon)
+        let iconGap = 3
+        let windowX = padding.x + iconLayout.width + iconGap
+        let bodyWidth = width
+        let textWidth = bodyWidth - windowX - padding.x
+        guard textWidth > 8 else { return nil }
+        let bodyHeight = font.lineHeight + padding.top + padding.bottom
+        guard let image = drawBubble(bodyWidth: bodyWidth, bodyHeight: bodyHeight, tail: .at(tailX), content: { blit, _, _ in
+            for glyph in iconLayout.placed {
+                blit(glyph.glyph.x, glyph.glyph.y, glyph.glyph.w, self.font.lineHeight,
+                     padding.x + glyph.x, padding.top, glyph.glyph.w, self.font.lineHeight)
+            }
+        }) else { return nil }
+        return (image, CGRect(x: windowX, y: padding.top, width: textWidth, height: font.lineHeight))
+    }
+
+    /// One line of pixel text on a transparent background (1 px per art pixel).
+    func textImage(_ text: String) -> CGImage? {
+        let layout = font.layout(text)
+        guard layout.width > 0,
+              let context = CGContext(data: nil, width: layout.width, height: font.lineHeight, bitsPerComponent: 8, bytesPerRow: 0,
+                                      space: CGColorSpaceCreateDeviceRGB(),
+                                      bitmapInfo: CGImageAlphaInfo.premultipliedLast.rawValue) else { return nil }
+        context.interpolationQuality = .none
+        for glyph in layout.placed {
+            guard let piece = atlas.cropping(to: CGRect(x: glyph.glyph.x, y: glyph.glyph.y, width: glyph.glyph.w, height: font.lineHeight)) else { continue }
+            context.draw(piece, in: CGRect(x: glyph.x, y: 0, width: glyph.glyph.w, height: font.lineHeight))
+        }
+        return context.makeImage()
+    }
+
+    private typealias Blit = (_ sx: Int, _ sy: Int, _ sw: Int, _ sh: Int, _ dx: Int, _ dy: Int, _ dw: Int, _ dh: Int) -> Void
+
+    /// Draws the 9-slice frame and tail, then lets `content` draw inside.
+    private func drawBubble(bodyWidth: Int, bodyHeight: Int, tail: TailPosition,
+                            content: (Blit, CGContext, Int) -> Void) -> CGImage? {
         let tailWidth = font.tail.w ?? 4, tailHeight = font.tail.h ?? 4
         let height = bodyHeight + tailHeight - 1  // the tail overlaps the bottom border
         guard let context = CGContext(data: nil, width: bodyWidth, height: height, bitsPerComponent: 8, bytesPerRow: 0,
@@ -59,9 +124,12 @@ final class BubbleRenderer {
         context.interpolationQuality = .none
 
         /// Copies an atlas rect (top-left origin) into the image (top-left origin), stretched.
-        func blit(_ sx: Int, _ sy: Int, _ sw: Int, _ sh: Int, to dx: Int, _ dy: Int, _ dw: Int, _ dh: Int) {
-            guard dw > 0, dh > 0, let piece = atlas.cropping(to: CGRect(x: sx, y: sy, width: sw, height: sh)) else { return }
+        let copy: Blit = { sx, sy, sw, sh, dx, dy, dw, dh in
+            guard dw > 0, dh > 0, let piece = self.atlas.cropping(to: CGRect(x: sx, y: sy, width: sw, height: sh)) else { return }
             context.draw(piece, in: CGRect(x: dx, y: height - dy - dh, width: dw, height: dh))
+        }
+        func blit(_ sx: Int, _ sy: Int, _ sw: Int, _ sh: Int, to dx: Int, _ dy: Int, _ dw: Int, _ dh: Int) {
+            copy(sx, sy, sw, sh, dx, dy, dw, dh)
         }
 
         // 9-slice frame
@@ -77,25 +145,15 @@ final class BubbleRenderer {
         blit(b.x + size - c, b.y + c, c, 1, to: bodyWidth - c, c, c, midH)
         blit(b.x + c, b.y + c, 1, 1, to: c, c, midW, midH)
 
-        // tail, near the right edge
-        blit(font.tail.x, font.tail.y, tailWidth, tailHeight,
-             to: bodyWidth - tailRightMargin - tailWidth, bodyHeight - 1, tailWidth, tailHeight)
-
-        // hover highlight, inside the border
-        if let highlighted, lines.indices.contains(highlighted) {
-            let band = lineBands(count: lines.count)[highlighted]
-            context.setFillColor(Self.highlight)
-            context.fill(CGRect(x: 2, y: height - band.upperBound - 1, width: bodyWidth - 4, height: band.count))
+        // tail
+        let tailX: Int
+        switch tail {
+        case .right: tailX = bodyWidth - tailRightMargin - tailWidth
+        case .at(let centre): tailX = min(max(centre - tailWidth / 2, 3), bodyWidth - 3 - tailWidth)
         }
+        blit(font.tail.x, font.tail.y, tailWidth, tailHeight, to: tailX, bodyHeight - 1, tailWidth, tailHeight)
 
-        // text
-        for (index, layout) in layouts.enumerated() {
-            let top = padding.top + index * (font.lineHeight + lineGap)
-            for glyph in layout.placed {
-                blit(glyph.glyph.x, glyph.glyph.y, glyph.glyph.w, font.lineHeight,
-                     to: padding.x + glyph.x, top, glyph.glyph.w, font.lineHeight)
-            }
-        }
+        content(copy, context, height)
         return context.makeImage()
     }
 }
