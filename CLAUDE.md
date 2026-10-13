@@ -29,10 +29,12 @@ Tests/                             BrainTests, ContentTests, WorldTests
 Spikes/                            research prototypes from Section 14 (never part of the app)
 Assets/Skins/pibbo/                Pibbo's skin pack (manifest.json, sprites.png, previews)
 Assets/UI/                         pixel font, emoji icons, bubble frame (ui.png + ui.json)
-Assets/Music/                      built-in lofi tracks + beat maps (currently a synthesized placeholder loop)
+Assets/Music/                      built-in lofi tracks (AAC in CAF) + beat maps, made by Tools/import_track.py
+Assets/MusicMasters/               WAV masters of the tracks (local only: git-ignored, never bundled)
 Assets/Data/zone.tab               tzdb time-zone coordinates (offline location fallback)
 Tools/generate_sprites.py          draws all pixel art from text grids (requires Pillow)
-Tools/generate_placeholder_lofi.py synthesizes the placeholder lofi loop (stdlib + afconvert)
+Tools/import_track.py              WAV master → app-ready CAF + beat map with estimated bpm (numpy + afconvert)
+Tools/generate_placeholder_lofi.py synthesizes a placeholder lofi loop (stdlib + afconvert), for testing without tracks
 ```
 
 ### Building
@@ -214,8 +216,10 @@ Goal: **the app never triggers a system permission prompt.**
 - For external music, Pibbo only does a generic gentle bob, no precise beat sync. The bob is drawn in the `music` clip's frames; the app never moves the sprite layer, because that would move the water strip too (spike 4).
 
 ### Built-in lofi
-- Tracks generated with Suno, roughly 1–2 hours total, looped
-- Until they exist, `Tools/generate_placeholder_lofi.py` synthesizes a 27 s gapless loop (72 bpm, IMA4 CAF). Drop real tracks into `Assets/Music/` to replace it.
+- Tracks generated with Suno, roughly 1–2 hours total, looped. The developer's Suno plan is **Pro** (commercial use allowed); the Steam store page must still disclose AI-generated content.
+- Workflow: export WAV from Suno → put it in `Assets/MusicMasters/` → `python3 Tools/import_track.py` → AAC 128 kbps CAF (~1 MB/min) + beat map in `Assets/Music/`. Tracks play in file-name order; a single track loops.
+- First track: "Pibbo's Night" (2:52). Its tempo is ambiguous between ~60 and ~120 bpm (half-time feel); confirm by ear before writing cues.
+- `Tools/generate_placeholder_lofi.py` can still synthesize a 27 s placeholder loop for testing.
 - Never plays automatically; the user starts it from the menu or the invitation bubble
 - Note: confirm Suno's commercial-use terms for the plan used to generate the tracks; the Steam store page must disclose AI-generated content
 
@@ -234,7 +238,7 @@ Each built-in track has a JSON file describing tempo and action cues:
 }
 ```
 
-BPM and offset are computed offline during development with a script (e.g. Python + librosa). No audio analysis at runtime.
+BPM and offset are computed offline by `Tools/import_track.py` (numpy: spectral-flux onsets + autocorrelation; librosa was not needed) and should be checked by ear. No audio analysis at runtime. `title` holds the display name. Cues are not used by the app yet.
 
 ### Common interface
 
@@ -441,6 +445,6 @@ Code: `Spikes/06-launch-at-login/`. `run.sh register|unregister|status` installs
 - [x] Open-source license: GPL-3.0; public repo `pibbos-tidepool` on GitHub, first tag v0.1.0
 - [ ] Re-test launch at login with a Developer ID-signed build in `/Applications` (spike 6 used an ad-hoc-signed app in `~/Applications`)
 - [x] Privacy note in README (IP → ipwho.is, ~1 km coordinate → MET Norway); repeat it on a store page later
-- [ ] Built-in lofi tracks
+- [ ] Built-in lofi tracks: 1 of ~1–2 hours so far ("Pibbo's Night")
 - [x] Pibbo sprite art: drawn by code in `Tools/generate_sprites.py` (v0.2.0)
 - [ ] Display name: "Tidepool" or "Pibbo's Tidepool"

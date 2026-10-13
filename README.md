@@ -12,7 +12,7 @@ No to-dos, no timers, no chat. Just a little company while you do your thing.
 - 🌷 his flower grows a little every day (no chores, it never wilts)
 - ☀️🌧❄️ reacts to your weather, the season and the time of day: sunglasses in the sun, catching raindrops, hot cocoa in the snow, stargazing at night
 - 🎧 puts on headphones when Apple Music is playing
-- 📻 every now and then asks `Music Time? 🎧` and plays a cozy lofi loop if you say yes
+- 📻 every now and then asks `Music Time? 🎧` and plays his own lofi track, *Pibbo's Night* 🌙
 - 🫧 `Dive time 🫧` sends him underwater until you click him again
 - 😴 naps when you step away
 - 🙈 disappears in fullscreen, when you lock the screen, and while your Mac sleeps
@@ -23,7 +23,7 @@ Everything you see, from the otter to the little speech bubbles and the font, is
 
 ## Status
 
-**v0.2.0, still early!** The lofi loop is a placeholder until the real tracks are ready.
+**v0.2.x, still early!** One lofi track so far, more on the way 🎶
 Coming later: holiday outfits 🎅🎃
 
 ## Build it yourself
@@ -55,7 +55,7 @@ That's it. No accounts, no analytics. 🤐
 
 ## Thanks
 
-Weather data from MET Norway (CC BY 4.0). More in [CREDITS.md](CREDITS.md).
+Weather data from MET Norway (CC BY 4.0). Music made with Suno 🎵. More in [CREDITS.md](CREDITS.md).
 
 ## License
 

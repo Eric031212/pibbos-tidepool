@@ -19,3 +19,6 @@ __pycache__/
 *.xcodeproj/
 build/
 Sources/App/Info.plist
+
+# Music masters (large WAVs): kept locally, never committed or bundled
+Assets/MusicMasters/
