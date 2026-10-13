@@ -5,9 +5,12 @@ import QuartzCore
 /// Plays skin clips as Core Animation keyframe animations on `contents`, so
 /// the system render server animates Pibbo and this process stays idle
 /// (spike 4: 0 % CPU, 0 wakeups). Discrete frames, nearest-neighbour scaling.
+/// Also shows the skin's optional flower in `gardenLayer`.
 final class SpriteRenderer {
     let layer = CALayer()
+    let gardenLayer = CALayer()
     let pointSize: CGFloat
+    var hasGarden: Bool { pack.manifest.garden != nil }
 
     private let pack: SkinPack
     private let sheet: CGImage
@@ -23,9 +26,21 @@ final class SpriteRenderer {
         self.pack = pack
         sheet = image
         pointSize = CGFloat(pack.manifest.frameSize * scale)
-        layer.frame = CGRect(x: 0, y: 0, width: pointSize, height: pointSize)
-        layer.magnificationFilter = .nearest
-        layer.actions = ["contents": NSNull(), "position": NSNull(), "bounds": NSNull()]
+        let noFades: [String: CAAction] = ["contents": NSNull(), "position": NSNull(), "bounds": NSNull(), "hidden": NSNull()]
+        for sprite in [layer, gardenLayer] {
+            sprite.frame = CGRect(x: 0, y: 0, width: pointSize, height: pointSize)
+            sprite.magnificationFilter = .nearest
+            sprite.actions = noFades
+        }
+    }
+
+    private var gardenStage: Int?
+
+    /// Shows the flower at a growth stage (no-op for skins without a garden).
+    func showGarden(stage: Int) {
+        guard stage != gardenStage, let rect = pack.gardenFrameRect(stage: stage) else { return }
+        gardenStage = stage
+        gardenLayer.contents = sheet.cropping(to: CGRect(x: rect.x, y: rect.y, width: rect.width, height: rect.height))
     }
 
     /// Shows a state or action by name, applying the pack's fallbacks.

@@ -1,4 +1,5 @@
 import Foundation
+import World
 
 /// Tidepool's behavior state machine (CLAUDE.md Section 5).
 ///
@@ -23,6 +24,8 @@ public struct Brain {
         case chill(hideAt: Date)
         /// Random appearance; `nil` action shows `chill`.
         case appearance(action: String?, until: Date)
+
+        var isChill: Bool { if case .chill = self { return true } else { return false } }
     }
 
     private var presence: Presence
@@ -37,6 +40,14 @@ public struct Brain {
     private var availableActions: [String] = []
     private var nextAppearance: Date?
 
+    /// A small action played while Pibbo is out (`chill`).
+    private var chillAction: (name: String, until: Date)?
+    private var nextChillAction: Date?
+
+    private var builtInMusicAvailable = false
+    private var bubble: (kind: Bubble, until: Date)?
+    private var lastInvitation: Date?
+
     /// Starts in the launch flow: `peek` for a few seconds, then `chill`.
     public init(config: BrainConfig = BrainConfig(), now: Date,
                 random: @escaping (ClosedRange<Double>) -> Double = { Double.random(in: $0) }) {
@@ -44,7 +55,7 @@ public struct Brain {
         self.random = random
         presence = .peek(until: now.addingTimeInterval(config.launchPeek))
         lastInteraction = now
-        output = BrainOutput(visual: .state(.peek), isSuspended: false, isWorkMode: false)
+        output = BrainOutput(visual: .state(.peek), isSuspended: false, isWorkMode: false, bubble: nil)
         refreshOutput()
     }
 
@@ -53,6 +64,7 @@ public struct Brain {
     public var nextDeadline: Date? {
         guard suspendReasons.isEmpty else { return nil }
         var candidates = Array(pendingStops.values)
+        if let bubble { candidates.append(bubble.until) }
         switch presence {
         case .hidden:
             if let nextAppearance, !workMode { candidates.append(nextAppearance) }
@@ -60,6 +72,7 @@ public struct Brain {
             candidates.append(until)
         case .chill(let hideAt):
             candidates.append(hideAt)
+            if let chillAction { candidates.append(chillAction.until) } else if let nextChillAction { candidates.append(nextChillAction) }
         }
         return candidates.min()
     }
@@ -74,29 +87,31 @@ public struct Brain {
             isUserAway = false
             lastInteraction = now
             switch presence {
-            case .hidden: presence = .peek(until: now.addingTimeInterval(config.hoverPeek))
+            case .hidden: setPresence(.peek(until: now.addingTimeInterval(config.hoverPeek)), at: now)
             case .peek: break
-            case .chill, .appearance: presence = .chill(hideAt: now.addingTimeInterval(config.hideAfterNoInteraction))
+            case .chill, .appearance: setPresence(.chill(hideAt: now.addingTimeInterval(config.hideAfterNoInteraction)), at: now)
             }
 
         case .hoverEnded:
             guard hovering else { break }
             hovering = false
             lastInteraction = now
-            if case .chill = presence {
-                presence = .chill(hideAt: now.addingTimeInterval(config.hideAfterNoInteraction))
+            if presence.isChill {
+                setPresence(.chill(hideAt: now.addingTimeInterval(config.hideAfterNoInteraction)), at: now)
             }
 
         case .clicked:
             workMode = false
             isUserAway = false
+            bubble = nil  // the menu takes the bubble's place
             lastInteraction = now
-            presence = .chill(hideAt: now.addingTimeInterval(config.hideAfterNoInteraction))
+            setPresence(.chill(hideAt: now.addingTimeInterval(config.hideAfterNoInteraction)), at: now)
 
         case .workModeEntered:
             workMode = true
             hovering = false
-            presence = .hidden
+            bubble = nil
+            setPresence(.hidden, at: now)
             nextAppearance = nil
 
         case .userIdle(let seconds):
@@ -112,6 +127,7 @@ public struct Brain {
             if playing {
                 playingSources.insert(source)
                 pendingStops[source] = nil
+                bubble = nil
             } else if playingSources.contains(source) {
                 pendingStops[source] = now.addingTimeInterval(config.musicStopDebounce)
             }
@@ -119,7 +135,8 @@ public struct Brain {
         case .suspended(let reason):
             if suspendReasons.isEmpty {
                 hovering = false
-                presence = .hidden
+                bubble = nil
+                setPresence(.hidden, at: now)
                 nextAppearance = nil
             }
             suspendReasons.insert(reason)
@@ -135,6 +152,12 @@ public struct Brain {
         case .availableActionsChanged(let actions):
             availableActions = actions
 
+        case .builtInMusicAvailable(let available):
+            builtInMusicAvailable = available
+
+        case .bubbleClicked:
+            bubble = nil
+
         case .timerFired:
             break  // advance(to:) above already did the work
         }
@@ -148,8 +171,20 @@ public struct Brain {
         !workMode && suspendReasons.isEmpty && playingSources.isEmpty && !isUserAway
     }
 
+    /// Changes presence, starting or clearing the small-action cycle that
+    /// runs while Pibbo is out.
+    private mutating func setPresence(_ new: Presence, at now: Date) {
+        if new.isChill && !presence.isChill {
+            nextChillAction = now.addingTimeInterval(random(config.chillActionInterval))
+        } else if !new.isChill {
+            chillAction = nil
+            nextChillAction = nil
+        }
+        presence = new
+    }
+
     private mutating func becomeHidden(at now: Date) {
-        presence = .hidden
+        setPresence(.hidden, at: now)
         if !workMode {
             nextAppearance = now.addingTimeInterval(random(config.randomAppearanceInterval))
         }
@@ -161,26 +196,29 @@ public struct Brain {
             pendingStops[source] = nil
             playingSources.remove(source)
         }
+        if let current = bubble, current.until <= now { bubble = nil }
 
         // A few passes cover chains such as peek → chill → hidden after a long gap.
         for _ in 0..<4 {
             switch presence {
             case .peek(let until) where until <= now:
-                presence = .chill(hideAt: lastInteraction.addingTimeInterval(config.hideAfterNoInteraction))
+                setPresence(.chill(hideAt: lastInteraction.addingTimeInterval(config.hideAfterNoInteraction)), at: until)
             case .chill(let hideAt) where hideAt <= now:
                 if hovering {
                     presence = .chill(hideAt: now.addingTimeInterval(config.hideAfterNoInteraction))
                 } else {
                     becomeHidden(at: hideAt)
                 }
+            case .chill:
+                advanceChillAction(to: now)
+                return
             case .appearance(_, let until) where until <= now:
                 becomeHidden(at: until)
             case .hidden:
                 guard let due = nextAppearance, due <= now, !workMode else { return }
                 let isStale = now.timeIntervalSince(due) > config.actionDuration.upperBound
                 if canAppearOnHisOwn && !isStale {
-                    presence = .appearance(action: pickAction(),
-                                           until: now.addingTimeInterval(random(config.actionDuration)))
+                    appear(at: now)
                 } else {
                     nextAppearance = now.addingTimeInterval(random(config.randomAppearanceInterval))
                 }
@@ -188,6 +226,39 @@ public struct Brain {
                 return
             }
         }
+    }
+
+    private mutating func advanceChillAction(to now: Date) {
+        if let action = chillAction {
+            guard action.until <= now else { return }
+            chillAction = nil
+            nextChillAction = now.addingTimeInterval(random(config.chillActionInterval))
+        } else if let due = nextChillAction, due <= now {
+            if let name = pickAction() {
+                chillAction = (name, now.addingTimeInterval(random(config.actionDuration)))
+                nextChillAction = nil
+            } else {
+                nextChillAction = now.addingTimeInterval(random(config.chillActionInterval))
+            }
+        }
+    }
+
+    /// A random appearance, sometimes with the music invitation.
+    private mutating func appear(at now: Date) {
+        var until = now.addingTimeInterval(random(config.actionDuration))
+        if shouldInviteToMusic(at: now) {
+            let bubbleUntil = now.addingTimeInterval(config.bubbleDuration)
+            bubble = (.musicInvitation, bubbleUntil)
+            lastInvitation = now
+            until = max(until, bubbleUntil)  // stay out while the bubble is up
+        }
+        setPresence(.appearance(action: pickAction(), until: until), at: now)
+    }
+
+    private func shouldInviteToMusic(at now: Date) -> Bool {
+        guard builtInMusicAvailable, playingSources.isEmpty, !workMode else { return false }
+        if let lastInvitation, now.timeIntervalSince(lastInvitation) < config.musicInvitationCooldown { return false }
+        return random(0...1) < config.musicInvitationChance
     }
 
     private func pickAction() -> String? {
@@ -208,10 +279,12 @@ public struct Brain {
             switch presence {
             case .hidden: visual = .state(.hidden)
             case .peek: visual = .state(.peek)
-            case .chill: visual = .state(.chill)
+            case .chill: visual = chillAction.map { .action($0.name) } ?? .state(.chill)
             case .appearance(let action, _): visual = action.map(PetVisual.action) ?? .state(.chill)
             }
         }
-        output = BrainOutput(visual: visual, isSuspended: !suspendReasons.isEmpty, isWorkMode: workMode)
+        let showsBubble = suspendReasons.isEmpty && !workMode && playingSources.isEmpty
+        output = BrainOutput(visual: visual, isSuspended: !suspendReasons.isEmpty, isWorkMode: workMode,
+                             bubble: showsBubble ? bubble?.kind : nil)
     }
 }

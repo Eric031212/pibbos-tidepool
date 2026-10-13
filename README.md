@@ -3,23 +3,28 @@
 A tiny pixel sea otter who lives in the corner of your Mac.
 No to-dos, no timers, no chat. Just a little company while you do your thing.
 
-![pibbo](Assets/Placeholder/pibbo/preview.gif)
+![pibbo](Assets/Skins/pibbo/preview.gif)
 
 ## What Pibbo does
 
 - 👀 hides at the bottom of your screen and peeks out when you hover
-- 🐚 floats around holding a shell, then sinks back down
+- 🐚 floats around and keeps busy: cracks shells, grooms, waters his flower
+- 🌷 his flower grows a little every day (no chores, it never wilts)
+- ☀️🌧❄️ reacts to your weather, the season and the time of day: sunglasses in the sun, catching raindrops, hot cocoa in the snow, stargazing at night
 - 🎧 puts on headphones when Apple Music is playing
+- 📻 every now and then asks `Music Time? 🎧` and plays a cozy lofi loop if you say yes
+- 🫧 `Dive time 🫧` sends him underwater until you click him again
 - 😴 naps when you step away
-- 🫧 `work work, leave me alone :D` sends him underwater until you click him again
 - 🙈 disappears in fullscreen, when you lock the screen, and while your Mac sleeps
 - 🔒 zero permission prompts, ever
-- 🪶 ~0% CPU and ~11 MB of memory
+- 🪶 ~0% CPU and ~13 MB of memory
+
+Everything you see, from the otter to the little speech bubbles and the font, is pixel art drawn by code in `Tools/`. 🎨
 
 ## Status
 
-**v0.1.0, early days!** The art is a placeholder (the real Pibbo is being hand-drawn).
-Coming later: a cozy lofi radio 📻, weather and season moods ☔❄️, holiday outfits 🎅
+**v0.2.0, still early!** The lofi loop is a placeholder until the real tracks are ready.
+Coming later: holiday outfits 🎅🎃
 
 ## Build it yourself
 
@@ -33,13 +38,24 @@ open build/Build/Products/Release/Tidepool.app
 
 Drop `Tidepool.app` into `/Applications` and Pibbo will show up every time you log in
 (macOS shows a one-time "Login Item Added" note, that's normal 👍).
-Click Pibbo → `bye 👋` to quit.
+Click Pibbo → `Swim away 👋` to quit.
+
+Impatient? `open Tidepool.app --args --demo` speeds everything up so you can see it all in a few minutes. ⏩
 
 Run the tests with `swift test`.
 
 ## Privacy
 
-v0.1.0 doesn't talk to the internet at all. 🤐
+Tidepool talks to the internet for weather only, and never asks for your location:
+
+- 🌐 your IP goes to [ipwho.is](https://ipwho.is/) once per launch to guess your city
+- ⛅ a rounded (~1 km) spot goes to [MET Norway](https://api.met.no/) every 1–3 hours for the forecast
+
+That's it. No accounts, no analytics. 🤐
+
+## Thanks
+
+Weather data from MET Norway (CC BY 4.0). More in [CREDITS.md](CREDITS.md).
 
 ## License
 

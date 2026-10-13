@@ -1,5 +1,6 @@
 import XCTest
 @testable import Brain
+import World
 
 final class BrainTests: XCTestCase {
     let start = Date(timeIntervalSince1970: 1_000_000)
@@ -73,7 +74,10 @@ final class BrainTests: XCTestCase {
         run(&brain, until: at(200))
         brain.handle(.clicked, at: at(300))
         XCTAssertEqual(brain.output.visual, .state(.chill))
-        XCTAssertEqual(brain.nextDeadline, at(300 + config.hideAfterNoInteraction))
+        run(&brain, until: at(300 + config.hideAfterNoInteraction - 1))
+        XCTAssertEqual(brain.output.visual, .state(.chill))
+        run(&brain, until: at(300 + config.hideAfterNoInteraction))
+        XCTAssertEqual(brain.output.visual, .state(.hidden))
     }
 
     // MARK: - Work mode
@@ -233,5 +237,114 @@ final class BrainTests: XCTestCase {
         var brain = makeBrain(random: { $0.upperBound })
         run(&brain, until: at(config.hideAfterNoInteraction))
         XCTAssertEqual(brain.nextDeadline, at(config.hideAfterNoInteraction + config.randomAppearanceInterval.upperBound))
+    }
+
+    // MARK: - Small actions while out
+
+    func testDoesSmallActionsWhileChilling() {
+        var brain = makeBrain()
+        brain.handle(.availableActionsChanged(["water"]), at: at(1))
+        run(&brain, until: at(config.launchPeek))
+        XCTAssertEqual(brain.output.visual, .state(.chill))
+
+        let actionAt = at(config.launchPeek + config.chillActionInterval.lowerBound)
+        run(&brain, until: actionAt)
+        XCTAssertEqual(brain.output.visual, .action("water"))
+
+        run(&brain, until: actionAt.addingTimeInterval(config.actionDuration.lowerBound))
+        XCTAssertEqual(brain.output.visual, .state(.chill), "back to chill after the action")
+    }
+
+    func testSmallActionStopsWhenPibboHides() {
+        var brain = makeBrain()
+        brain.handle(.availableActionsChanged(["water"]), at: at(1))
+        run(&brain, until: at(config.hideAfterNoInteraction))
+        XCTAssertEqual(brain.output.visual, .state(.hidden))
+    }
+
+    // MARK: - Music invitation
+
+    func appearanceTime() -> Date {
+        at(config.hideAfterNoInteraction + config.randomAppearanceInterval.lowerBound)
+    }
+
+    func testInvitesToMusicOnARandomAppearance() {
+        var brain = makeBrain()
+        brain.handle(.builtInMusicAvailable(true), at: at(1))
+        run(&brain, until: appearanceTime())
+        XCTAssertEqual(brain.output.bubble, .musicInvitation)
+
+        run(&brain, until: appearanceTime().addingTimeInterval(config.bubbleDuration))
+        XCTAssertNil(brain.output.bubble, "bubble times out")
+        XCTAssertEqual(brain.output.visual, .state(.hidden), "Pibbo stayed out as long as the bubble")
+    }
+
+    func testNoInvitationWithoutBuiltInTracks() {
+        var brain = makeBrain()
+        run(&brain, until: appearanceTime())
+        XCTAssertNil(brain.output.bubble)
+    }
+
+    func testNoInvitationWhileMusicPlays() {
+        var brain = makeBrain()
+        brain.handle(.builtInMusicAvailable(true), at: at(1))
+        brain.handle(.musicChanged(source: "apple-music", playing: true), at: at(2))
+        run(&brain, until: appearanceTime() + 3600)
+        XCTAssertNil(brain.output.bubble)
+    }
+
+    func testInvitationRespectsChanceAndCooldown() {
+        var config = BrainConfig()
+        config.randomAppearanceInterval = 600...600
+        config.musicInvitationChance = 1
+        var brain = Brain(config: config, now: start, random: { $0.lowerBound })
+        brain.handle(.builtInMusicAvailable(true), at: at(1))
+        var invitations = 0
+        var lastBubble: Bubble?
+        var t = start
+        while t < at(2 * 3600) {
+            guard let deadline = brain.nextDeadline else { break }
+            t = deadline
+            brain.handle(.timerFired, at: t)
+            if brain.output.bubble != nil && lastBubble == nil { invitations += 1 }
+            lastBubble = brain.output.bubble
+        }
+        XCTAssertEqual(invitations, 2, "appearances every ~10 min, but at most one invitation per hour")
+
+        var never = BrainConfig()
+        never.musicInvitationChance = 0
+        var shy = Brain(config: never, now: start, random: { $0.lowerBound })
+        shy.handle(.builtInMusicAvailable(true), at: at(1))
+        run(&shy, until: appearanceTime())
+        XCTAssertNil(shy.output.bubble)
+    }
+
+    func testClickingTheBubbleOrStartingMusicClearsIt() {
+        var brain = makeBrain()
+        brain.handle(.builtInMusicAvailable(true), at: at(1))
+        run(&brain, until: appearanceTime())
+        brain.handle(.bubbleClicked, at: appearanceTime() + 1)
+        XCTAssertNil(brain.output.bubble)
+
+        var other = makeBrain()
+        other.handle(.builtInMusicAvailable(true), at: at(1))
+        run(&other, until: appearanceTime())
+        other.handle(.musicChanged(source: "built-in", playing: true), at: appearanceTime() + 1)
+        XCTAssertNil(other.output.bubble)
+        XCTAssertEqual(other.output.visual, .state(.music))
+    }
+
+    func testClickingPibboReplacesTheBubbleWithTheMenu() {
+        var brain = makeBrain()
+        brain.handle(.builtInMusicAvailable(true), at: at(1))
+        run(&brain, until: appearanceTime())
+        brain.handle(.clicked, at: appearanceTime() + 1)
+        XCTAssertNil(brain.output.bubble)
+    }
+
+    func testDemoConfigIsFaster() {
+        let demo = BrainConfig.demo
+        XCTAssertLessThan(demo.randomAppearanceInterval.upperBound, BrainConfig().randomAppearanceInterval.lowerBound)
+        XCTAssertEqual(demo.musicInvitationChance, 1)
     }
 }

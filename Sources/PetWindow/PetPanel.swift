@@ -1,23 +1,17 @@
 import AppKit
 
 /// The transparent, always-on-top, non-activating window that holds Pibbo
-/// (spike 3). It is exactly the size of the sprite; clicks on transparent
-/// pixels pass through to the window behind.
+/// (spike 3) and, to his left, his flower. It is exactly the size of the
+/// sprites; clicks on transparent pixels pass through to the window behind.
 final class PetPanel: NSPanel {
     let petView: PetView
 
-    init(contentLayer: CALayer, size: CGFloat) {
-        let frame = NSRect(x: 0, y: 0, width: size, height: size)
-        petView = PetView(frame: frame, contentLayer: contentLayer)
+    /// `petRect`: where Pibbo sits; only that area reacts to hover and clicks.
+    init(layers: [CALayer], size: NSSize, petRect: NSRect) {
+        let frame = NSRect(origin: .zero, size: size)
+        petView = PetView(frame: frame, layers: layers, petRect: petRect)
         super.init(contentRect: frame, styleMask: [.borderless, .nonactivatingPanel], backing: .buffered, defer: false)
-        isOpaque = false
-        backgroundColor = .clear
-        hasShadow = false
-        level = .floating
-        isFloatingPanel = true
-        hidesOnDeactivate = false
-        becomesKeyOnlyIfNeeded = true
-        collectionBehavior = [.canJoinAllSpaces, .stationary, .ignoresCycle]
+        configureAsOverlay(self)
         contentView = petView
     }
 
@@ -32,16 +26,30 @@ final class PetPanel: NSPanel {
     }
 }
 
+/// Shared window setup for Tidepool's overlays (spike 3).
+func configureAsOverlay(_ panel: NSPanel) {
+    panel.isOpaque = false
+    panel.backgroundColor = .clear
+    panel.hasShadow = false
+    panel.level = .floating
+    panel.isFloatingPanel = true
+    panel.hidesOnDeactivate = false
+    panel.becomesKeyOnlyIfNeeded = true
+    panel.collectionBehavior = [.canJoinAllSpaces, .stationary, .ignoresCycle]
+}
+
 final class PetView: NSView {
     var onHoverBegan: (() -> Void)?
     var onHoverEnded: (() -> Void)?
     var onClick: ((NSEvent) -> Void)?
+    private let petRect: NSRect
 
-    init(frame: NSRect, contentLayer: CALayer) {
+    init(frame: NSRect, layers: [CALayer], petRect: NSRect) {
+        self.petRect = petRect
         super.init(frame: frame)
         wantsLayer = true
         layer = CALayer()
-        layer?.addSublayer(contentLayer)
+        layers.forEach { layer?.addSublayer($0) }
     }
 
     required init?(coder: NSCoder) { fatalError("not used") }
@@ -56,11 +64,14 @@ final class PetView: NSView {
         super.updateTrackingAreas()
         trackingAreas.forEach(removeTrackingArea)
         // `.activeAlways`: hover works while another app is frontmost.
-        addTrackingArea(NSTrackingArea(rect: bounds, options: [.mouseEnteredAndExited, .activeAlways, .inVisibleRect], owner: self))
+        // Tracking is geometric (spike 3), so it covers Pibbo only, not the flower.
+        addTrackingArea(NSTrackingArea(rect: petRect, options: [.mouseEnteredAndExited, .activeAlways], owner: self))
     }
 
     override func mouseEntered(with event: NSEvent) { onHoverBegan?() }
     override func mouseExited(with event: NSEvent) { onHoverEnded?() }
     override func acceptsFirstMouse(for event: NSEvent?) -> Bool { true }
-    override func mouseDown(with event: NSEvent) { onClick?(event) }
+    override func mouseDown(with event: NSEvent) {
+        if petRect.contains(convert(event.locationInWindow, from: nil)) { onClick?(event) }
+    }
 }

@@ -7,6 +7,12 @@ public struct Clip: Codable, Equatable, Sendable {
     public let fps: Double
 }
 
+/// Optional flower beside Pibbo: one frame per growth stage in `row`.
+public struct GardenSpec: Codable, Equatable, Sendable {
+    public let row: Int
+    public let stages: Int
+}
+
 public struct SkinManifest: Codable, Equatable, Sendable {
     public let id: String
     public let name: String
@@ -16,6 +22,20 @@ public struct SkinManifest: Codable, Equatable, Sendable {
     public let frameSize: Int
     public let states: [String: Clip]
     public let actions: [String: Clip]?
+    public let garden: GardenSpec?
+
+    public init(id: String, name: String, author: String, version: String, type: String,
+                frameSize: Int, states: [String: Clip], actions: [String: Clip]?, garden: GardenSpec? = nil) {
+        self.id = id
+        self.name = name
+        self.author = author
+        self.version = version
+        self.type = type
+        self.frameSize = frameSize
+        self.states = states
+        self.actions = actions
+        self.garden = garden
+    }
 }
 
 /// Pixel rectangle of one frame in the sprite sheet, origin top-left.
@@ -78,6 +98,9 @@ public struct SkinPack: Sendable {
         for (name, clip) in all where clip.row < 0 || clip.frames < 1 || clip.fps <= 0 {
             throw SkinError.invalidClip(name)
         }
+        if let garden = manifest.garden, garden.row < 0 || garden.stages < 1 {
+            throw SkinError.invalidClip("garden")
+        }
     }
 
     /// The clip to play for a state or action name, applying the fallbacks:
@@ -93,6 +116,14 @@ public struct SkinPack: Sendable {
     /// Optional actions this skin actually provides (excluding `submerged`).
     public var availableActions: [String] {
         (manifest.actions ?? [:]).keys.filter { $0 != "submerged" }.sorted()
+    }
+
+    /// Frame of the flower at a growth stage; nil when the skin has no garden.
+    public func gardenFrameRect(stage: Int) -> FrameRect? {
+        guard let garden = manifest.garden else { return nil }
+        let size = manifest.frameSize
+        let clamped = min(max(stage, 0), garden.stages - 1)
+        return FrameRect(x: clamped * size, y: garden.row * size, width: size, height: size)
     }
 
     public func frameRects(for clip: Clip) -> [FrameRect] {

@@ -15,8 +15,8 @@ packages:
 settings:
   base:
     SWIFT_VERSION: "5.0"
-    MARKETING_VERSION: "0.1.0"
-    CURRENT_PROJECT_VERSION: "1"
+    MARKETING_VERSION: "0.2.0"
+    CURRENT_PROJECT_VERSION: "2"
 
 targets:
   Tidepool:
@@ -28,12 +28,22 @@ targets:
       - path: Sources/Renderer
       - path: Sources/Signals
       - path: Sources/Music
-      - path: Assets/Placeholder/pibbo
+      - path: Assets/Skins/pibbo
         type: folder
+        buildPhase: resources
+      - path: Assets/UI
+        type: folder
+        buildPhase: resources
+      - path: Assets/Music
+        type: folder
+        buildPhase: resources
+      - path: Assets/Data/zone.tab
+        buildPhase: resources
+      - path: CREDITS.md
         buildPhase: resources
     dependencies:
       - package: TidepoolCore
-        products: [Brain, Content, Strings]
+        products: [Brain, Content, Strings, World]
     info:
       path: Sources/App/Info.plist
       properties:

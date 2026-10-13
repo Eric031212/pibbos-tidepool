@@ -12,7 +12,7 @@ swift build -c "$CONFIG"
 BIN="$(swift build -c "$CONFIG" --show-bin-path)/AnimSpike"
 APP=.build/AnimSpike.app
 LOG="$PWD/.build/anim.log"
-PACK="$(cd ../.. && pwd)/Assets/Placeholder/pibbo"
+PACK="$(cd ../.. && pwd)/Assets/Skins/pibbo"
 
 rm -rf "$APP"
 mkdir -p "$APP/Contents/MacOS"

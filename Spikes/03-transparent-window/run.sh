@@ -10,7 +10,7 @@ swift build
 BIN="$(swift build --show-bin-path)/WindowSpike"
 APP=.build/WindowSpike.app
 LOG="$PWD/.build/window.log"
-SHEET="$(cd ../.. && pwd)/Assets/Placeholder/pibbo/sprites.png"
+SHEET="$(cd ../.. && pwd)/Assets/Skins/pibbo/sprites.png"
 
 rm -rf "$APP"
 mkdir -p "$APP/Contents/MacOS"

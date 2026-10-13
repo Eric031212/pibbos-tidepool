@@ -7,11 +7,18 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
 
     func applicationDidFinishLaunching(_ notification: Notification) {
         LaunchAtLogin.registerOnFirstLaunch()
+        let bundle = Bundle.main
         do {
-            guard let packURL = Bundle.main.url(forResource: "pibbo", withExtension: nil) else {
-                throw SkinError.unreadable("pibbo")
+            guard let skin = bundle.url(forResource: "pibbo", withExtension: nil),
+                  let ui = bundle.url(forResource: "UI", withExtension: nil) else {
+                throw SkinError.unreadable("bundled resources")
             }
-            let controller = try PetController(pack: SkinPack.load(from: packURL))
+            let resources = PetController.Resources(
+                skin: skin, ui: ui,
+                music: bundle.url(forResource: "Music", withExtension: nil),
+                zoneTab: bundle.url(forResource: "zone", withExtension: "tab"))
+            // `--demo`: everything sped up, for trying Tidepool out.
+            let controller = try PetController(resources: resources, demo: CommandLine.arguments.contains("--demo"))
             controller.start()
             self.controller = controller
         } catch {

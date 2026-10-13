@@ -1,0 +1,106 @@
+{
+  "id": "com.tidepool.pibbo",
+  "name": "pibbo",
+  "author": "tidepool",
+  "version": "0.2.0",
+  "type": "skin",
+  "frameSize": 16,
+  "states": {
+    "hidden": {
+      "row": 0,
+      "frames": 2,
+      "fps": 2
+    },
+    "peek": {
+      "row": 1,
+      "frames": 4,
+      "fps": 6
+    },
+    "chill": {
+      "row": 2,
+      "frames": 4,
+      "fps": 4
+    },
+    "music": {
+      "row": 3,
+      "frames": 4,
+      "fps": 6
+    },
+    "sleep": {
+      "row": 4,
+      "frames": 2,
+      "fps": 1
+    }
+  },
+  "actions": {
+    "submerged": {
+      "row": 5,
+      "frames": 4,
+      "fps": 2
+    },
+    "water": {
+      "row": 6,
+      "frames": 4,
+      "fps": 3
+    },
+    "crack": {
+      "row": 7,
+      "frames": 4,
+      "fps": 4
+    },
+    "groom": {
+      "row": 8,
+      "frames": 4,
+      "fps": 4
+    },
+    "stretch": {
+      "row": 9,
+      "frames": 4,
+      "fps": 2
+    },
+    "yawn": {
+      "row": 10,
+      "frames": 4,
+      "fps": 2
+    },
+    "sunbathe": {
+      "row": 11,
+      "frames": 4,
+      "fps": 2
+    },
+    "raindrops": {
+      "row": 12,
+      "frames": 4,
+      "fps": 4
+    },
+    "cocoa": {
+      "row": 13,
+      "frames": 4,
+      "fps": 3
+    },
+    "huddle": {
+      "row": 14,
+      "frames": 4,
+      "fps": 4
+    },
+    "leaf": {
+      "row": 15,
+      "frames": 4,
+      "fps": 2
+    },
+    "petal": {
+      "row": 16,
+      "frames": 4,
+      "fps": 2
+    },
+    "stargaze": {
+      "row": 17,
+      "frames": 4,
+      "fps": 2
+    }
+  },
+  "garden": {
+    "row": 18,
+    "stages": 6
+  }
+}
