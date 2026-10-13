@@ -219,7 +219,7 @@ Goal: **the app never triggers a system permission prompt.**
 ### Built-in lofi
 - Tracks generated with Suno, roughly 1–2 hours total, looped. The developer's Suno plan is **Pro** (commercial use allowed); the Steam store page must still disclose AI-generated content.
 - Workflow: export WAV from Suno → put it in `Assets/MusicMasters/` → `python3 Tools/import_track.py` → AAC 128 kbps CAF (~1 MB/min) + beat map in `Assets/Music/`. Tracks play in file-name order; a single track loops.
-- First track: "Pibbo's Night" (2:52). Its tempo is ambiguous between ~60 and ~120 bpm (half-time feel); confirm by ear before writing cues.
+- Current set: 12 tracks, ~37 min, 35 MB (2026-10-13). Estimated tempos are mostly 60–80 bpm; "Pibbo's Night" and "Holding Paws" came out ~120, likely double-time of ~60 (half-time feel). Confirm by ear before writing cues.
 - `Tools/generate_placeholder_lofi.py` can still synthesize a 27 s placeholder loop for testing.
 - Never plays automatically; the user starts it from the menu or the invitation bubble
 - Note: confirm Suno's commercial-use terms for the plan used to generate the tracks; the Steam store page must disclose AI-generated content
@@ -446,6 +446,6 @@ Code: `Spikes/06-launch-at-login/`. `run.sh register|unregister|status` installs
 - [x] Open-source license: GPL-3.0; public repo `pibbos-tidepool` on GitHub, first tag v0.1.0
 - [ ] Re-test launch at login with a Developer ID-signed build in `/Applications` (spike 6 used an ad-hoc-signed app in `~/Applications`)
 - [x] Privacy note in README (IP → ipwho.is, ~1 km coordinate → MET Norway); repeat it on a store page later
-- [ ] Built-in lofi tracks: 1 of ~1–2 hours so far ("Pibbo's Night")
+- [ ] Built-in lofi tracks: 12 tracks, ~37 min of the planned 1–2 hours
 - [x] Pibbo sprite art: drawn by code in `Tools/generate_sprites.py` (v0.2.0)
 - [ ] Display name: "Tidepool" or "Pibbo's Tidepool"

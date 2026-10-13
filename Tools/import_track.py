@@ -35,7 +35,7 @@ BPM_RANGE = (60, 180)
 
 
 def slug(name):
-    return re.sub(r"[^a-z0-9]+", "-", name.lower().replace("'", "")).strip("-")
+    return re.sub(r"[^a-z0-9]+", "-", name.lower().replace("'", "").replace("\u2019", "")).strip("-")
 
 
 def read_mono(path):
