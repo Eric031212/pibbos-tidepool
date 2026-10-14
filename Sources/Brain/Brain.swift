@@ -58,6 +58,11 @@ public struct Brain {
     /// "theme - track" bubble while the built-in radio plays.
     private var nowPlayingUntil: Date?
 
+    /// A short reaction to the user (backfloat after a rub, look at a splash).
+    private var reaction: (name: String, until: Date)?
+    /// The cursor is resting on Pibbo and he holds its "paw".
+    private var holdingPaw = false
+
     /// Starts in the launch flow: `peek` for a few seconds, then `chill`.
     public init(config: BrainConfig = BrainConfig(), now: Date,
                 random: @escaping (ClosedRange<Double>) -> Double = { Double.random(in: $0) }) {
@@ -76,6 +81,7 @@ public struct Brain {
         var candidates = Array(pendingStops.values)
         if let bubble { candidates.append(bubble.until) }
         if let unplugUntil { candidates.append(unplugUntil) }
+        if let reaction { candidates.append(reaction.until) }
         if let nowPlayingUntil, nowPlayingUntil != .distantFuture { candidates.append(nowPlayingUntil) }
         switch presence {
         case .hidden:
@@ -157,12 +163,34 @@ public struct Brain {
         case .builtInTrackStarted:
             nowPlayingUntil = hovering ? .distantFuture : now.addingTimeInterval(config.nowPlayingDuration)
 
+        case .rubbed:
+            guard !workMode else { break }
+            interact(at: now)
+            holdingPaw = false
+            reaction = ("backfloat", now.addingTimeInterval(config.backfloatDuration))
+
+        case .holdBegan:
+            guard !workMode else { break }
+            interact(at: now)
+            holdingPaw = true
+
+        case .holdEnded:
+            holdingPaw = false
+
+        case .splashed:
+            // Only reachable while the flower (and so Pibbo) is showing.
+            guard !workMode else { break }
+            interact(at: now)
+            reaction = ("look", now.addingTimeInterval(config.lookDuration))
+
         case .suspended(let reason):
             if suspendReasons.isEmpty {
                 hovering = false
                 bubble = nil
                 unplugUntil = nil
                 nowPlayingUntil = nil
+                reaction = nil
+                holdingPaw = false
                 setPresence(.hidden, at: now)
                 nextAppearance = nil
             }
@@ -193,6 +221,13 @@ public struct Brain {
     }
 
     // MARK: - Private
+
+    /// Any direct play with Pibbo: wakes him, keeps him out, restarts the hide timer.
+    private mutating func interact(at now: Date) {
+        isUserAway = false
+        lastInteraction = now
+        setPresence(.chill(hideAt: now.addingTimeInterval(config.hideAfterNoInteraction)), at: now)
+    }
 
     private var isBuiltInPlaying: Bool {
         playingSources.contains(Self.builtInSource) && !fadingSources.contains(Self.builtInSource)
@@ -234,6 +269,7 @@ public struct Brain {
         }
         if !isBuiltInPlaying { nowPlayingUntil = nil }
         if let until = unplugUntil, until <= now { unplugUntil = nil }
+        if let current = reaction, current.until <= now { reaction = nil }
         if let until = nowPlayingUntil, until <= now { nowPlayingUntil = nil }
         if let current = bubble, current.until <= now { bubble = nil }
 
@@ -313,6 +349,10 @@ public struct Brain {
             visual = .submerged
         } else if allFading || unplugUntil != nil {
             visual = .action("unplug")
+        } else if holdingPaw {
+            visual = .action("holdpaw")
+        } else if let reaction {
+            visual = .action(reaction.name)
         } else if !playingSources.isEmpty {
             visual = .state(.music)
         } else if isUserAway {

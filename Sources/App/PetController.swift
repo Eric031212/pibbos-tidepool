@@ -56,7 +56,7 @@ final class PetController {
         let cell = renderer.pointSize
         let petX = renderer.hasGarden ? cell : 0
         renderer.layer.frame.origin.x = petX
-        panel = PetPanel(layers: [renderer.gardenLayer, renderer.layer],
+        panel = PetPanel(layers: [renderer.gardenLayer, renderer.rippleLayer, renderer.layer],
                          size: NSSize(width: petX + cell, height: cell),
                          petRect: NSRect(x: petX, y: 0, width: cell, height: cell))
         bubblePanel = BubblePanel(scale: Self.uiScale)
@@ -80,6 +80,10 @@ final class PetController {
         panel.petView.onClick = { [weak self] event in self?.clicked(event) }
         panel.petView.onDrag = { [weak self] x in self?.dragged(toX: x) }
         panel.petView.onDragEnded = { [weak self] in self?.panel.rememberShorePosition() }
+        panel.petView.onRub = { [weak self] in self?.send(.rubbed) }
+        panel.petView.onHoldBegan = { [weak self] in self?.send(.holdBegan) }
+        panel.petView.onHoldEnded = { [weak self] in self?.send(.holdEnded) }
+        panel.petView.onSplash = { [weak self] x in self?.splashed(atX: x) }
         bubblePanel.onClick = { [weak self] in self?.bubbleClicked() }
 
         idleMonitor.onSample = { [weak self] seconds in self?.send(.userIdle(seconds: seconds)) }
@@ -209,6 +213,14 @@ final class PetController {
         let pool = panel.frame
         marqueePanel.show(text, pool: pool, tailX: pool.maxX - renderer.pointSize / 2,
                           bottomY: pool.maxY - CGFloat(Self.scale) * 2)
+    }
+
+    // MARK: - Playing
+
+    private func splashed(atX x: CGFloat) {
+        guard !brain.output.isWorkMode else { return }
+        renderer.playRipple(atX: x, within: panel.frame.width)
+        send(.splashed)
     }
 
     // MARK: - Dragging

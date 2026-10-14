@@ -425,4 +425,68 @@ final class BrainTests: XCTestCase {
         brain.handle(.musicFadingOut(source: radio, duration: 1.6), at: at(14))
         XCTAssertNil(brain.output.bubble)
     }
+
+    // MARK: - Playing with Pibbo
+
+    func testRubRollsHimOntoHisBackThenBack() {
+        var brain = makeBrain()
+        run(&brain, until: at(200))
+        XCTAssertEqual(brain.output.visual, .state(.hidden))
+        brain.handle(.hoverBegan, at: at(300))
+        brain.handle(.rubbed, at: at(301))
+        XCTAssertEqual(brain.output.visual, .action("backfloat"))
+        run(&brain, until: at(301 + config.backfloatDuration))
+        XCTAssertEqual(brain.output.visual, .state(.chill))
+    }
+
+    func testHoldingPawLastsUntilTheCursorMoves() {
+        var brain = makeBrain()
+        brain.handle(.hoverBegan, at: at(10))
+        brain.handle(.holdBegan, at: at(12))
+        run(&brain, until: at(400))
+        XCTAssertEqual(brain.output.visual, .action("holdpaw"), "holds on as long as you do")
+        brain.handle(.holdEnded, at: at(400))
+        XCTAssertEqual(brain.output.visual, .state(.chill))
+    }
+
+    func testSplashMakesHimLook() {
+        var brain = makeBrain()
+        brain.handle(.splashed, at: at(10))
+        XCTAssertEqual(brain.output.visual, .action("look"))
+        run(&brain, until: at(10 + config.lookDuration))
+        XCTAssertEqual(brain.output.visual, .state(.chill))
+    }
+
+    func testPlayingWakesHimUpAndKeepsHimOut() {
+        var brain = makeBrain()
+        brain.handle(.userIdle(seconds: config.idleBeforeSleep), at: at(600))
+        XCTAssertEqual(brain.output.visual, .state(.sleep))
+        brain.handle(.rubbed, at: at(610))
+        XCTAssertEqual(brain.output.visual, .action("backfloat"))
+        run(&brain, until: at(610 + config.hideAfterNoInteraction - 1))
+        XCTAssertNotEqual(brain.output.visual, .state(.hidden), "the hide timer restarted")
+    }
+
+    func testReactionsBeatMusicButNotWorkMode() {
+        var brain = makeBrain()
+        brain.handle(.musicChanged(source: "apple-music", playing: true), at: at(10))
+        brain.handle(.rubbed, at: at(11))
+        XCTAssertEqual(brain.output.visual, .action("backfloat"))
+        run(&brain, until: at(11 + config.backfloatDuration))
+        XCTAssertEqual(brain.output.visual, .state(.music), "back to the music")
+
+        brain.handle(.workModeEntered, at: at(100))
+        brain.handle(.rubbed, at: at(101))
+        brain.handle(.holdBegan, at: at(102))
+        brain.handle(.splashed, at: at(103))
+        XCTAssertEqual(brain.output.visual, .submerged, "work mode ignores play")
+    }
+
+    func testSuspensionClearsReactions() {
+        var brain = makeBrain()
+        brain.handle(.holdBegan, at: at(10))
+        brain.handle(.suspended(.locked), at: at(11))
+        brain.handle(.resumed(.locked), at: at(20))
+        XCTAssertEqual(brain.output.visual, .state(.hidden))
+    }
 }

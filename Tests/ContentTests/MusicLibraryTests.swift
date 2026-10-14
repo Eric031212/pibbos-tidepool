@@ -62,7 +62,10 @@ final class MusicLibraryTests: XCTestCase {
 
     func testUnplugIsNotARandomAction() throws {
         let pack = try SkinPack.load(from: repo.appendingPathComponent("Assets/Skins/pibbo"))
-        XCTAssertFalse(pack.availableActions.contains("unplug"))
+        for system in ["unplug", "backfloat", "holdpaw", "look", "ripple"] {
+            XCTAssertFalse(pack.availableActions.contains(system), system)
+            XCTAssertNotEqual(pack.resolve(system).name, "chill", "\(system) is in the bundled skin")
+        }
         XCTAssertEqual(pack.resolve("unplug").clip.loops, false)
     }
 }

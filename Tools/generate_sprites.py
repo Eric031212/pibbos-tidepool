@@ -241,6 +241,67 @@ def frame_unplug(i):
     return water(g, 0)
 
 
+def frame_backfloat(i):
+    """Petted: rolls onto his back and floats, a little heart rising."""
+    g = blank()
+    body = [
+        "..........oooo..",
+        "..pp.psp..obbbbo",
+        ".obbbbbbbbblelbo",
+        ".obllllllbblnlco",
+        ".obbbbbbbbbbbbo.",
+        "..oooooooooooo..",
+    ]
+    stamp(g, 7 + [0, 0, 1, 1][i], 0, body)
+    heart = ["f.f", "fff", ".f."]
+    stamp(g, [4, 3, 2, 1][i], 6 + (i % 2), heart)
+    g = water(g, i // 2)
+    # the body floats on the surface: draw it back over the top water row
+    for c, ch in enumerate(body[5 if i < 2 else 4]):
+        if ch != ".":
+            put(g, [(12 + [0, 0, 1, 1][i] - (0 if i < 2 else 1), c)], ch)
+    return g
+
+
+def frame_holdpaw(i):
+    """Cursor resting on him: reaches up and holds your 'paw', swaying."""
+    g = base()
+    eyes(g, "closed")
+    put(g, [(6, 4), (6, 11)], "c")
+    # a chunky raised arm on his right, swaying a pixel side to side
+    col = 12 if i % 2 == 0 else 13
+    top = 0 if i < 2 else 1
+    arm = ["opo", "opp", ".bbo", ".bbo"]
+    stamp(g, top, col - 1, arm)
+    put(g, [(top + 4, col), (top + 4, col + 1)], "b")
+    return water(g, i // 2)
+
+
+def frame_look(i):
+    """A splash nearby: turns to look at it."""
+    g = base()
+    put(g, [(3, 4), (4, 4), (3, 9), (4, 9)], "e")  # eyes glance left
+    if i == 1:
+        put(g, [(0, 1), (1, 1), (3, 1)], "m")  # !
+    return water(g, i)
+
+
+def frame_ripple(i):
+    """Effect drawn over the water where you clicked (transparent elsewhere)."""
+    g = blank()
+    if i == 0:
+        put(g, [(10, 7), (9, 8), (11, 9), (10, 6)], "u")
+        put(g, [(12, 7), (12, 8)], "W")
+    elif i == 1:
+        put(g, [(11, 5), (10, 10)], "u")
+        put(g, [(13, c) for c in (6, 7, 8, 9)] + [(12, 5), (12, 10)], "W")
+    elif i == 2:
+        put(g, [(13, c) for c in (3, 4, 11, 12)] + [(12, 5), (12, 10), (14, 6), (14, 9)], "W")
+    else:
+        put(g, [(13, c) for c in (1, 2, 13, 14)] + [(14, 4), (14, 11)], "W")
+    return g
+
+
 def frame_water(i):
     """Idle: waters the flower on his left with a tiny can."""
     g = base()
@@ -421,6 +482,10 @@ STATES = {
 ACTIONS = {
     "submerged": (frame_submerged, 4, 2),  # work mode
     "unplug": (frame_unplug, 4, 3),        # plays once when music stops
+    "backfloat": (frame_backfloat, 4, 3),  # petted (rub)
+    "holdpaw": (frame_holdpaw, 4, 2),      # cursor resting on him
+    "look": (frame_look, 2, 2),            # a splash nearby
+    "ripple": (frame_ripple, 4, 7),        # splash effect, drawn over the water
     "water": (frame_water, 4, 3),
     "crack": (frame_crack, 4, 4),
     "groom": (frame_groom, 4, 4),
@@ -437,7 +502,7 @@ ACTIONS = {
 
 
 # Clips that play once and hold their last frame.
-ONE_SHOT = {"unplug"}
+ONE_SHOT = {"unplug", "ripple"}
 
 
 def to_image(grid, palette=PALETTE):

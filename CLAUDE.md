@@ -78,7 +78,7 @@ Builds are ad-hoc signed until a Developer ID certificate exists. Login-item reg
 
 ### Optional actions (skins may omit these; missing ones fall back to `chill`)
 
-System action `unplug` (headphones off, plays once) runs when music stops; it is never picked at random. Provided by the bundled skin (v0.2.0): `water` (waters his flower), `crack` (cracks a shell with a rock), `groom`, `stretch`, `yawn`, `sunbathe` (sunglasses), `raindrops` (rain), `cocoa` (snow), `huddle` (storm), `leaf` (autumn), `petal` (spring), `stargaze` (clear night). Which ones fit the moment is decided by `World.ActionRules`. Holiday outfits come later.
+System actions are never picked at random: `unplug` (headphones off, plays once) when music stops; `backfloat` (on his back with a rising heart), `holdpaw` (raised paw, swaying) and `look` (glances at a splash) for play; `ripple` is a one-shot splash effect drawn over the water. Provided by the bundled skin (v0.2.0): `water` (waters his flower), `crack` (cracks a shell with a rock), `groom`, `stretch`, `yawn`, `sunbathe` (sunglasses), `raindrops` (rain), `cocoa` (snow), `huddle` (storm), `leaf` (autumn), `petal` (spring), `stargaze` (clear night). Which ones fit the moment is decided by `World.ActionRules`. Holiday outfits come later.
 
 ### The flower (decided 2026-10-12)
 
@@ -99,6 +99,7 @@ Pibbo sinks under the water. Only a few small bubbles rise occasionally. Skins p
 - Small actions driven by time of day, weather, and season, plus everyday idle actions while Pibbo is out
 - The flower (Section 3), approved 2026-10-12
 - Pixel-style speech bubbles and click menu (pixel font drawn by `Tools/generate_sprites.py`)
+- Gentle mouse play (approved 2026-10-14): rub to pet, rest the cursor to hold paws, click the water to splash. Mouse only, inside our own window, no permission. (Reacting to what the user types anywhere was considered and dropped: it needs Input Monitoring and would put private text on screen.)
 - Holiday outfits
 - Launch at login
 
@@ -135,7 +136,12 @@ launch → peek (~5 s) → chill → no interaction for a while → hidden
 | Late night | Stronger tendency toward `sleep` |
 | A fullscreen Space is active / screen locked / system asleep | Fully hidden; pause all timers and animations |
 | Pibbo is out (`chill`) for 25–50 s | He does a small idle or context action (5–10 s), then keeps chilling |
+| Mouse rubs back and forth over Pibbo (4 direction changes of ≥ 4 pt within 1.5 s) | `backfloat` for ~4 s, then back to what he was doing |
+| Cursor rests on Pibbo (moves < 3 pt for 2 s) | `holdpaw` until the cursor moves or leaves |
+| Click on the water / flower beside Pibbo | A `ripple` where you clicked; Pibbo plays `look` for ~1.5 s |
 | Click on Pibbo | Open the menu |
+
+Play (rub, hold, splash) wakes Pibbo, restarts the hide timer, shows over `music` for its duration, and is ignored in work mode. Mouse moves are only tracked while the cursor is over Pibbo, so idle cost stays zero.
 
 ### Click menu
 

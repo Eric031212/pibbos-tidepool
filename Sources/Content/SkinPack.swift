@@ -125,7 +125,7 @@ public struct SkinPack: Sendable {
     }
 
     /// Actions the app plays for a reason of its own, never at random.
-    public static let systemActions: Set<String> = ["submerged", "unplug"]
+    public static let systemActions: Set<String> = ["submerged", "unplug", "backfloat", "holdpaw", "look", "ripple"]
 
     /// Optional actions this skin provides for random/idle use.
     public var availableActions: [String] {

@@ -46,6 +46,13 @@ public enum BrainEvent: Equatable, Sendable {
     case musicFadingOut(source: String, duration: TimeInterval)
     /// The built-in radio started a new track.
     case builtInTrackStarted
+    /// The mouse rubbed back and forth over Pibbo: he rolls onto his back.
+    case rubbed
+    /// The mouse rests still on Pibbo: he holds your "paw" until it moves.
+    case holdBegan
+    case holdEnded
+    /// A click on the water beside him: he turns to look.
+    case splashed
     case suspended(SuspendReason)
     case resumed(SuspendReason)
     case timeOfDayChanged(TimeOfDay)
@@ -96,6 +103,10 @@ public struct BrainConfig: Sendable {
     public var nowPlayingAfterHover: TimeInterval = 3
     /// The `unplug` clip (headphones off) when music stops.
     public var unplugDuration: TimeInterval = 1.6
+    /// Floating on his back after a rub.
+    public var backfloatDuration: TimeInterval = 4
+    /// Looking at a splash.
+    public var lookDuration: TimeInterval = 1.5
 
     public init() {}
 

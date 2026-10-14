@@ -44,69 +44,90 @@
       "fps": 3,
       "loop": false
     },
-    "water": {
+    "backfloat": {
       "row": 7,
       "frames": 4,
       "fps": 3
     },
-    "crack": {
+    "holdpaw": {
       "row": 8,
+      "frames": 4,
+      "fps": 2
+    },
+    "look": {
+      "row": 9,
+      "frames": 2,
+      "fps": 2
+    },
+    "ripple": {
+      "row": 10,
+      "frames": 4,
+      "fps": 7,
+      "loop": false
+    },
+    "water": {
+      "row": 11,
+      "frames": 4,
+      "fps": 3
+    },
+    "crack": {
+      "row": 12,
       "frames": 4,
       "fps": 4
     },
     "groom": {
-      "row": 9,
-      "frames": 4,
-      "fps": 4
-    },
-    "stretch": {
-      "row": 10,
-      "frames": 4,
-      "fps": 2
-    },
-    "yawn": {
-      "row": 11,
-      "frames": 4,
-      "fps": 2
-    },
-    "sunbathe": {
-      "row": 12,
-      "frames": 4,
-      "fps": 2
-    },
-    "raindrops": {
       "row": 13,
       "frames": 4,
       "fps": 4
     },
-    "cocoa": {
+    "stretch": {
       "row": 14,
       "frames": 4,
-      "fps": 3
+      "fps": 2
     },
-    "huddle": {
+    "yawn": {
       "row": 15,
       "frames": 4,
-      "fps": 4
+      "fps": 2
     },
-    "leaf": {
+    "sunbathe": {
       "row": 16,
       "frames": 4,
       "fps": 2
     },
-    "petal": {
+    "raindrops": {
       "row": 17,
+      "frames": 4,
+      "fps": 4
+    },
+    "cocoa": {
+      "row": 18,
+      "frames": 4,
+      "fps": 3
+    },
+    "huddle": {
+      "row": 19,
+      "frames": 4,
+      "fps": 4
+    },
+    "leaf": {
+      "row": 20,
+      "frames": 4,
+      "fps": 2
+    },
+    "petal": {
+      "row": 21,
       "frames": 4,
       "fps": 2
     },
     "stargaze": {
-      "row": 18,
+      "row": 22,
       "frames": 4,
       "fps": 2
     }
   },
   "garden": {
-    "row": 19,
+    "row": 23,
     "stages": 6
   }
 }

@@ -9,6 +9,8 @@ import QuartzCore
 final class SpriteRenderer {
     let layer = CALayer()
     let gardenLayer = CALayer()
+    /// Splash effect drawn over the water where the user clicked.
+    let rippleLayer = CALayer()
     let pointSize: CGFloat
     var hasGarden: Bool { pack.manifest.garden != nil }
 
@@ -27,7 +29,8 @@ final class SpriteRenderer {
         sheet = image
         pointSize = CGFloat(pack.manifest.frameSize * scale)
         let noFades: [String: CAAction] = ["contents": NSNull(), "position": NSNull(), "bounds": NSNull(), "hidden": NSNull()]
-        for sprite in [layer, gardenLayer] {
+        rippleLayer.isHidden = true
+        for sprite in [layer, gardenLayer, rippleLayer] {
             sprite.frame = CGRect(x: 0, y: 0, width: pointSize, height: pointSize)
             sprite.magnificationFilter = .nearest
             sprite.actions = noFades
@@ -69,6 +72,29 @@ final class SpriteRenderer {
             layer.contents = frames.last
         }
         layer.add(animation, forKey: "frames")
+    }
+
+    /// Plays the skin's `ripple` effect once, centred on `x` (layer points),
+    /// kept inside `width`. No-op for skins without one.
+    func playRipple(atX x: CGFloat, within width: CGFloat) {
+        guard let clip = pack.manifest.actions?["ripple"] else { return }
+        let frames = self.frames(for: "ripple", clip: clip)
+        guard !frames.isEmpty else { return }
+        rippleLayer.removeAllAnimations()
+        rippleLayer.frame.origin.x = min(max((x - pointSize / 2).rounded(), 0), width - pointSize)
+        rippleLayer.contents = frames.last
+        rippleLayer.isHidden = false
+
+        let duration = Double(frames.count) / clip.fps
+        let animation = CAKeyframeAnimation(keyPath: "contents")
+        animation.values = frames
+        animation.calculationMode = .discrete
+        animation.keyTimes = (0...frames.count).map { NSNumber(value: Double($0) / Double(frames.count)) }
+        animation.duration = duration
+        rippleLayer.add(animation, forKey: "ripple")
+        DispatchQueue.main.asyncAfter(deadline: .now() + duration) { [weak self] in
+            self?.rippleLayer.isHidden = true
+        }
     }
 
     func pause() {
