@@ -35,6 +35,7 @@ Assets/Data/zone.tab               tzdb time-zone coordinates (offline location 
 Tools/generate_sprites.py          draws all pixel art from text grids (requires Pillow)
 Tools/import_track.py              WAV master → app-ready CAF + beat map with estimated bpm (numpy + afconvert)
 Tools/generate_promo.py            social-media posters (1080×1350) from the real sprites and pixel font → Marketing/promo/
+Tools/generate_promo_video.py      30 s vertical promo video (1080×1920, 30 fps, BGM "Floating Pibbo") → Marketing/video/ (needs ffmpeg)
 Tools/generate_placeholder_lofi.py synthesizes a placeholder lofi loop (stdlib + afconvert), for testing without tracks
 ```
 
