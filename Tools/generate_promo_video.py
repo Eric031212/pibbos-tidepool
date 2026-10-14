@@ -210,8 +210,7 @@ def scene_code(t):
         center_text(c, "Pibbo's Tidepool", 240, 2, WHITE)
         center_text(c, "a tiny pixel otter for your Mac", 268, 1, (190, 205, 230))
     if t > 0.3:
-        center_text(c, "every pixel written as code", VH - 70, 1, (190, 205, 230))
-        center_text(c, "by Claude Opus", VH - 56, 2, WHITE)
+        center_text(c, "every pixel written as code", VH - 60, 2, WHITE)
     return c
 
 
@@ -222,7 +221,7 @@ ALL_CLIPS = ["hidden", "peek", "chill", "music", "sleep", "submerged", "water", 
 
 def scene_all(t):
     c = canvas()
-    caption(c, "every frame, drawn by Claude", 24)
+    caption(c, "every frame, drawn in code", 24)
     cell, gap, cols = 48, 8, 4
     x0 = (VW - (cols * cell + (cols - 1) * gap)) // 2
     for k, name in enumerate(ALL_CLIPS + ["flower"]):
