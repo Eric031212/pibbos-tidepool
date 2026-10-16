@@ -449,6 +449,22 @@ Code: `Spikes/06-launch-at-login/`. `run.sh register|unregister|status` installs
 - To change any pixel art, edit and rerun `Tools/generate_sprites.py`; never hand-edit the generated PNGs.
 - Tasks that need a human (art, music, signing certificates, system permissions) must not be worked around. List them for the developer instead.
 
+### Working with the developer (learned through v0.3.2)
+
+- The developer writes in Chinese; reply in Chinese. User-facing app text stays English (Section 6). README and release notes: short, casual, with emoji.
+- New features are proposed first and built only after a yes (Principle 1). Present options with a recommendation; flag anything that conflicts with this file instead of changing the design silently.
+- Hand-off for testing: build, launch the app yourself, then give a short numbered checklist of what to try. `open` on an already-running app ignores `--args`, so relaunch with `pkill -x Tidepool; open … --args …`. `--demo` speeds everything up; `--holiday <name>` previews an outfit.
+- The repo is **public**: never put personal data (city or location, machine host name, email) in files, test fixtures, or commit messages. Commits use the repo-local identity already set in `.git/config`; don't change it.
+- Music: new tracks arrive as WAVs in `Assets/MusicMasters/<Theme Name>/` → `python3 Tools/import_track.py`. Art: edit `Tools/generate_sprites.py` and rerun; rerun `Tools/generate_promo.py` / `Tools/generate_promo_video.py` when the promo material should follow.
+
+### Release checklist (only when the developer says to release)
+
+1. Bump `MARKETING_VERSION` and `CURRENT_PROJECT_VERSION` in `project.yml`; update README (features, status line) and this file.
+2. `swift test` (all pass) → `xcodegen generate` → Release build → check `CFBundleShortVersionString` in the built Info.plist.
+3. Launch the Release build; after Pibbo hides, `top -c d -pid <pid>` should show ~0 % CPU and ~0 idle wakeups.
+4. Commit with a summary message → push `main` → annotated tag `vX.Y.Z` → push the tag → `gh release create vX.Y.Z` with casual emoji notes (mention "build from source" until a signed build exists; credit Suno / MET Norway).
+5. Releases so far: v0.1.0 app shell · v0.2.0 actions, flower, pixel UI · v0.3.0 themed radio, ticker, drag · v0.3.1 mouse play · v0.3.2 holiday outfits.
+
 ## 16. Open items
 
 - [ ] Trademark / name conflict check for "Tidepool" and "Pibbo" before public release
