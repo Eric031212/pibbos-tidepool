@@ -41,10 +41,17 @@ public struct SkinManifest: Codable, Equatable, Sendable {
     public let garden: GardenSpec?
     /// Keyed by holiday (`World.Holiday` raw values), e.g. "halloween".
     public let outfits: [String: OutfitSpec]?
+    /// Body pose of each clip (e.g. "low", "up"); clips sharing a pose share
+    /// transitions. Clips not listed have no pose.
+    public let poses: [String: String]?
+    /// In-between clips played once when switching clips, keyed "from>to";
+    /// either side is a clip name or "@pose" (see `transition(from:to:)`).
+    public let transitions: [String: Clip]?
 
     public init(id: String, name: String, author: String, version: String, type: String,
                 frameSize: Int, states: [String: Clip], actions: [String: Clip]?, garden: GardenSpec? = nil,
-                outfits: [String: OutfitSpec]? = nil) {
+                outfits: [String: OutfitSpec]? = nil, poses: [String: String]? = nil,
+                transitions: [String: Clip]? = nil) {
         self.id = id
         self.name = name
         self.author = author
@@ -55,6 +62,8 @@ public struct SkinManifest: Codable, Equatable, Sendable {
         self.actions = actions
         self.garden = garden
         self.outfits = outfits
+        self.poses = poses
+        self.transitions = transitions
     }
 }
 
@@ -115,6 +124,7 @@ public struct SkinPack: Sendable {
         let missing = requiredStates.filter { manifest.states[$0] == nil }
         guard missing.isEmpty else { throw SkinError.missingStates(missing) }
         let all = manifest.states.merging(manifest.actions ?? [:]) { state, _ in state }
+            .merging(manifest.transitions ?? [:]) { clip, _ in clip }
         for (name, clip) in all where clip.row < 0 || clip.frames < 1 || clip.fps <= 0 {
             throw SkinError.invalidClip(name)
         }
@@ -143,6 +153,23 @@ public struct SkinPack: Sendable {
         guard let outfit, let spec = manifest.outfits?[outfit] else { return plain }
         let clip = plain.clip
         return (plain.name, Clip(row: clip.row + spec.offset, frames: clip.frames, fps: clip.fps, loop: clip.loop))
+    }
+
+    /// The in-between clip to play once when switching from one resolved clip
+    /// to another, or nil to cut straight over. Most specific key wins:
+    /// `a>b`, `@poseA>b`, `a>@poseB`, `@poseA>@poseB`.
+    public func transition(from: String, to: String, outfit: String? = nil) -> Clip? {
+        guard from != to, let transitions = manifest.transitions else { return nil }
+        let poses = manifest.poses ?? [:]
+        let fromKeys = [from] + (poses[from].map { ["@" + $0] } ?? [])
+        let toKeys = [to] + (poses[to].map { ["@" + $0] } ?? [])
+        let keys = [(0, 0), (1, 0), (0, 1), (1, 1)].compactMap { i, j -> String? in
+            guard i < fromKeys.count, j < toKeys.count else { return nil }
+            return fromKeys[i] + ">" + toKeys[j]
+        }
+        guard let clip = keys.lazy.compactMap({ transitions[$0] }).first else { return nil }
+        guard let outfit, let spec = manifest.outfits?[outfit] else { return clip }
+        return Clip(row: clip.row + spec.offset, frames: clip.frames, fps: clip.fps, loop: false)
     }
 
     /// Actions the app plays for a reason of its own, never at random.

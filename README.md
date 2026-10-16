@@ -12,6 +12,7 @@ No to-dos, no timers, no chat. Just a little company while you do your thing.
 - 💕 rub him with your mouse and he rolls onto his back, happy
 - 🤝 rest your cursor on him and he holds your paw (otters hold hands!)
 - 💦 click the water beside him for a little splash
+- 🌊 glides between moves: bobs up through the water, sinks back down, rolls over with a splash, slips his headphones on
 - 🐚 floats around and keeps busy: cracks shells, grooms, waters his flower
 - 🌷 his flower grows a little every day (no chores, it never wilts)
 - ☀️🌧❄️ reacts to your weather, the season and the time of day: sunglasses in the sun, catching raindrops, hot cocoa in the snow, stargazing at night
@@ -29,7 +30,7 @@ Everything you see, from the otter to the little speech bubbles and the font, is
 
 ## Status
 
-**v0.3.2, still early!** More lofi themes on the way 🎶
+**v0.3.3, still early!** More lofi themes on the way 🎶
 
 ## Build it yourself
 

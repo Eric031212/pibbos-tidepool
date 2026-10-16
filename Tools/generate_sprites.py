@@ -241,17 +241,20 @@ def frame_unplug(i):
     return water(g, 0)
 
 
+BACK_BODY = [
+    "..........oooo..",
+    "..pp.psp..obbbbo",
+    ".obbbbbbbbblelbo",
+    ".obllllllbblnlco",
+    ".obbbbbbbbbbbbo.",
+    "..oooooooooooo..",
+]
+
+
 def frame_backfloat(i):
     """Petted: rolls onto his back and floats, a little heart rising."""
     g = blank()
-    body = [
-        "..........oooo..",
-        "..pp.psp..obbbbo",
-        ".obbbbbbbbblelbo",
-        ".obllllllbblnlco",
-        ".obbbbbbbbbbbbo.",
-        "..oooooooooooo..",
-    ]
+    body = BACK_BODY
     stamp(g, 7 + [0, 0, 1, 1][i], 0, body)
     heart = ["f.f", "fff", ".f."]
     stamp(g, [4, 3, 2, 1][i], 6 + (i % 2), heart)
@@ -442,6 +445,162 @@ def frame_stargaze(i):
     stars = [[(0, 1), (1, 14)], [(0, 1), (0, 9)], [(1, 14), (0, 9)], [(0, 1), (1, 14), (0, 9)]][i]
     put(g, stars, "X")
     return water(g, i // 2)
+
+
+# ---------------------------------------------------------------- transitions
+# In-between frames played once when Pibbo switches clips, so he glides
+# between poses instead of jumping. Clips share transitions through their pose
+# (how high he sits in the water); a few prop changes get their own. Keys are
+# "from>to", each side a clip name or "@pose" (the app picks the most specific).
+
+POSES = {"hidden": "low", "peek": "peek", "huddle": "peek", "submerged": "under", "backfloat": "back"}
+NO_POSE = {"ripple"}  # an effect layer, never switched to
+TRANSITION_FPS = 10
+
+
+def splash(grid, wide=False):
+    """Drops thrown up where he breaks the surface."""
+    put(grid, [(12, 3), (11, 2), (12, 12), (11, 13)], "W")
+    if wide:
+        put(grid, [(10, 1), (10, 14)], "W")
+
+
+def bubble_trail(grid, i):
+    put(grid, [[(12, 7)], [(11, 8), (12, 6)]][i % 2], "u")
+
+
+def slide(shifts, eye_style, splash_at=(), bubbles=False):
+    """Rise or sink through the water line, one shift per frame."""
+    def fn(i):
+        g = base()
+        eyes(g, eye_style)
+        g = water(shift(g, shifts[i]), i)
+        if i in splash_at:
+            splash(g)
+        if bubbles:
+            bubble_trail(g, i)
+        return g
+    return fn
+
+
+def roll_over(i):
+    """Chill -> back-float: tucks in with a splash, then lands on his back."""
+    if i == 0:
+        g = base()
+        eyes(g, "closed")
+        g = water(shift(g, 2), 0)
+        splash(g)
+        return g
+    g = blank()
+    stamp(g, 9, 0, BACK_BODY)
+    g = water(g, 1)
+    splash(g, wide=True)
+    return g
+
+
+def roll_back(i):
+    return roll_over(1 - i)
+
+
+def headphones_on(i):
+    return frame_unplug([2, 1][i])  # held above his head, then lowered on
+
+
+def doze(i):
+    """Eyes droop and the kelp wraps around him before he falls asleep."""
+    g = base()
+    eyes(g, "lazy" if i == 0 else "closed")
+    remove_shell(g)
+    wrap = [(9, 2), (9, 3), (10, 4), (10, 5), (10, 6)] if i == 0 else \
+           [(9, 2), (9, 3), (10, 4), (10, 5), (10, 6), (11, 7), (11, 8), (11, 9)]
+    put(g, wrap, "k")
+    return water(g, i)
+
+
+def wake(i):
+    """Blinks awake while the kelp slips away."""
+    g = base()
+    eyes(g, "closed" if i == 0 else "lazy")
+    remove_shell(g)
+    put(g, [(10, 4), (10, 5), (11, 6), (11, 7), (12, 8)] if i == 0 else [(12, 3), (12, 4), (12, 5)], "k")
+    return water(g, i)
+
+
+def glasses(row):
+    def fn(i):
+        g = base()
+        eyes(g, "lazy")
+        r = row(i)
+        put(g, [(r, c) for c in (3, 4, 5, 6, 7, 8, 9, 10, 11, 12)] + [(r + 1, c) for c in (4, 5, 10, 11)], "q")
+        return water(g, 0)
+    return fn
+
+
+def mug(rows):
+    """The cocoa mug comes up out of the water (or goes back down)."""
+    def fn(i):
+        g = base()
+        eyes(g, "lazy")
+        remove_shell(g)
+        stamp(g, rows[i], 6, ["DDDD", "MMMMM", "MMMMM", "MMMM."])
+        return water(g, i)
+    return fn
+
+
+def reach(i):
+    """Halfway up to hold your paw."""
+    g = base()
+    eyes(g, "closed")
+    stamp(g, 3, 11, ["opo", "opp", ".bbo", ".bbo"])
+    return water(g, 0)
+
+
+def can(rows):
+    """The watering can comes up from beside him (or goes away)."""
+    def fn(i):
+        g = base()
+        eyes(g, "lazy")
+        stamp(g, rows[i], 0, ["..GG.", ".g..g", "gggg.", "gggg.", ".gg.."])
+        put(g, [(rows[i] + 3, 4), (rows[i] + 4, 4)], "p")
+        return water(g, i)
+    return fn
+
+
+# key -> (frame function, frame count, fps)
+TRANSITIONS = {
+    # rising and sinking between poses
+    "@under>@low": (slide([12, 10], "lazy", bubbles=True), 2, TRANSITION_FPS),
+    "@under>@peek": (slide([11, 8, 6], "open", bubbles=True), 3, TRANSITION_FPS),
+    "@under>@up": (slide([11, 7, 4, 2, 1], "lazy", splash_at=(2,)), 5, TRANSITION_FPS),
+    "@low>@under": (slide([10, 12], "closed", bubbles=True), 2, TRANSITION_FPS),
+    "@peek>@under": (slide([7, 9, 11], "closed", bubbles=True), 3, TRANSITION_FPS),
+    "@up>@under": (slide([1, 3, 6, 9, 12], "closed", splash_at=(2,), bubbles=True), 5, TRANSITION_FPS),
+    "@low>@peek": (slide([7, 6], "open"), 2, TRANSITION_FPS),
+    "@low>@up": (slide([6, 3, 1], "lazy", splash_at=(1,)), 3, TRANSITION_FPS),
+    "@peek>@low": (slide([6, 7], "lazy"), 2, TRANSITION_FPS),
+    "@peek>@up": (slide([3, 1], "lazy", splash_at=(0,)), 2, TRANSITION_FPS),
+    "@up>@low": (slide([1, 3, 6], "lazy", splash_at=(2,)), 3, TRANSITION_FPS),
+    "@up>@peek": (slide([2, 4], "open"), 2, TRANSITION_FPS),
+    # rolling onto his back and back up
+    "@up>@back": (roll_over, 2, 8),
+    "@back>@up": (roll_back, 2, 8),
+    # props coming and going
+    "@up>music": (headphones_on, 2, 6),
+    "@up>sleep": (doze, 2, 4),
+    "sleep>@up": (wake, 2, 5),
+    "@up>sunbathe": (glasses(lambda i: [1, 2][i]), 2, 6),
+    "sunbathe>@up": (glasses(lambda i: [2, 1][i]), 2, 6),
+    "@up>cocoa": (mug([12, 10]), 2, 8),
+    "cocoa>@up": (mug([10, 12]), 2, 8),
+    "@up>holdpaw": (reach, 1, 8),
+    "holdpaw>@up": (reach, 1, 8),
+    "@up>water": (can([9, 8]), 2, 8),
+    "water>@up": (can([8, 9]), 2, 8),
+}
+
+
+def pose_of(name):
+    return POSES.get(name, "up")
 
 
 # ---------------------------------------------------------------- garden
@@ -691,7 +850,7 @@ def build_ui():
 
 def build_skin():
     SKIN_DIR.mkdir(parents=True, exist_ok=True)
-    entries = list(STATES.items()) + list(ACTIONS.items())
+    entries = list(STATES.items()) + list(ACTIONS.items()) + list(TRANSITIONS.items())
     max_frames = max(max(n for _, (_, n, _) in entries), GARDEN_STAGES)
     rows = len(entries) + 1 + len(OUTFITS) * len(entries)  # clips, garden row, then each outfit's clips
     sheet = Image.new("RGBA", (SIZE * max_frames, SIZE * rows), (0, 0, 0, 0))
@@ -727,11 +886,13 @@ def build_skin():
         "actions": {},
         "garden": {"row": garden_row, "stages": GARDEN_STAGES},
         "outfits": {name: {"offset": offset} for name, offset in outfit_offsets.items()},
+        "poses": {name: pose_of(name) for name in list(STATES) + list(ACTIONS) if name not in NO_POSE},
+        "transitions": {},
     }
     for row, (name, (_, n, fps)) in enumerate(entries):
-        key = "states" if name in STATES else "actions"
+        key = "states" if name in STATES else "actions" if name in ACTIONS else "transitions"
         manifest[key][name] = {"row": row, "frames": n, "fps": fps}
-        if name in ONE_SHOT:
+        if name in ONE_SHOT or key == "transitions":
             manifest[key][name]["loop"] = False
     (SKIN_DIR / "manifest.json").write_text(json.dumps(manifest, indent=2) + "\n")
 
@@ -739,11 +900,26 @@ def build_skin():
 
 
 def write_previews(entries, frames, garden, sheet):
-    """Animated preview of every clip (3 rows) plus the garden stages, at 6x."""
+    """Animated previews at 6x: every clip plus the garden stages, and every
+    transition between two sample clips."""
+    items = [(name, frames[name], fps) for name, (_, _, fps) in entries if name not in TRANSITIONS]
+    items += [(f"flower {s}", [garden[s]], 1) for s in range(GARDEN_STAGES)]
+    write_gif(items, SKIN_DIR / "preview.gif", 24)
+
+    # Each transition as "from, in-between, to", held a beat on both ends.
+    sample = {"@up": "chill", "@low": "hidden", "@peek": "peek", "@under": "submerged", "@back": "backfloat"}
+    sequences = []
+    for key in TRANSITIONS:
+        a, b = (sample.get(side, side) for side in key.split(">"))
+        clip = [frames[a][0]] * 4 + frames[key] + [frames[b][0]] * (9 - len(frames[key]))
+        sequences.append((key.replace("@", ""), clip, TRANSITION_FPS))
+    write_gif(sequences, SKIN_DIR / "preview-transitions.gif", 13, tick=1 / TRANSITION_FPS)
+    sheet.resize((sheet.width * 8, sheet.height * 8), Image.NEAREST).save(SKIN_DIR / "sprites@8x.png")
+
+
+def write_gif(items, path, ticks, tick=1 / 12):
     scale, pad, label_h, per_row = 6, 12, 22, 7
     cell = SIZE * scale
-    items = [(name, frames[name], fps) for name, (_, _, fps) in entries]
-    items += [(f"flower {s}", [garden[s]], 1) for s in range(GARDEN_STAGES)]
     n_rows = (len(items) + per_row - 1) // per_row
     width = per_row * (cell + pad) + pad
     height = n_rows * (cell + label_h + pad) + pad
@@ -751,9 +927,8 @@ def write_previews(entries, frames, garden, sheet):
         font = ImageFont.load_default(size=13)
     except TypeError:
         font = ImageFont.load_default()
-    tick = 1 / 12
     gif_frames = []
-    for t in range(24):
+    for t in range(ticks):
         canvas = Image.new("RGBA", (width, height), (247, 242, 232, 255))
         d = ImageDraw.Draw(canvas)
         for k, (name, clip, fps) in enumerate(items):
@@ -764,9 +939,7 @@ def write_previews(entries, frames, garden, sheet):
             tw = d.textlength(name, font=font)
             d.text((x + (cell - tw) / 2, y + cell + 4), name, fill=(90, 70, 55), font=font)
         gif_frames.append(canvas.convert("RGB"))
-    gif_frames[0].save(SKIN_DIR / "preview.gif", save_all=True, append_images=gif_frames[1:],
-                       duration=int(tick * 1000), loop=0)
-    sheet.resize((sheet.width * 8, sheet.height * 8), Image.NEAREST).save(SKIN_DIR / "sprites@8x.png")
+    gif_frames[0].save(path, save_all=True, append_images=gif_frames[1:], duration=int(tick * 1000), loop=0)
 
 
 def main():

@@ -170,7 +170,7 @@ final class PetController {
 
         // The flower only shows while Pibbo shows his face.
         let pibboIsOut = output.visual != .state(.hidden) && output.visual != .submerged
-        renderer.gardenLayer.isHidden = !pibboIsOut
+        renderer.setGardenVisible(pibboIsOut)
         renderer.showGarden(stage: gardenStage())
 
         updateBubble(output.isSuspended ? nil : output.bubble)
