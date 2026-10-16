@@ -19,6 +19,13 @@ final class WorldMonitor {
     }()
     private static let coordinateKey = "lastCoordinate"
 
+    /// `--holiday <name>` forces an outfit, for trying them out.
+    private static let forcedHoliday: Holiday? = {
+        let args = CommandLine.arguments
+        guard let i = args.firstIndex(of: "--holiday"), i + 1 < args.count else { return nil }
+        return Holiday(rawValue: args[i + 1])
+    }()
+
     private var coordinate: Coordinate
     private let zoneCoordinate: Coordinate?
     private let session: URLSession
@@ -156,6 +163,7 @@ final class WorldMonitor {
         let month = Calendar.current.component(.month, from: now)
         return WorldContext(timeOfDay: SunClock.timeOfDay(at: now, coordinate: coordinate),
                             season: Season.of(month: month, latitude: coordinate.latitude),
-                            weather: weather)
+                            weather: weather,
+                            holiday: forcedHoliday ?? Holidays.current(on: now, region: Locale.current.region?.identifier))
     }
 }

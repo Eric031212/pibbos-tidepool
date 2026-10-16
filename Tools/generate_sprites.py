@@ -471,6 +471,34 @@ def garden_stage(stage):
 
 GARDEN_STAGES = 6
 
+# ---------------------------------------------------------------- holiday outfits
+# Hats are 3 rows tall and sit *on* the head (there is only one free row above
+# it in a 16x16 frame): their bottom row covers the head's top outline and the
+# row below it. Keys match World.Holiday raw values.
+OUTFITS = {
+    "halloween": ["..K..", ".LLL.", "LLLLL"],                 # pumpkin hat
+    "christmas": ["....MMX", ".MMMMM.", "XXXXXXX"],           # Santa hat
+    "newYear": ["..X..", ".hmh.", "hmhmh"],                   # party hat
+    "lunarNewYear": [".M.M.", "MMmMM", ".M.M."],              # red flower knot
+}
+NO_OUTFIT = {"submerged", "ripple"}  # no otter visible in these
+
+
+def wear(grid, hat):
+    """Puts `hat` on the head: the topmost run of 4+ outline pixels (a raised
+    paw or a heart above the head is never that wide)."""
+    for r, row in enumerate(grid):
+        line = "".join(row)
+        start = line.find("oooo")
+        if start >= 0:
+            end = start
+            while end < len(line) and line[end] == "o":
+                end += 1
+            middle = (start + end) // 2
+            stamp(grid, r + 1 - (len(hat) - 1), middle - len(hat[0]) // 2, hat)
+            return grid
+    return grid
+
 # name -> (frame function, frame count, fps). Row order = sheet row order.
 STATES = {
     "hidden": (frame_hidden, 2, 2),
@@ -665,7 +693,7 @@ def build_skin():
     SKIN_DIR.mkdir(parents=True, exist_ok=True)
     entries = list(STATES.items()) + list(ACTIONS.items())
     max_frames = max(max(n for _, (_, n, _) in entries), GARDEN_STAGES)
-    rows = len(entries) + 1  # + garden row
+    rows = len(entries) + 1 + len(OUTFITS) * len(entries)  # clips, garden row, then each outfit's clips
     sheet = Image.new("RGBA", (SIZE * max_frames, SIZE * rows), (0, 0, 0, 0))
     frames = {}
     for row, (name, (fn, n, _)) in enumerate(entries):
@@ -676,6 +704,16 @@ def build_skin():
     garden = [to_image(garden_stage(s)) for s in range(GARDEN_STAGES)]
     for s, f in enumerate(garden):
         sheet.paste(f, (s * SIZE, garden_row * SIZE))
+
+    # Every clip again per outfit; a clip's outfit row = its row + offset.
+    outfit_offsets = {}
+    for k, (outfit, hat) in enumerate(OUTFITS.items()):
+        offset = garden_row + 1 + k * len(entries)
+        outfit_offsets[outfit] = offset
+        for row, (name, (fn, n, _)) in enumerate(entries):
+            for i in range(n):
+                grid = fn(i) if name in NO_OUTFIT else wear(fn(i), hat)
+                sheet.paste(to_image(grid), (i * SIZE, (row + offset) * SIZE))
     sheet.save(SKIN_DIR / "sprites.png")
 
     manifest = {
@@ -688,6 +726,7 @@ def build_skin():
         "states": {},
         "actions": {},
         "garden": {"row": garden_row, "stages": GARDEN_STAGES},
+        "outfits": {name: {"offset": offset} for name, offset in outfit_offsets.items()},
     }
     for row, (name, (_, n, fps)) in enumerate(entries):
         key = "states" if name in STATES else "actions"

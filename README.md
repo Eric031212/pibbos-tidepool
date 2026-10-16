@@ -18,6 +18,7 @@ No to-dos, no timers, no chat. Just a little company while you do your thing.
 - 🎧 puts on headphones when Apple Music is playing, and takes them off when it stops
 - 📻 every now and then asks `Music Time? 🎧` and plays his own lofi radio: a random theme, shuffled, no song picking needed. A little pixel ticker shows what's playing ♪
 - 🌙 first theme: *Pibbo's Raft Days*, 12 cozy tracks, ~37 minutes
+- 🎃🎅🎉🧧 dresses up for the holidays: pumpkin hat for Halloween, Santa hat for Christmas, party hat for New Year, a red flower knot for Lunar New Year
 - 🫧 `Dive time 🫧` sends him underwater until you click him again
 - 😴 naps when you step away
 - 🙈 disappears in fullscreen, when you lock the screen, and while your Mac sleeps
@@ -28,8 +29,7 @@ Everything you see, from the otter to the little speech bubbles and the font, is
 
 ## Status
 
-**v0.3.1, still early!** More lofi themes on the way 🎶
-Coming later: holiday outfits 🎅🎃
+**v0.3.2, still early!** More lofi themes on the way 🎶
 
 ## Build it yourself
 

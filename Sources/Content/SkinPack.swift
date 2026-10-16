@@ -24,6 +24,11 @@ public struct GardenSpec: Codable, Equatable, Sendable {
     public let stages: Int
 }
 
+/// Optional holiday outfit: every clip again, `offset` rows further down.
+public struct OutfitSpec: Codable, Equatable, Sendable {
+    public let offset: Int
+}
+
 public struct SkinManifest: Codable, Equatable, Sendable {
     public let id: String
     public let name: String
@@ -34,9 +39,12 @@ public struct SkinManifest: Codable, Equatable, Sendable {
     public let states: [String: Clip]
     public let actions: [String: Clip]?
     public let garden: GardenSpec?
+    /// Keyed by holiday (`World.Holiday` raw values), e.g. "halloween".
+    public let outfits: [String: OutfitSpec]?
 
     public init(id: String, name: String, author: String, version: String, type: String,
-                frameSize: Int, states: [String: Clip], actions: [String: Clip]?, garden: GardenSpec? = nil) {
+                frameSize: Int, states: [String: Clip], actions: [String: Clip]?, garden: GardenSpec? = nil,
+                outfits: [String: OutfitSpec]? = nil) {
         self.id = id
         self.name = name
         self.author = author
@@ -46,6 +54,7 @@ public struct SkinManifest: Codable, Equatable, Sendable {
         self.states = states
         self.actions = actions
         self.garden = garden
+        self.outfits = outfits
     }
 }
 
@@ -112,6 +121,9 @@ public struct SkinPack: Sendable {
         if let garden = manifest.garden, garden.row < 0 || garden.stages < 1 {
             throw SkinError.invalidClip("garden")
         }
+        for (name, outfit) in manifest.outfits ?? [:] where outfit.offset < 1 {
+            throw SkinError.invalidClip("outfit \(name)")
+        }
     }
 
     /// The clip to play for a state or action name, applying the fallbacks:
@@ -122,6 +134,15 @@ public struct SkinPack: Sendable {
         }
         let fallback = name == "submerged" ? "hidden" : "chill"
         return (fallback, manifest.states[fallback]!)  // required states exist after validation
+    }
+
+    /// Like `resolve(_:)`, wearing `outfit` when the skin has it (skins
+    /// without that outfit just show the plain clip).
+    public func resolve(_ name: String, outfit: String?) -> (name: String, clip: Clip) {
+        let plain = resolve(name)
+        guard let outfit, let spec = manifest.outfits?[outfit] else { return plain }
+        let clip = plain.clip
+        return (plain.name, Clip(row: clip.row + spec.offset, frames: clip.frames, fps: clip.fps, loop: clip.loop))
     }
 
     /// Actions the app plays for a reason of its own, never at random.

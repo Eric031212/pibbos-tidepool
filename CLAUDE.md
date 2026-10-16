@@ -47,6 +47,7 @@ xcodegen generate                            # after changing project.yml or add
 xcodebuild -scheme Tidepool -configuration Debug -derivedDataPath build build
 open build/Build/Products/Debug/Tidepool.app
 open build/Build/Products/Debug/Tidepool.app --args --demo   # everything sped up, for trying things out
+open build/Build/Products/Debug/Tidepool.app --args --holiday halloween   # preview a holiday outfit
 ```
 
 Builds are ad-hoc signed until a Developer ID certificate exists. Login-item registration only happens when the app runs from `/Applications` or `~/Applications`, so development builds never register themselves.
@@ -79,7 +80,11 @@ Builds are ad-hoc signed until a Developer ID certificate exists. Login-item reg
 
 ### Optional actions (skins may omit these; missing ones fall back to `chill`)
 
-System actions are never picked at random: `unplug` (headphones off, plays once) when music stops; `backfloat` (on his back with a rising heart), `holdpaw` (raised paw, swaying) and `look` (glances at a splash) for play; `ripple` is a one-shot splash effect drawn over the water. Provided by the bundled skin (v0.2.0): `water` (waters his flower), `crack` (cracks a shell with a rock), `groom`, `stretch`, `yawn`, `sunbathe` (sunglasses), `raindrops` (rain), `cocoa` (snow), `huddle` (storm), `leaf` (autumn), `petal` (spring), `stargaze` (clear night). Which ones fit the moment is decided by `World.ActionRules`. Holiday outfits come later.
+System actions are never picked at random: `unplug` (headphones off, plays once) when music stops; `backfloat` (on his back with a rising heart), `holdpaw` (raised paw, swaying) and `look` (glances at a splash) for play; `ripple` is a one-shot splash effect drawn over the water. Provided by the bundled skin (v0.2.0): `water` (waters his flower), `crack` (cracks a shell with a rock), `groom`, `stretch`, `yawn`, `sunbathe` (sunglasses), `raindrops` (rain), `cocoa` (snow), `huddle` (storm), `leaf` (autumn), `petal` (spring), `stargaze` (clear night). Which ones fit the moment is decided by `World.ActionRules`.
+
+### Holiday outfits (v0.3.2)
+
+Every clip exists once more per outfit, wearing a small 3-row hat that sits *on* the head (a 16×16 frame has only one free row above it): pumpkin hat (`halloween`), Santa hat (`christmas`), party hat (`newYear`), red flower knot (`lunarNewYear`). `Tools/generate_sprites.py` stamps the hat on the topmost run of 4+ outline pixels, so it follows the head in every pose (peek, hidden, back-float, …); `submerged` and `ripple` have no otter and stay plain. The manifest's `outfits` key maps each holiday to a row offset (Section 11).
 
 ### The flower (decided 2026-10-12)
 
@@ -265,7 +270,7 @@ Implementations: `BuiltInLofiSource`, `AppleMusicWatcher`, `SpotifyWatcher`. `Br
 - **Season:** from the date and hemisphere (sign of the latitude from Section 8's coordinate)
 - **Time of day:** dawn / day / dusk / night, computed locally from the coordinate with the sunrise equation (civil twilight = −6°); no network needed; affects actions and lighting on the water
 - **Weather:** map MET Norway `symbol_code` to `clear / cloudy / rain / snow / storm` (mapping in the spike 5 result)
-- **Holidays:** a bundled holiday table, per region. No remote updates in v1.
+- **Holidays (v0.3.2):** `World.Holidays`, a bundled table keyed by the region setting; no remote updates. Halloween Oct 25–31, Christmas Dec 20–26, New Year Dec 31–Jan 2 (all regions); Lunar New Year from its eve to the 6th day (CN, TW, HK, MO, SG, MY, KR, VN), computed with the system's Chinese calendar. Checked at launch and at every time-of-day change. `--holiday <halloween|christmas|newYear|lunarNewYear>` forces one for testing.
 - Examples: snow → hot cocoa, steam rising; rain → Pibbo happily catches raindrops; Christmas → Santa hat
 
 ## 11. Content pack format (shared by skins and music)
@@ -304,6 +309,7 @@ Example `manifest.json`:
 - Sheet layout: one row per state/action in manifest order, frames left to right, each `frameSize`×`frameSize`. The sheet is as wide as the longest row; unused cells are transparent. The bottom 3 rows of every frame are water, so frames line up with the tide pool strip.
 - Optional `garden`: one row with one frame per flower growth stage (static, not animated), drawn to sit on Pibbo's left.
 - Optional `"loop": false` on a clip: play once and hold the last frame (used by `unplug`).
+- Optional `outfits`: `{"halloween": {"offset": 24}, …}`; the outfit version of a clip is at `row + offset`. Skins without an outfit show the plain clip.
 - Validate on load: reject skins missing a required state; missing optional actions fall back to `chill`
 - Packs live in `~/Library/Application Support/Tidepool/Packs/`
 - GitHub build: users drop pack folders into that directory manually

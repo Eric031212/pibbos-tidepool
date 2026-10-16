@@ -66,10 +66,13 @@ public struct WorldContext: Equatable, Sendable {
     public var season: Season
     /// nil until the first successful weather fetch, or when offline.
     public var weather: Weather?
+    /// The holiday Pibbo dresses up for today, if any.
+    public var holiday: Holiday?
 
-    public init(timeOfDay: TimeOfDay, season: Season, weather: Weather?) {
+    public init(timeOfDay: TimeOfDay, season: Season, weather: Weather?, holiday: Holiday? = nil) {
         self.timeOfDay = timeOfDay
         self.season = season
         self.weather = weather
+        self.holiday = holiday
     }
 }

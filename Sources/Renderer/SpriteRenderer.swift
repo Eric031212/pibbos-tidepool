@@ -20,6 +20,12 @@ final class SpriteRenderer {
     private(set) var currentClip: String?
     private var isPaused = false
 
+    /// Holiday outfit worn by every clip (nil = none). Setting it redraws
+    /// the current clip on the next `show`.
+    var outfit: String? {
+        didSet { if outfit != oldValue { currentClip = nil } }
+    }
+
     init(pack: SkinPack, scale: Int) throws {
         guard let image = NSImage(contentsOf: pack.spriteSheetURL)?
             .cgImage(forProposedRect: nil, context: nil, hints: nil) else {
@@ -48,11 +54,11 @@ final class SpriteRenderer {
 
     /// Shows a state or action by name, applying the pack's fallbacks.
     func show(_ name: String) {
-        let (resolvedName, clip) = pack.resolve(name)
+        let (resolvedName, clip) = pack.resolve(name, outfit: outfit)
         guard resolvedName != currentClip else { return }
         currentClip = resolvedName
 
-        let frames = self.frames(for: resolvedName, clip: clip)
+        let frames = self.frames(for: "\(resolvedName)#\(outfit ?? "")", clip: clip)
         layer.removeAnimation(forKey: "frames")
         layer.contents = frames.first
         guard frames.count > 1 else { return }

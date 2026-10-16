@@ -140,6 +140,7 @@ final class PetController {
     }
 
     private func worldChanged(_ context: WorldContext) {
+        renderer.outfit = context.holiday?.rawValue
         let provided = Set(pack.availableActions)
         let actions = ActionRules.actions(for: context).filter(provided.contains)
         brain.handle(.timeOfDayChanged(context.timeOfDay), at: Date())

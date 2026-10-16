@@ -129,5 +129,19 @@
   "garden": {
     "row": 23,
     "stages": 6
+  },
+  "outfits": {
+    "halloween": {
+      "offset": 24
+    },
+    "christmas": {
+      "offset": 47
+    },
+    "newYear": {
+      "offset": 70
+    },
+    "lunarNewYear": {
+      "offset": 93
+    }
   }
 }
