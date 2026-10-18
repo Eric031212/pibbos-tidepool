@@ -41,6 +41,8 @@ targets:
         buildPhase: resources
       - path: CREDITS.md
         buildPhase: resources
+      - path: Assets/AppIcon/AppIcon.icns
+        buildPhase: resources
     dependencies:
       - package: TidepoolCore
         products: [Brain, Content, Strings, World]
@@ -49,6 +51,7 @@ targets:
       properties:
         CFBundleName: Tidepool
         CFBundleDisplayName: Tidepool
+        CFBundleIconFile: AppIcon
         CFBundleShortVersionString: $(MARKETING_VERSION)
         CFBundleVersion: $(CURRENT_PROJECT_VERSION)
         LSUIElement: true

@@ -37,6 +37,8 @@ Tools/import_track.py              WAV master → app-ready CAF + beat map with 
 Tools/generate_promo.py            social-media posters (1080×1350) from the real sprites and pixel font → Marketing/promo/
 Tools/generate_promo_video.py      30 s vertical promo video (1080×1920, 30 fps, BGM "Floating Pibbo") → Marketing/video/ (needs ffmpeg)
 Tools/generate_placeholder_lofi.py synthesizes a placeholder lofi loop (stdlib + afconvert), for testing without tracks
+Tools/package_dmg.py               universal Release build → dist/PibbosTidepool-<version>.dmg (drag-to-install; Developer ID signing + notarization when SIGN_IDENTITY / NOTARY_PROFILE are set)
+Assets/AppIcon/                    AppIcon.icns + AppIcon.png, drawn by Tools/generate_sprites.py
 ```
 
 ### Building
@@ -339,7 +341,7 @@ Example `manifest.json`:
 ## 13. Distribution
 
 - **First release (decided 2026-10-12):** open source on GitHub, used by the developer and friends for a while. The Steam build and spike 7 are deferred until then.
-- **GitHub build:** Developer ID signing + notarization; consider Sparkle for updates later
+- **GitHub build:** a DMG on each GitHub release (since v0.4.0), made by `Tools/package_dmg.py`: universal (arm64 + x86_64), app + `Applications` link + `First launch.txt`. Ad-hoc signed for now, so a downloaded copy is blocked on first launch (`spctl` says rejected) until the user clicks Open Anyway in System Settings → Privacy & Security; README explains it. Once a Developer ID exists, set `SIGN_IDENTITY` and `NOTARY_PROFILE` and the same tool signs, notarizes and staples. Consider Sparkle for updates later
 - **Steam build:** integrate the Steamworks SDK (C++, bridged into Swift) and use the UGC API for the Workshop. Note: requires the Steam client to be running.
 - Both builds share one codebase; a build flag enables the `Steam/` module
 
@@ -470,7 +472,7 @@ Code: `Spikes/06-launch-at-login/`. `run.sh register|unregister|status` installs
 1. Bump `MARKETING_VERSION` and `CURRENT_PROJECT_VERSION` in `project.yml`; update README (features, status line) and this file.
 2. `swift test` (all pass) → `xcodegen generate` → Release build → check `CFBundleShortVersionString` in the built Info.plist.
 3. Launch the Release build; after Pibbo hides, `top -c d -pid <pid>` should show ~0 % CPU and ~0 idle wakeups.
-4. Commit with a summary message → push `main` → annotated tag `vX.Y.Z` → push the tag → `gh release create vX.Y.Z` with casual emoji notes (mention "build from source" until a signed build exists; credit Suno / MET Norway).
+4. Commit with a summary message → push `main` → annotated tag `vX.Y.Z` → push the tag → `python3 Tools/package_dmg.py` → `gh release create vX.Y.Z dist/PibbosTidepool-X.Y.Z.dmg` with casual emoji notes (point to the README's Open Anyway steps until a notarized build exists; credit Suno / MET Norway).
 5. Releases so far: v0.1.0 app shell · v0.2.0 actions, flower, pixel UI · v0.3.0 themed radio, ticker, drag · v0.3.1 mouse play · v0.3.2 holiday outfits · v0.3.3 smooth transitions · v0.4.0 second theme "Solo Float", nodding to the beat.
 
 ## 16. Open items
@@ -484,6 +486,8 @@ Code: `Spikes/06-launch-at-login/`. `run.sh register|unregister|status` installs
 - [x] MET Norway attribution (CC BY 4.0): README + `CREDITS.md` (bundled in the app)
 - [x] "Login Item Added" notification on first launch: accepted (spike 6)
 - [x] Open-source license: GPL-3.0; public repo `pibbos-tidepool` on GitHub, first tag v0.1.0
+- [ ] Apple Developer account + Developer ID certificate (human task) → notarized DMG with no Open Anyway step (`Tools/package_dmg.py` is ready for it)
+- [ ] Test the x86_64 slice on an Intel Mac or with Rosetta (the dev Mac has neither)
 - [ ] Re-test launch at login with a Developer ID-signed build in `/Applications` (spike 6 used an ad-hoc-signed app in `~/Applications`)
 - [x] Privacy note in README (IP → ipwho.is, ~1 km coordinate → MET Norway); repeat it on a store page later
 - [x] Built-in lofi tracks: 24 tracks in 2 themes, ~75 min (planned 1–2 hours)

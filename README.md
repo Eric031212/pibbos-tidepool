@@ -33,6 +33,17 @@ Everything you see, from the otter to the little speech bubbles and the font, is
 
 **v0.4.0, still early!** More lofi themes on the way 🎶
 
+## Download
+
+1. Grab `PibbosTidepool-<version>.dmg` from the [latest release](https://github.com/Eric031212/pibbos-tidepool/releases/latest) 📦 (macOS 13+, Apple silicon and Intel)
+2. Open it and drag **Tidepool** into **Applications**
+3. Open Tidepool from Applications
+
+🔐 Tidepool isn't signed with an Apple Developer ID yet, so the first time macOS says it can't check it for malware. To let Pibbo in (just once):
+**System Settings → Privacy & Security** → scroll down → *"Tidepool was blocked…"* → **Open Anyway** → enter your password.
+
+After that he shows up by himself every time you log in (macOS shows a one-time "Login Item Added" note, that's normal 👍).
+
 ## Build it yourself
 
 You'll need macOS 13+, Xcode, and [XcodeGen](https://github.com/yonaskolb/XcodeGen) (`brew install xcodegen`).
@@ -43,13 +54,12 @@ xcodebuild -scheme Tidepool -configuration Release -derivedDataPath build build
 open build/Build/Products/Release/Tidepool.app
 ```
 
-Drop `Tidepool.app` into `/Applications` and Pibbo will show up every time you log in
-(macOS shows a one-time "Login Item Added" note, that's normal 👍).
+Drop `Tidepool.app` into `/Applications` and Pibbo will show up every time you log in.
 Click Pibbo → `Swim away 👋` to quit.
 
 Impatient? `open Tidepool.app --args --demo` speeds everything up so you can see it all in a few minutes. ⏩
 
-Run the tests with `swift test`.
+Run the tests with `swift test`. Make the download DMG with `python3 Tools/package_dmg.py` → `dist/`.
 
 ## Privacy
 

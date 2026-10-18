@@ -9,6 +9,7 @@ and manifest keys.
 Outputs:
     Assets/Skins/pibbo/   sprites.png, manifest.json, preview.gif, sprites@8x.png
     Assets/UI/            ui.png + ui.json (pixel font, emoji icons, speech bubble)
+    Assets/AppIcon/       AppIcon.icns + AppIcon.png (Pibbo in his tide pool; needs macOS iconutil)
 
 Usage:
     python3 Tools/generate_sprites.py
@@ -16,6 +17,9 @@ Usage:
 Requires: Python 3.10+, Pillow
 """
 import json
+import shutil
+import subprocess
+import tempfile
 from pathlib import Path
 
 from PIL import Image, ImageDraw, ImageFont
@@ -23,6 +27,7 @@ from PIL import Image, ImageDraw, ImageFont
 ROOT = Path(__file__).resolve().parent.parent
 SKIN_DIR = ROOT / "Assets/Skins/pibbo"
 UI_DIR = ROOT / "Assets/UI"
+ICON_DIR = ROOT / "Assets/AppIcon"
 
 SIZE = 16  # frame size in pixels; the bottom 3 rows are water
 
@@ -849,6 +854,65 @@ def build_ui():
     (UI_DIR / "ui.json").write_text(json.dumps(meta, indent=1, ensure_ascii=False) + "\n")
 
 
+# ---------------------------------------------------------------- app icon
+
+ICON_TILE = 20  # pixel-art tile: Pibbo (16x16) with a little sky around him
+ICON_SKY = (255, 236, 205)
+ICON_SKY_LOW = (255, 216, 178)
+
+
+def icon_tile():
+    """Pibbo chilling in his pool, on a rounded tile."""
+    n = ICON_TILE
+    img = Image.new("RGBA", (n, n), (0, 0, 0, 0))
+    px = img.load()
+    for r in range(n):
+        for c in range(n):
+            px[c, r] = (ICON_SKY if r < 9 else ICON_SKY_LOW) + (255,)
+    pool = water([["."] * n for _ in range(16)], 1)  # water rows 13-15 of a 16-row strip
+    for r in range(13, 16):
+        for c in range(n):
+            px[c, r + 2] = PALETTE[pool[r][c % SIZE]] + (255,)
+    for c in range(n):
+        px[c, n - 2] = PALETTE["x"] + (255,)
+        px[c, n - 1] = PALETTE["x"] + (255,)
+    img.alpha_composite(to_image(frame_chill(0)), (2, 2))
+    sun = [(2, 15), (2, 16), (3, 15), (3, 16), (1, 14), (1, 17), (4, 14), (4, 17)]  # 2x2 sun, 4 sparkles
+    for r, c in sun:
+        px[c, r] = PALETTE["m"] + (255,)
+    # rounded corners: clear a 2-pixel staircase at each corner
+    for r, c in [(0, 0), (0, 1), (1, 0)]:
+        for rr, cc in [(r, c), (r, n - 1 - c), (n - 1 - r, c), (n - 1 - r, n - 1 - c)]:
+            px[cc, rr] = (0, 0, 0, 0)
+    return img
+
+
+def build_icon():
+    """AppIcon.icns: the tile on Apple's icon grid (824 of 1024 px), crisp."""
+    ICON_DIR.mkdir(parents=True, exist_ok=True)
+    tile = icon_tile()
+
+    def render(size):
+        canvas = Image.new("RGBA", (size, size), (0, 0, 0, 0))
+        cell = max(1, round(size * 824 / 1024 / ICON_TILE))
+        art = tile.resize((ICON_TILE * cell, ICON_TILE * cell), Image.NEAREST)
+        if art.width > size:  # tiny sizes: fit the whole tile
+            art = tile.resize((size, size), Image.NEAREST)
+        canvas.alpha_composite(art, ((size - art.width) // 2, (size - art.height) // 2))
+        return canvas
+
+    render(1024).save(ICON_DIR / "AppIcon.png")
+    if not shutil.which("iconutil"):
+        return
+    with tempfile.TemporaryDirectory() as tmp:
+        iconset = Path(tmp) / "AppIcon.iconset"
+        iconset.mkdir()
+        for base_size in (16, 32, 128, 256, 512):
+            render(base_size).save(iconset / f"icon_{base_size}x{base_size}.png")
+            render(base_size * 2).save(iconset / f"icon_{base_size}x{base_size}@2x.png")
+        subprocess.run(["iconutil", "-c", "icns", str(iconset), "-o", str(ICON_DIR / "AppIcon.icns")], check=True)
+
+
 # ---------------------------------------------------------------- skin
 
 def build_skin():
@@ -950,7 +1014,8 @@ def write_gif(items, path, ticks, tick=1 / 12):
 def main():
     build_skin()
     build_ui()
-    print(f"wrote {SKIN_DIR.relative_to(ROOT)} and {UI_DIR.relative_to(ROOT)}")
+    build_icon()
+    print(f"wrote {SKIN_DIR.relative_to(ROOT)}, {UI_DIR.relative_to(ROOT)} and {ICON_DIR.relative_to(ROOT)}")
 
 
 if __name__ == "__main__":
