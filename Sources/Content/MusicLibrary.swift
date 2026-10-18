@@ -11,6 +11,8 @@ public struct MusicLibrary: Sendable {
         public let title: String
         public let url: URL
         public let bpm: Double?
+        /// Seconds from the start of the track to its first beat.
+        public var offset: Double? = nil
     }
 
     public struct Theme: Equatable, Sendable {
@@ -31,6 +33,7 @@ public struct MusicLibrary: Sendable {
         let track: String
         let title: String?
         let bpm: Double?
+        let offset: Double?
     }
 
     /// Reads every theme folder; folders without theme.json or tracks are skipped.
@@ -50,7 +53,7 @@ public struct MusicLibrary: Sendable {
                           let map = try? JSONDecoder().decode(BeatMap.self, from: data) else { return nil }
                     let audio = folder.appendingPathComponent(map.track)
                     guard fm.fileExists(atPath: audio.path) else { return nil }
-                    return Track(title: map.title ?? audio.deletingPathExtension().lastPathComponent, url: audio, bpm: map.bpm)
+                    return Track(title: map.title ?? audio.deletingPathExtension().lastPathComponent, url: audio, bpm: map.bpm, offset: map.offset)
                 }
             themes.append(Theme(title: theme.title, tracks: tracks))
         }

@@ -23,6 +23,13 @@ final class SpriteRenderer {
     private var gardenVisible = true
     private var isPaused = false
 
+    /// Beats of the built-in track playing now: clips with `beats` (the
+    /// `music` bob) play in time with it. Changing it re-syncs at once.
+    var beat: BeatSync? {
+        didSet { if currentClipHasBeats { restartCurrentClip() } }
+    }
+    private var currentClipHasBeats = false
+
     /// Holiday outfit worn by every clip (nil = none). Setting it redraws
     /// the current clip on the next `show`.
     var outfit: String? {
@@ -80,6 +87,7 @@ final class SpriteRenderer {
         guard resolvedName != currentClip else { return }
         let previous = currentClip
         currentClip = resolvedName
+        currentClipHasBeats = clip.beats != nil
         transitionDuration = 0
 
         let frames = self.frames(for: "\(resolvedName)#\(outfit ?? "")", clip: clip)
@@ -87,7 +95,8 @@ final class SpriteRenderer {
         layer.removeAnimation(forKey: "frames")
         layer.contents = clip.loops ? frames.first : frames.last
 
-        var start = layer.convertTime(CACurrentMediaTime(), from: nil)
+        let now = layer.convertTime(CACurrentMediaTime(), from: nil)
+        var start = now
         if let previous, let between = pack.transition(from: previous, to: resolvedName, outfit: outfit) {
             let inBetween = self.frames(for: "\(previous)>\(resolvedName)#\(outfit ?? "")", clip: between)
             if !inBetween.isEmpty {
@@ -103,6 +112,12 @@ final class SpriteRenderer {
         // Added after the in-between, so it wins once it begins.
         let animation = keyframes(frames, fps: clip.fps)
         animation.beginTime = start
+        if let beats = clip.beats, let beat {
+            // One loop per `beats` beats, entered mid-loop so frame 0 lands on a beat.
+            animation.duration = beat.grid.beatLength * Double(beats)
+            let trackTime = CACurrentMediaTime() + (start - now) - beat.trackStart
+            animation.timeOffset = beat.grid.phase(at: trackTime, beats: beats)
+        }
         if clip.loops {
             animation.repeatCount = .infinity
         } else {
@@ -142,6 +157,13 @@ final class SpriteRenderer {
         }
     }
 
+    /// Starts the current clip over (no in-between), e.g. to re-sync its beat.
+    private func restartCurrentClip() {
+        guard let name = currentClip else { return }
+        currentClip = nil
+        show(name)
+    }
+
     func pause() {
         guard !isPaused else { return }
         isPaused = true
@@ -157,6 +179,8 @@ final class SpriteRenderer {
         layer.timeOffset = 0
         layer.beginTime = 0
         layer.beginTime = layer.convertTime(CACurrentMediaTime(), from: nil) - pausedAt
+        // The music kept playing while we were paused: catch up with its beat.
+        if currentClipHasBeats, beat != nil { restartCurrentClip() }
     }
 
     private func frames(for name: String, clip: Clip) -> [CGImage] {

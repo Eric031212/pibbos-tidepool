@@ -24,7 +24,8 @@
     "music": {
       "row": 3,
       "frames": 4,
-      "fps": 6
+      "fps": 6,
+      "beats": 2
     },
     "sleep": {
       "row": 4,

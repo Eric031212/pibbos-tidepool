@@ -238,7 +238,7 @@ Goal: **the app never triggers a system permission prompt.**
 - **No song picking, on purpose:** every start (menu or bubble) is a random theme in shuffled order (`Content.RadioPlan`); when a theme runs out, another theme follows (a different one when there is more than one). Fewer clicks, no choice paralysis.
 - **Now playing:** while the radio plays, a fixed-width pixel bubble above the tide pool (same width and edges as the pool, tail over Pibbo, ♪ icon) scrolls "theme - track" inside a fixed window. The scroll is one discrete Core Animation keyframe animation stepping one art pixel at a time: crisp, and no timers in our process. It shows for ~15 s when a track starts and while the mouse is on Pibbo (+3 s after), so it stays quiet the rest of the time.
 - **Gentle start and stop:** tracks fade in over 1 s. "Tunes off" fades the volume to silence over 1.6 s while Pibbo plays `unplug` (headphones off), then pauses. When external music (Apple Music) stops, Pibbo also plays `unplug`; its volume can't be faded because external playback is read only.
-- Current set: theme "Pibbo's Raft Days", 12 tracks, ~37 min, 35 MB (2026-10-13). Estimated tempos are mostly 60–80 bpm; "Pibbo's Night" and "Holding Paws" came out ~120, likely double-time of ~60 (half-time feel). Confirm by ear before writing cues.
+- Current set: "Pibbo's Raft Days" (12 tracks, ~37 min, 35 MB, 2026-10-13) and "Solo Float" (12 tracks, ~37 min, 35 MB, 2026-10-17). Estimated tempos are mostly 60–83 bpm; "Pibbo's Night", "Holding Paws" and "Lights Off" came out ~120, likely double-time of ~60 (half-time feel). Confirm by ear before writing cues.
 - `Tools/generate_placeholder_lofi.py` can still synthesize a 27 s placeholder loop for testing.
 - Never plays automatically; the user starts it from the menu or the invitation bubble
 
@@ -258,6 +258,8 @@ Each built-in track has a JSON file describing tempo and action cues:
 ```
 
 BPM and offset are computed offline by `Tools/import_track.py` (numpy: spectral-flux onsets + autocorrelation; librosa was not needed) and should be checked by ear. No audio analysis at runtime. `title` holds the display name. Cues are not used by the app yet.
+
+**Nodding along (built-in only):** while the radio plays a track with a beat map, the `music` clip runs in time with it: one nod per beat, head down on the beat. `Content.BeatGrid` folds the bpm into 50–100 (so ~120 estimates nod at ~60) and gives the phase; the renderer sets the clip's duration from the tempo and enters it at that phase with `timeOffset`. It is set once per track, re-synced after a pause, and needs no timers. External music keeps the plain `fps` bob.
 
 ### Common interface
 
@@ -313,6 +315,7 @@ Example `manifest.json`:
 - Sheet layout: one row per state/action in manifest order, frames left to right, each `frameSize`×`frameSize`. The sheet is as wide as the longest row; unused cells are transparent. The bottom 3 rows of every frame are water, so frames line up with the tide pool strip.
 - Optional `garden`: one row with one frame per flower growth stage (static, not animated), drawn to sit on Pibbo's left.
 - Optional `"loop": false` on a clip: play once and hold the last frame (used by `unplug`).
+- Optional `"beats": n` on a clip: one loop spans n beats; with built-in music the app plays it in time with the track instead of at `fps` (used by `music`, n = 2).
 - Optional `outfits`: `{"halloween": {"offset": 24}, …}`; the outfit version of a clip is at `row + offset`. Skins without an outfit show the plain clip.
 - Optional `poses` + `transitions` (smooth switches): `poses` maps each clip to a body pose (`under`, `low`, `peek`, `up`, `back`); `transitions` holds in-between clips (played once, then the new clip takes over, scheduled in Core Animation with no timers) keyed `"from>to"`, each side a clip name or `@pose`. Most specific wins: `a>b`, `@poseA>b`, `a>@poseB`, `@poseA>@poseB`; no key means a straight cut. Keep each under ~0.6 s, because Brain's timings start when the clip is shown. Outfits apply to transitions too. `preview-transitions.gif` shows them all.
 - Validate on load: reject skins missing a required state; missing optional actions fall back to `chill`
@@ -460,7 +463,7 @@ Code: `Spikes/06-launch-at-login/`. `run.sh register|unregister|status` installs
 - New features are proposed first and built only after a yes (Principle 1). Present options with a recommendation; flag anything that conflicts with this file instead of changing the design silently.
 - Hand-off for testing: build, launch the app yourself, then give a short numbered checklist of what to try. `open` on an already-running app ignores `--args`, so relaunch with `pkill -x Tidepool; open … --args …`. `--demo` speeds everything up; `--holiday <name>` previews an outfit.
 - The repo is **public**: never put personal data (city or location, machine host name, email) in files, test fixtures, or commit messages. Commits use the repo-local identity already set in `.git/config`; don't change it.
-- Music: new tracks arrive as WAVs in `Assets/MusicMasters/<Theme Name>/` → `python3 Tools/import_track.py`. Art: edit `Tools/generate_sprites.py` and rerun; rerun `Tools/generate_promo.py` / `Tools/generate_promo_video.py` when the promo material should follow.
+- Music: new tracks arrive as WAVs in `Assets/MusicMasters/<Theme Name>/` → `python3 Tools/import_track.py`. It re-encodes every theme and the old CAFs come out byte-different (same audio): `git checkout -- Assets/Music/<old-theme>` afterwards so only the new theme is committed. Art: edit `Tools/generate_sprites.py` and rerun; rerun `Tools/generate_promo.py` / `Tools/generate_promo_video.py` when the promo material should follow.
 
 ### Release checklist (only when the developer says to release)
 
@@ -468,7 +471,7 @@ Code: `Spikes/06-launch-at-login/`. `run.sh register|unregister|status` installs
 2. `swift test` (all pass) → `xcodegen generate` → Release build → check `CFBundleShortVersionString` in the built Info.plist.
 3. Launch the Release build; after Pibbo hides, `top -c d -pid <pid>` should show ~0 % CPU and ~0 idle wakeups.
 4. Commit with a summary message → push `main` → annotated tag `vX.Y.Z` → push the tag → `gh release create vX.Y.Z` with casual emoji notes (mention "build from source" until a signed build exists; credit Suno / MET Norway).
-5. Releases so far: v0.1.0 app shell · v0.2.0 actions, flower, pixel UI · v0.3.0 themed radio, ticker, drag · v0.3.1 mouse play · v0.3.2 holiday outfits · v0.3.3 smooth transitions.
+5. Releases so far: v0.1.0 app shell · v0.2.0 actions, flower, pixel UI · v0.3.0 themed radio, ticker, drag · v0.3.1 mouse play · v0.3.2 holiday outfits · v0.3.3 smooth transitions · v0.4.0 second theme "Solo Float", nodding to the beat.
 
 ## 16. Open items
 
@@ -483,6 +486,6 @@ Code: `Spikes/06-launch-at-login/`. `run.sh register|unregister|status` installs
 - [x] Open-source license: GPL-3.0; public repo `pibbos-tidepool` on GitHub, first tag v0.1.0
 - [ ] Re-test launch at login with a Developer ID-signed build in `/Applications` (spike 6 used an ad-hoc-signed app in `~/Applications`)
 - [x] Privacy note in README (IP → ipwho.is, ~1 km coordinate → MET Norway); repeat it on a store page later
-- [ ] Built-in lofi tracks: 12 tracks, ~37 min of the planned 1–2 hours
+- [x] Built-in lofi tracks: 24 tracks in 2 themes, ~75 min (planned 1–2 hours)
 - [x] Pibbo sprite art: drawn by code in `Tools/generate_sprites.py` (v0.2.0)
 - [ ] Display name: "Tidepool" or "Pibbo's Tidepool"

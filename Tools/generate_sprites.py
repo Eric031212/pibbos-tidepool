@@ -187,7 +187,7 @@ def frame_music(i):
     g = base()
     eyes(g, "closed")
     headphones(g)
-    g = shift(g, [0, 1, 0, 1][i])  # the gentle bob lives in the frames
+    g = shift(g, [1, 0, 1, 0][i])  # the gentle bob lives in the frames; head down on the beat
     note = [(1, 14), (2, 14), (1, 15)] if i < 2 else [(0, 15), (1, 15), (0, 14)]
     put(g, note, "m")
     return water(g, i)
@@ -690,6 +690,9 @@ ACTIONS = {
 
 # Clips that play once and hold their last frame.
 ONE_SHOT = {"unplug", "ripple"}
+# Beats one loop spans: with built-in music, the app plays these in time with
+# the track (one nod per beat) instead of at their fps.
+CLIP_BEATS = {"music": 2}
 
 
 def to_image(grid, palette=PALETTE):
@@ -894,6 +897,8 @@ def build_skin():
         manifest[key][name] = {"row": row, "frames": n, "fps": fps}
         if name in ONE_SHOT or key == "transitions":
             manifest[key][name]["loop"] = False
+        if name in CLIP_BEATS:
+            manifest[key][name]["beats"] = CLIP_BEATS[name]
     (SKIN_DIR / "manifest.json").write_text(json.dumps(manifest, indent=2) + "\n")
 
     write_previews(entries, frames, garden, sheet)

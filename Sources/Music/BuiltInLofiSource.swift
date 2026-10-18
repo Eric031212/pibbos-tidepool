@@ -1,6 +1,14 @@
 import AVFoundation
 import Brain
 import Content
+import QuartzCore
+
+/// The beats of the track playing now, anchored to `CACurrentMediaTime()`.
+struct BeatSync {
+    let grid: BeatGrid
+    /// Media time at which the track was at 0 s.
+    let trackStart: CFTimeInterval
+}
 
 /// The built-in lofi radio (CLAUDE.md Section 9). Never starts on its own:
 /// only from the menu or the `Music Time? 🎧` bubble. The listener never
@@ -21,6 +29,8 @@ final class BuiltInLofiSource: NSObject, MusicSource, AVAudioPlayerDelegate {
 
     /// "theme - track" of what is playing, for the scrolling bubble.
     private(set) var nowPlaying: String?
+    /// Beats of the current track (nil without a beat map or when stopped).
+    private(set) var beat: BeatSync?
 
     var isAvailable: Bool { !library.isEmpty }
     /// True while playing, false once a fade-out has begun.
@@ -63,6 +73,7 @@ final class BuiltInLofiSource: NSObject, MusicSource, AVAudioPlayerDelegate {
             self.player?.stop()
             self.player = nil
             self.nowPlaying = nil
+            self.beat = nil
             self.continuation.yield(.paused)
         }
         RunLoop.main.add(timer, forMode: .common)
@@ -80,6 +91,9 @@ final class BuiltInLofiSource: NSObject, MusicSource, AVAudioPlayerDelegate {
         player.play()
         player.setVolume(volume, fadeDuration: fadeInDuration)
         self.player = player
+        beat = BeatGrid(bpm: track.bpm, offset: track.offset).map {
+            BeatSync(grid: $0, trackStart: CACurrentMediaTime() - player.currentTime)
+        }
         nowPlaying = "\(theme) - \(track.title)"
         continuation.yield(.trackChanged)
     }

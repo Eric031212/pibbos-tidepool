@@ -132,6 +132,7 @@ final class PetController {
     }
 
     private func musicEvent(_ event: MusicEvent, from source: MusicSource) {
+        if source === lofi { renderer.beat = lofi.beat }
         send(.musicChanged(source: source.id, playing: event != .paused))
         if source === lofi, event == .trackChanged {
             send(.builtInTrackStarted)

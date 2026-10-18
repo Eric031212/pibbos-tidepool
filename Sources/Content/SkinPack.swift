@@ -7,12 +7,16 @@ public struct Clip: Codable, Equatable, Sendable {
     public let fps: Double
     /// `false`: play once and hold the last frame (e.g. `unplug`). Default true.
     public let loop: Bool?
+    /// Beats one loop spans. When set, the app may play the clip in time
+    /// with built-in music instead of at `fps` (the `music` bob).
+    public let beats: Int?
 
-    public init(row: Int, frames: Int, fps: Double, loop: Bool? = nil) {
+    public init(row: Int, frames: Int, fps: Double, loop: Bool? = nil, beats: Int? = nil) {
         self.row = row
         self.frames = frames
         self.fps = fps
         self.loop = loop
+        self.beats = beats
     }
 
     public var loops: Bool { loop ?? true }
@@ -125,7 +129,7 @@ public struct SkinPack: Sendable {
         guard missing.isEmpty else { throw SkinError.missingStates(missing) }
         let all = manifest.states.merging(manifest.actions ?? [:]) { state, _ in state }
             .merging(manifest.transitions ?? [:]) { clip, _ in clip }
-        for (name, clip) in all where clip.row < 0 || clip.frames < 1 || clip.fps <= 0 {
+        for (name, clip) in all where clip.row < 0 || clip.frames < 1 || clip.fps <= 0 || (clip.beats ?? 1) < 1 {
             throw SkinError.invalidClip(name)
         }
         if let garden = manifest.garden, garden.row < 0 || garden.stages < 1 {
@@ -152,7 +156,7 @@ public struct SkinPack: Sendable {
         let plain = resolve(name)
         guard let outfit, let spec = manifest.outfits?[outfit] else { return plain }
         let clip = plain.clip
-        return (plain.name, Clip(row: clip.row + spec.offset, frames: clip.frames, fps: clip.fps, loop: clip.loop))
+        return (plain.name, Clip(row: clip.row + spec.offset, frames: clip.frames, fps: clip.fps, loop: clip.loop, beats: clip.beats))
     }
 
     /// The in-between clip to play once when switching from one resolved clip

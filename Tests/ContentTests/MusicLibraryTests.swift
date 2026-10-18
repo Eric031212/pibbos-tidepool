@@ -69,3 +69,22 @@ final class MusicLibraryTests: XCTestCase {
         XCTAssertEqual(pack.resolve("unplug").clip.loops, false)
     }
 }
+
+final class BeatGridTests: XCTestCase {
+    func testFoldsTempoIntoNoddingRange() throws {
+        XCTAssertEqual(try XCTUnwrap(BeatGrid(bpm: 78, offset: 0.5)).bpm, 78)
+        XCTAssertEqual(try XCTUnwrap(BeatGrid(bpm: 120, offset: 0)).bpm, 60, "double-time estimate is halved")
+        XCTAssertEqual(try XCTUnwrap(BeatGrid(bpm: 40, offset: 0)).bpm, 80)
+        XCTAssertNil(BeatGrid(bpm: nil, offset: 0))
+        XCTAssertNil(BeatGrid(bpm: 0, offset: 0))
+        XCTAssertEqual(BeatGrid(bpm: 60, offset: nil)?.offset, 0)
+    }
+
+    func testPhaseLandsOnBeats() throws {
+        let grid = try XCTUnwrap(BeatGrid(bpm: 60, offset: 0.5))  // a beat every second
+        XCTAssertEqual(grid.phase(at: 0.5, beats: 2), 0, accuracy: 1e-9, "first beat")
+        XCTAssertEqual(grid.phase(at: 2.5, beats: 2), 0, accuracy: 1e-9, "two beats later: loop restarts")
+        XCTAssertEqual(grid.phase(at: 1.75, beats: 2), 1.25, accuracy: 1e-9)
+        XCTAssertEqual(grid.phase(at: 0.25, beats: 2), 1.75, accuracy: 1e-9, "before the first beat")
+    }
+}

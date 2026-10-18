@@ -16,9 +16,10 @@ No to-dos, no timers, no chat. Just a little company while you do your thing.
 - 🐚 floats around and keeps busy: cracks shells, grooms, waters his flower
 - 🌷 his flower grows a little every day (no chores, it never wilts)
 - ☀️🌧❄️ reacts to your weather, the season and the time of day: sunglasses in the sun, catching raindrops, hot cocoa in the snow, stargazing at night
+- 🎶 nods along to the beat of his own radio
 - 🎧 puts on headphones when Apple Music is playing, and takes them off when it stops
 - 📻 every now and then asks `Music Time? 🎧` and plays his own lofi radio: a random theme, shuffled, no song picking needed. A little pixel ticker shows what's playing ♪
-- 🌙 first theme: *Pibbo's Raft Days*, 12 cozy tracks, ~37 minutes
+- 🌙 two themes so far: *Pibbo's Raft Days* and *Solo Float*, 24 cozy tracks, ~75 minutes
 - 🎃🎅🎉🧧 dresses up for the holidays: pumpkin hat for Halloween, Santa hat for Christmas, party hat for New Year, a red flower knot for Lunar New Year
 - 🫧 `Dive time 🫧` sends him underwater until you click him again
 - 😴 naps when you step away
@@ -30,7 +31,7 @@ Everything you see, from the otter to the little speech bubbles and the font, is
 
 ## Status
 
-**v0.3.3, still early!** More lofi themes on the way 🎶
+**v0.4.0, still early!** More lofi themes on the way 🎶
 
 ## Build it yourself
 
