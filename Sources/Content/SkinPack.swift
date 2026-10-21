@@ -53,11 +53,15 @@ public struct SkinManifest: Codable, Equatable, Sendable {
     public let transitions: [String: Clip]?
     /// Holiday extras played over the flower's cell, keyed like `outfits`.
     public let decor: [String: Clip]?
+    /// Water colours per time of day ("dawn", "dusk", "night"): hex RGB →
+    /// hex RGB. Missing times keep the sheet's own colours.
+    public let water: [String: [String: String]]?
 
     public init(id: String, name: String, author: String, version: String, type: String,
                 frameSize: Int, states: [String: Clip], actions: [String: Clip]?, garden: GardenSpec? = nil,
                 outfits: [String: OutfitSpec]? = nil, poses: [String: String]? = nil,
-                transitions: [String: Clip]? = nil, decor: [String: Clip]? = nil) {
+                transitions: [String: Clip]? = nil, decor: [String: Clip]? = nil,
+                water: [String: [String: String]]? = nil) {
         self.id = id
         self.name = name
         self.author = author
@@ -71,6 +75,7 @@ public struct SkinManifest: Codable, Equatable, Sendable {
         self.poses = poses
         self.transitions = transitions
         self.decor = decor
+        self.water = water
     }
 }
 
@@ -185,6 +190,12 @@ public struct SkinPack: Sendable {
     public func decor(for holiday: String?) -> Clip? {
         guard let holiday, manifest.garden != nil else { return nil }
         return manifest.decor?[holiday]
+    }
+
+    /// How to colour the water at a time of day, or nil to keep the sheet's colours.
+    public func waterTint(for timeOfDay: String?) -> WaterTint? {
+        guard let timeOfDay, let map = manifest.water?[timeOfDay] else { return nil }
+        return WaterTint(hex: map)
     }
 
     /// Actions the app plays for a reason of its own, never at random.

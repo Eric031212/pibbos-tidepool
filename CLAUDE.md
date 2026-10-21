@@ -50,6 +50,7 @@ xcodebuild -scheme Tidepool -configuration Debug -derivedDataPath build build
 open build/Build/Products/Debug/Tidepool.app
 open build/Build/Products/Debug/Tidepool.app --args --demo   # everything sped up, for trying things out
 open build/Build/Products/Debug/Tidepool.app --args --holiday halloween   # preview a holiday outfit
+open build/Build/Products/Debug/Tidepool.app --args --time night          # force dawn / day / dusk / night
 ```
 
 Builds are ad-hoc signed until a Developer ID certificate exists. Login-item registration only happens when the app runs from `/Applications` or `~/Applications`, so development builds never register themselves.
@@ -279,6 +280,7 @@ Implementations: `BuiltInLofiSource`, `AppleMusicWatcher`, `SpotifyWatcher`. `Br
 
 - **Season:** from the date and hemisphere (sign of the latitude from Section 8's coordinate)
 - **Time of day:** dawn / day / dusk / night, computed locally from the coordinate with the sunrise equation (civil twilight = −6°); no network needed; affects actions and lighting on the water
+- **Water light (v0.5.0):** the tide pool takes the colour of the time of day: misty pale blue with pink glints at dawn, blue by day, golden at dusk, deep blue with moon glints at night (tuned with the developer 2026-10-21: purple dawn looked odd). The skin's `water` key (Section 11) maps water colours per time; `Content.WaterTint` recolours only the bottom 3 rows of every frame in a copy of the sheet, once per time-of-day change (4 times a day), so splashes, steam and Pibbo keep their colours and idle cost stays zero. `preview-water.png` shows all four; `--time <dawn|day|dusk|night>` forces one.
 - **Weather:** map MET Norway `symbol_code` to `clear / cloudy / rain / snow / storm` (mapping in the spike 5 result)
 - **Holidays (v0.3.2):** `World.Holidays`, a bundled table keyed by the region setting; no remote updates. Halloween Oct 25–31, Christmas Dec 20–26, New Year Dec 31–Jan 2 (all regions); Lunar New Year from its eve to the 6th day (CN, TW, HK, MO, SG, MY, KR, VN), computed with the system's Chinese calendar. Checked at launch and at every time-of-day change. `--holiday <halloween|christmas|newYear|lunarNewYear>` forces one for testing.
 - Examples: snow → hot cocoa, steam rising; rain → Pibbo happily catches raindrops; Christmas → Santa hat
@@ -321,6 +323,7 @@ Example `manifest.json`:
 - Optional `"loop": false` on a clip: play once and hold the last frame (used by `unplug`).
 - Optional `"beats": n` on a clip: one loop spans n beats; with built-in music the app plays it in time with the track instead of at `fps` (used by `music`, n = 2).
 - Optional `outfits`: `{"halloween": {"offset": 24}, …}`; the outfit version of a clip is at `row + offset`. Skins without an outfit show the plain clip.
+- Optional `water`: `{"night": {"6fb7d9": "3a548a", …}, …}`, per time of day (`dawn`, `day`, `dusk`, `night`), hex RGB of a water colour → its replacement, applied to the bottom 3 rows of every frame only. Missing times keep the sheet's colours.
 - Optional `decor`: `{"halloween": {"row": …, "frames": 4, "fps": 3}}`, a looping clip drawn over the garden frame (transparent elsewhere) while that holiday is on. Needs a `garden`.
 - Optional `poses` + `transitions` (smooth switches): `poses` maps each clip to a body pose (`under`, `low`, `peek`, `up`, `back`); `transitions` holds in-between clips (played once, then the new clip takes over, scheduled in Core Animation with no timers) keyed `"from>to"`, each side a clip name or `@pose`. Most specific wins: `a>b`, `@poseA>b`, `a>@poseB`, `@poseA>@poseB`; no key means a straight cut. Keep each under ~0.6 s, because Brain's timings start when the clip is shown. Outfits apply to transitions too. `preview-transitions.gif` shows them all.
 - Validate on load: reject skins missing a required state; missing optional actions fall back to `chill`
@@ -338,6 +341,7 @@ Example `manifest.json`:
 - Memory: target under 40 MB
 - Animation: `CAKeyframeAnimation` on layer `contents`, rendered by the system. No timer-driven frame loop while idle.
 - Periodic work: idle check about every 30 s, weather every 1–3 h, all timers with tolerance
+- Network: every request (ipwho.is, MET Norway) runs in its own `URLSession`, invalidated when it finishes. A shared session kept its HTTP/3 (QUIC) connection open with keepalive wakeups (~1.5/s) after each request; found and fixed in v0.5.0
 - Pause everything when fullscreen, locked, or asleep
 - Verification: Activity Monitor "Energy Impact" stays low; spot-check with `powermetrics` or Instruments
 
@@ -466,7 +470,7 @@ Code: `Spikes/06-launch-at-login/`. `run.sh register|unregister|status` installs
 
 - The developer writes in Chinese; reply in Chinese. User-facing app text stays English (Section 6). README and release notes: short, casual, with emoji.
 - New features are proposed first and built only after a yes (Principle 1). Present options with a recommendation; flag anything that conflicts with this file instead of changing the design silently.
-- Hand-off for testing: build, launch the app yourself, then give a short numbered checklist of what to try. `open` on an already-running app ignores `--args`, so relaunch with `pkill -x Tidepool; open … --args …`. `--demo` speeds everything up; `--holiday <name>` previews an outfit.
+- Hand-off for testing: build, launch the app yourself, then give a short numbered checklist of what to try. `open` on an already-running app ignores `--args`, so relaunch with `pkill -x Tidepool; open … --args …`. `--demo` speeds everything up; `--holiday <name>` previews an outfit; `--time <dawn|day|dusk|night>` forces the time of day.
 - The repo is **public**: never put personal data (city or location, machine host name, email) in files, test fixtures, or commit messages. Commits use the repo-local identity already set in `.git/config`; don't change it.
 - Music: new tracks arrive as WAVs in `Assets/MusicMasters/<Theme Name>/` → `python3 Tools/import_track.py`. It re-encodes every theme and the old CAFs come out byte-different (same audio): `git checkout -- Assets/Music/<old-theme>` afterwards so only the new theme is committed. Art: edit `Tools/generate_sprites.py` and rerun; rerun `Tools/generate_promo.py` / `Tools/generate_promo_video.py` when the promo material should follow.
 
@@ -476,7 +480,7 @@ Code: `Spikes/06-launch-at-login/`. `run.sh register|unregister|status` installs
 2. `swift test` (all pass) → `xcodegen generate` → Release build → check `CFBundleShortVersionString` in the built Info.plist.
 3. Launch the Release build; after Pibbo hides, `top -c d -pid <pid>` should show ~0 % CPU and ~0 idle wakeups.
 4. Commit with a summary message → push `main` → annotated tag `vX.Y.Z` → push the tag → `python3 Tools/package_dmg.py` → `gh release create vX.Y.Z dist/PibbosTidepool-X.Y.Z.dmg` with casual emoji notes (point to the README's Open Anyway steps until a notarized build exists; credit Suno / MET Norway).
-5. Releases so far: v0.1.0 app shell · v0.2.0 actions, flower, pixel UI · v0.3.0 themed radio, ticker, drag · v0.3.1 mouse play · v0.3.2 holiday outfits · v0.3.3 smooth transitions · v0.4.0 second theme "Solo Float", nodding to the beat · v0.4.1 Halloween decor.
+5. Releases so far: v0.1.0 app shell · v0.2.0 actions, flower, pixel UI · v0.3.0 themed radio, ticker, drag · v0.3.1 mouse play · v0.3.2 holiday outfits · v0.3.3 smooth transitions · v0.4.0 second theme "Solo Float", nodding to the beat · v0.4.1 Halloween decor · v0.5.0 water light by time of day.
 
 ## 16. Open items
 

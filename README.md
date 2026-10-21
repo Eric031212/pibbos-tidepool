@@ -15,6 +15,7 @@ No to-dos, no timers, no chat. Just a little company while you do your thing.
 - 🌊 glides between moves: bobs up through the water, sinks back down, rolls over with a splash, slips his headphones on
 - 🐚 floats around and keeps busy: cracks shells, grooms, waters his flower
 - 🌷 his flower grows a little every day (no chores, it never wilts)
+- 🌅 his pool changes colour through the day: misty blue at dawn, blue by day, golden at dusk, moonlit deep blue at night
 - ☀️🌧❄️ reacts to your weather, the season and the time of day: sunglasses in the sun, catching raindrops, hot cocoa in the snow, stargazing at night
 - 🎶 nods along to the beat of his own radio
 - 🎧 puts on headphones when Apple Music is playing, and takes them off when it stops
@@ -31,7 +32,7 @@ Everything you see, from the otter to the little speech bubbles and the font, is
 
 ## Status
 
-**v0.4.1, still early!** More lofi themes on the way 🎶
+**v0.5.0, still early!** More lofi themes on the way 🎶
 
 ## Download
 

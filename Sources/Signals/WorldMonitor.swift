@@ -26,9 +26,17 @@ final class WorldMonitor {
         return Holiday(rawValue: args[i + 1])
     }()
 
+    /// `--time <dawn|day|dusk|night>` forces the time of day, for trying
+    /// out the water colours and time-based actions.
+    private static let forcedTimeOfDay: TimeOfDay? = {
+        let args = CommandLine.arguments
+        guard let i = args.firstIndex(of: "--time"), i + 1 < args.count else { return nil }
+        return TimeOfDay(rawValue: args[i + 1])
+    }()
+
     private var coordinate: Coordinate
     private let zoneCoordinate: Coordinate?
-    private let session: URLSession
+    private let sessionConfig: URLSessionConfiguration
     private var timeTimer: Timer?
     private var weatherTimer: Timer?
     private var lastModified: String?
@@ -44,7 +52,7 @@ final class WorldMonitor {
         let config = URLSessionConfiguration.ephemeral
         config.timeoutIntervalForRequest = 15
         config.httpAdditionalHeaders = ["User-Agent": Self.userAgent]
-        session = URLSession(configuration: config)
+        sessionConfig = config
         context = Self.makeContext(coordinate: coordinate, weather: nil)
     }
 
@@ -53,29 +61,38 @@ final class WorldMonitor {
         locate { [weak self] in self?.refreshWeather() }
     }
 
+    /// One request in its own session, invalidated as soon as it finishes:
+    /// requests are hours apart, and a session left open keeps its HTTP/3
+    /// (QUIC) connection alive with keepalive wakeups (Section 12).
+    private func fetch(_ request: URLRequest, completion: @escaping (Data?, URLResponse?) -> Void) {
+        let session = URLSession(configuration: sessionConfig)
+        session.dataTask(with: request) { data, response, _ in
+            DispatchQueue.main.async { completion(data, response) }
+        }.resume()
+        session.finishTasksAndInvalidate()
+    }
+
     // MARK: - Location
 
     private func locate(then next: @escaping () -> Void) {
         let request = URLRequest(url: URL(string: "https://ipwho.is/")!)
-        session.dataTask(with: request) { [weak self] data, _, _ in
-            DispatchQueue.main.async {
-                guard let self else { return }
-                if let data,
-                   let json = (try? JSONSerialization.jsonObject(with: data)) as? [String: Any],
-                   json["success"] as? Bool == true,
-                   let lat = json["latitude"] as? Double, let lon = json["longitude"] as? Double,
-                   (json["timezone"] as? [String: Any])?["id"] as? String == TimeZone.current.identifier {
-                    self.coordinate = Coordinate(latitude: lat, longitude: lon).rounded
-                } else if let zone = self.zoneCoordinate {
-                    // Offline, or the IP is elsewhere (VPN): trust the time zone.
-                    self.coordinate = zone.rounded
-                }
-                UserDefaults.standard.set([self.coordinate.latitude, self.coordinate.longitude], forKey: Self.coordinateKey)
-                self.publish(weather: self.context.weather)
-                self.scheduleTimeOfDay()
-                next()
+        fetch(request) { [weak self] data, _ in
+            guard let self else { return }
+            if let data,
+               let json = (try? JSONSerialization.jsonObject(with: data)) as? [String: Any],
+               json["success"] as? Bool == true,
+               let lat = json["latitude"] as? Double, let lon = json["longitude"] as? Double,
+               (json["timezone"] as? [String: Any])?["id"] as? String == TimeZone.current.identifier {
+                self.coordinate = Coordinate(latitude: lat, longitude: lon).rounded
+            } else if let zone = self.zoneCoordinate {
+                // Offline, or the IP is elsewhere (VPN): trust the time zone.
+                self.coordinate = zone.rounded
             }
-        }.resume()
+            UserDefaults.standard.set([self.coordinate.latitude, self.coordinate.longitude], forKey: Self.coordinateKey)
+            self.publish(weather: self.context.weather)
+            self.scheduleTimeOfDay()
+            next()
+        }
     }
 
     // MARK: - Weather
@@ -84,25 +101,23 @@ final class WorldMonitor {
         let c = coordinate.rounded
         var request = URLRequest(url: URL(string: "https://api.met.no/weatherapi/locationforecast/2.0/compact?lat=\(c.latitude)&lon=\(c.longitude)")!)
         if let lastModified { request.setValue(lastModified, forHTTPHeaderField: "If-Modified-Since") }
-        session.dataTask(with: request) { [weak self] data, response, _ in
-            DispatchQueue.main.async {
-                guard let self else { return }
-                let http = response as? HTTPURLResponse
-                var expires: Date?
-                if let http, http.statusCode == 200 || http.statusCode == 304 {
-                    expires = http.value(forHTTPHeaderField: "Expires").flatMap(Self.httpDate.date(from:))
-                    if http.statusCode == 200, let data {
-                        self.lastModified = http.value(forHTTPHeaderField: "Last-Modified")
-                        if let symbol = Self.currentSymbol(in: data), let weather = Weather.fromMETSymbol(symbol) {
-                            self.publish(weather: weather)
-                        }
+        fetch(request) { [weak self] data, response in
+            guard let self else { return }
+            let http = response as? HTTPURLResponse
+            var expires: Date?
+            if let http, http.statusCode == 200 || http.statusCode == 304 {
+                expires = http.value(forHTTPHeaderField: "Expires").flatMap(Self.httpDate.date(from:))
+                if http.statusCode == 200, let data {
+                    self.lastModified = http.value(forHTTPHeaderField: "Last-Modified")
+                    if let symbol = Self.currentSymbol(in: data), let weather = Weather.fromMETSymbol(symbol) {
+                        self.publish(weather: weather)
                     }
-                    self.scheduleWeather(after: expires, failed: false)
-                } else {
-                    self.scheduleWeather(after: nil, failed: true)
                 }
+                self.scheduleWeather(after: expires, failed: false)
+            } else {
+                self.scheduleWeather(after: nil, failed: true)
             }
-        }.resume()
+        }
     }
 
     private static func currentSymbol(in data: Data) -> String? {
@@ -161,7 +176,7 @@ final class WorldMonitor {
     private static func makeContext(coordinate: Coordinate, weather: Weather?) -> WorldContext {
         let now = Date()
         let month = Calendar.current.component(.month, from: now)
-        return WorldContext(timeOfDay: SunClock.timeOfDay(at: now, coordinate: coordinate),
+        return WorldContext(timeOfDay: forcedTimeOfDay ?? SunClock.timeOfDay(at: now, coordinate: coordinate),
                             season: Season.of(month: month, latitude: coordinate.latitude),
                             weather: weather,
                             holiday: forcedHoliday ?? Holidays.current(on: now, region: Locale.current.region?.identifier))

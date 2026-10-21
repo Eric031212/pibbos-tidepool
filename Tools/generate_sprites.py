@@ -886,6 +886,35 @@ def build_ui():
     (UI_DIR / "ui.json").write_text(json.dumps(meta, indent=1, ensure_ascii=False) + "\n")
 
 
+# ---------------------------------------------------------------- water light
+# The app recolours the bottom 3 (water) rows of every frame for the time of
+# day; daytime keeps the colours above. Palette keys -> new RGB.
+WATER_LIGHT = {
+    "dawn": {"w": (160, 204, 214), "W": (255, 206, 198), "x": (124, 168, 192)},   # pale misty blue, pink sunrise glints
+    "dusk": {"w": (238, 182, 100), "W": (255, 236, 166), "x": (204, 132, 84)},    # golden hour
+    "night": {"w": (50, 86, 160), "W": (222, 212, 160), "x": (30, 52, 120)},      # deep blue, moon glints
+}
+
+
+def hex_rgb(rgb):
+    return "%02x%02x%02x" % rgb
+
+
+def light_water(img, time):
+    """Python twin of the app's WaterTint, for previews."""
+    swap = {PALETTE[k]: v for k, v in WATER_LIGHT[time].items()}
+    img = img.copy()
+    px = img.load()
+    for y in range(img.height):
+        if y % SIZE < SIZE - 3:
+            continue
+        for x in range(img.width):
+            r, g_, b, a = px[x, y]
+            if a == 255 and (r, g_, b) in swap:
+                px[x, y] = swap[(r, g_, b)] + (255,)
+    return img
+
+
 # ---------------------------------------------------------------- app icon
 
 ICON_TILE = 20  # pixel-art tile: Pibbo (16x16) with a little sky around him
@@ -994,6 +1023,8 @@ def build_skin():
         "outfits": {name: {"offset": offset} for name, offset in outfit_offsets.items()},
         "poses": {name: pose_of(name) for name in list(STATES) + list(ACTIONS) if name not in NO_POSE},
         "transitions": {},
+        "water": {time: {hex_rgb(PALETTE[k]): hex_rgb(v) for k, v in colors.items()}
+                  for time, colors in WATER_LIGHT.items()},
         "decor": {holiday: {"row": decor_rows[holiday], "frames": n, "fps": fps}
                   for holiday, (_, n, fps) in DECOR.items()},
     }
@@ -1018,6 +1049,17 @@ def write_previews(entries, frames, garden, sheet):
         bloom = garden[-1]
         items.append((holiday, [Image.alpha_composite(bloom, f) for f in frames[f"decor:{holiday}"]], DECOR[holiday][2]))
     write_gif(items, SKIN_DIR / "preview.gif", 24)
+
+    # The tide pool through the day: flower + Pibbo, water coloured per time.
+    scene = Image.new("RGBA", (SIZE * 2, SIZE))
+    scene.alpha_composite(garden[-1], (0, 0))
+    scene.alpha_composite(frames["chill"][0], (SIZE, 0))
+    scale, pad = 6, 12
+    strip = Image.new("RGBA", (4 * (SIZE * 2 * scale + pad) + pad, SIZE * scale + 2 * pad), (247, 242, 232, 255))
+    for k, time in enumerate(["dawn", "day", "dusk", "night"]):
+        lit = scene if time not in WATER_LIGHT else light_water(scene, time)
+        strip.alpha_composite(lit.resize((SIZE * 2 * scale, SIZE * scale), Image.NEAREST), (pad + k * (SIZE * 2 * scale + pad), pad))
+    strip.save(SKIN_DIR / "preview-water.png")
 
     # Each transition as "from, in-between, to", held a beat on both ends.
     sample = {"@up": "chill", "@low": "hidden", "@peek": "peek", "@under": "submerged", "@back": "backfloat"}

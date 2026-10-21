@@ -18,7 +18,9 @@ final class SpriteRenderer {
     var hasGarden: Bool { pack.manifest.garden != nil }
 
     private let pack: SkinPack
-    private let sheet: CGImage
+    /// The sheet as drawn; `sheet` is it with the water coloured for `lighting`.
+    private let baseSheet: CGImage
+    private var sheet: CGImage
     private var frameCache: [String: [CGImage]] = [:]
     private(set) var currentClip: String?
     /// Length of the in-between played by the last clip switch (0 = a cut).
@@ -32,6 +34,37 @@ final class SpriteRenderer {
         didSet { if currentClipHasBeats { restartCurrentClip() } }
     }
     private var currentClipHasBeats = false
+
+    /// Time of day ("dawn", "day", "dusk", "night"): colours the water.
+    /// Changing it redraws everything once.
+    var lighting: String? {
+        didSet {
+            guard lighting != oldValue else { return }
+            sheet = pack.waterTint(for: lighting).flatMap { Self.tinted(baseSheet, with: $0, frameSize: pack.manifest.frameSize) } ?? baseSheet
+            frameCache.removeAll()
+            if let stage = gardenStage {
+                gardenStage = nil
+                showGarden(stage: stage)
+            }
+            showDecor()
+            restartCurrentClip()
+        }
+    }
+
+    private static func tinted(_ image: CGImage, with tint: WaterTint, frameSize: Int) -> CGImage? {
+        let (width, height) = (image.width, image.height)
+        // Same colour space as the sheet, so drawing copies the pixels unchanged.
+        guard let space = image.colorSpace ?? CGColorSpace(name: CGColorSpace.sRGB) else { return nil }
+        var pixels = [UInt8](repeating: 0, count: width * height * 4)
+        return pixels.withUnsafeMutableBytes { raw -> CGImage? in
+            guard let context = CGContext(data: raw.baseAddress, width: width, height: height, bitsPerComponent: 8,
+                                          bytesPerRow: width * 4, space: space,
+                                          bitmapInfo: CGImageAlphaInfo.premultipliedLast.rawValue) else { return nil }
+            context.draw(image, in: CGRect(x: 0, y: 0, width: width, height: height))
+            tint.recolor(raw.bindMemory(to: UInt8.self), width: width, height: height, frameSize: frameSize)
+            return context.makeImage()
+        }
+    }
 
     /// Holiday outfit worn by every clip (nil = none). Setting it redraws
     /// the current clip on the next `show`.
@@ -49,6 +82,7 @@ final class SpriteRenderer {
             throw SkinError.unreadable(pack.spriteSheetURL.path)
         }
         self.pack = pack
+        baseSheet = image
         sheet = image
         pointSize = CGFloat(pack.manifest.frameSize * scale)
         let noFades: [String: CAAction] = ["contents": NSNull(), "position": NSNull(), "bounds": NSNull(), "hidden": NSNull(), "opacity": NSNull()]

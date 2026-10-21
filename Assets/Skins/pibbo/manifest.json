@@ -321,6 +321,23 @@
       "loop": false
     }
   },
+  "water": {
+    "dawn": {
+      "6fb7d9": "a0ccd6",
+      "bfe6f5": "ffcec6",
+      "4c93bd": "7ca8c0"
+    },
+    "dusk": {
+      "6fb7d9": "eeb664",
+      "bfe6f5": "ffeca6",
+      "4c93bd": "cc8454"
+    },
+    "night": {
+      "6fb7d9": "3256a0",
+      "bfe6f5": "ded4a0",
+      "4c93bd": "1e3478"
+    }
+  },
   "decor": {
     "halloween": {
       "row": 241,
