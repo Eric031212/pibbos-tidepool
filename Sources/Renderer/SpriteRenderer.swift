@@ -9,6 +9,9 @@ import QuartzCore
 final class SpriteRenderer {
     let layer = CALayer()
     let gardenLayer = CALayer()
+    /// Holiday extras over the flower; a sublayer of `gardenLayer`, so they
+    /// show and hide with the flower.
+    private let decorLayer = CALayer()
     /// Splash effect drawn over the water where the user clicked.
     let rippleLayer = CALayer()
     let pointSize: CGFloat
@@ -33,7 +36,11 @@ final class SpriteRenderer {
     /// Holiday outfit worn by every clip (nil = none). Setting it redraws
     /// the current clip on the next `show`.
     var outfit: String? {
-        didSet { if outfit != oldValue { currentClip = nil } }
+        didSet {
+            guard outfit != oldValue else { return }
+            currentClip = nil
+            showDecor()
+        }
     }
 
     init(pack: SkinPack, scale: Int) throws {
@@ -46,7 +53,9 @@ final class SpriteRenderer {
         pointSize = CGFloat(pack.manifest.frameSize * scale)
         let noFades: [String: CAAction] = ["contents": NSNull(), "position": NSNull(), "bounds": NSNull(), "hidden": NSNull(), "opacity": NSNull()]
         rippleLayer.isHidden = true
-        for sprite in [layer, gardenLayer, rippleLayer] {
+        decorLayer.isHidden = true
+        gardenLayer.addSublayer(decorLayer)
+        for sprite in [layer, gardenLayer, rippleLayer, decorLayer] {
             sprite.frame = CGRect(x: 0, y: 0, width: pointSize, height: pointSize)
             sprite.magnificationFilter = .nearest
             sprite.actions = noFades
@@ -60,6 +69,22 @@ final class SpriteRenderer {
         guard stage != gardenStage, let rect = pack.gardenFrameRect(stage: stage) else { return }
         gardenStage = stage
         gardenLayer.contents = sheet.cropping(to: CGRect(x: rect.x, y: rect.y, width: rect.width, height: rect.height))
+    }
+
+    /// Plays the current holiday's extras over the flower, or hides them.
+    private func showDecor() {
+        decorLayer.removeAllAnimations()
+        guard let clip = pack.decor(for: outfit) else {
+            decorLayer.isHidden = true
+            return
+        }
+        let frames = self.frames(for: "decor#\(outfit ?? "")", clip: clip)
+        decorLayer.contents = frames.first
+        decorLayer.isHidden = false
+        guard frames.count > 1 else { return }
+        let animation = keyframes(frames, fps: clip.fps)
+        animation.repeatCount = .infinity
+        decorLayer.add(animation, forKey: "frames")
     }
 
     /// Shows or hides the flower in step with Pibbo's last clip switch: it
@@ -167,18 +192,22 @@ final class SpriteRenderer {
     func pause() {
         guard !isPaused else { return }
         isPaused = true
-        layer.timeOffset = layer.convertTime(CACurrentMediaTime(), from: nil)
-        layer.speed = 0
+        for sprite in [layer, gardenLayer] {
+            sprite.timeOffset = sprite.convertTime(CACurrentMediaTime(), from: nil)
+            sprite.speed = 0
+        }
     }
 
     func resume() {
         guard isPaused else { return }
         isPaused = false
-        let pausedAt = layer.timeOffset
-        layer.speed = 1
-        layer.timeOffset = 0
-        layer.beginTime = 0
-        layer.beginTime = layer.convertTime(CACurrentMediaTime(), from: nil) - pausedAt
+        for sprite in [layer, gardenLayer] {
+            let pausedAt = sprite.timeOffset
+            sprite.speed = 1
+            sprite.timeOffset = 0
+            sprite.beginTime = 0
+            sprite.beginTime = sprite.convertTime(CACurrentMediaTime(), from: nil) - pausedAt
+        }
         // The music kept playing while we were paused: catch up with its beat.
         if currentClipHasBeats, beat != nil { restartCurrentClip() }
     }

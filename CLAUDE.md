@@ -92,6 +92,8 @@ Switching clips plays a short in-between first (Section 11): he rises and sinks 
 
 Every clip exists once more per outfit, wearing a small 3-row hat that sits *on* the head (a 16×16 frame has only one free row above it): pumpkin hat (`halloween`), Santa hat (`christmas`), party hat (`newYear`), red flower knot (`lunarNewYear`). `Tools/generate_sprites.py` stamps the hat on the topmost run of 4+ outline pixels, so it follows the head in every pose (peek, hidden, back-float, …); `submerged` and `ripple` have no otter and stay plain. The manifest's `outfits` key maps each holiday to a row offset (Section 11).
 
+**Holiday decor (v0.4.1):** an animated extra in the flower's cell while a holiday is on, played in a sublayer of the garden layer so it shows and hides with the flower (`decor` key, Section 11; `DECOR` in `Tools/generate_sprites.py`). Halloween: a jack-o'-lantern bobbing in the water in front of the rock, candle flickering, and a bat flapping above the flower. Other holidays have none yet.
+
 ### The flower (decided 2026-10-12)
 
 A flower in a pot on a rock to Pibbo's left. It grows with real days since the first launch (seed → full bloom in ~2 weeks, `World.Garden`), needs no care and never wilts, so it is not a pet stat. It only shows while Pibbo shows his face; when he sinks, it hides too. Skins provide it through the optional `garden` key (Section 11); skins without one simply have no flower.
@@ -319,6 +321,7 @@ Example `manifest.json`:
 - Optional `"loop": false` on a clip: play once and hold the last frame (used by `unplug`).
 - Optional `"beats": n` on a clip: one loop spans n beats; with built-in music the app plays it in time with the track instead of at `fps` (used by `music`, n = 2).
 - Optional `outfits`: `{"halloween": {"offset": 24}, …}`; the outfit version of a clip is at `row + offset`. Skins without an outfit show the plain clip.
+- Optional `decor`: `{"halloween": {"row": …, "frames": 4, "fps": 3}}`, a looping clip drawn over the garden frame (transparent elsewhere) while that holiday is on. Needs a `garden`.
 - Optional `poses` + `transitions` (smooth switches): `poses` maps each clip to a body pose (`under`, `low`, `peek`, `up`, `back`); `transitions` holds in-between clips (played once, then the new clip takes over, scheduled in Core Animation with no timers) keyed `"from>to"`, each side a clip name or `@pose`. Most specific wins: `a>b`, `@poseA>b`, `a>@poseB`, `@poseA>@poseB`; no key means a straight cut. Keep each under ~0.6 s, because Brain's timings start when the clip is shown. Outfits apply to transitions too. `preview-transitions.gif` shows them all.
 - Validate on load: reject skins missing a required state; missing optional actions fall back to `chill`
 - Packs live in `~/Library/Application Support/Tidepool/Packs/`
@@ -473,7 +476,7 @@ Code: `Spikes/06-launch-at-login/`. `run.sh register|unregister|status` installs
 2. `swift test` (all pass) → `xcodegen generate` → Release build → check `CFBundleShortVersionString` in the built Info.plist.
 3. Launch the Release build; after Pibbo hides, `top -c d -pid <pid>` should show ~0 % CPU and ~0 idle wakeups.
 4. Commit with a summary message → push `main` → annotated tag `vX.Y.Z` → push the tag → `python3 Tools/package_dmg.py` → `gh release create vX.Y.Z dist/PibbosTidepool-X.Y.Z.dmg` with casual emoji notes (point to the README's Open Anyway steps until a notarized build exists; credit Suno / MET Norway).
-5. Releases so far: v0.1.0 app shell · v0.2.0 actions, flower, pixel UI · v0.3.0 themed radio, ticker, drag · v0.3.1 mouse play · v0.3.2 holiday outfits · v0.3.3 smooth transitions · v0.4.0 second theme "Solo Float", nodding to the beat.
+5. Releases so far: v0.1.0 app shell · v0.2.0 actions, flower, pixel UI · v0.3.0 themed radio, ticker, drag · v0.3.1 mouse play · v0.3.2 holiday outfits · v0.3.3 smooth transitions · v0.4.0 second theme "Solo Float", nodding to the beat · v0.4.1 Halloween decor.
 
 ## 16. Open items
 

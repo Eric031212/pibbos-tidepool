@@ -32,3 +32,26 @@ final class OutfitTests: XCTestCase {
         XCTAssertLessThan(deepest, sheetRows)
     }
 }
+
+final class DecorTests: XCTestCase {
+    let repo = URL(fileURLWithPath: #filePath).deletingLastPathComponent().deletingLastPathComponent().deletingLastPathComponent()
+
+    func testBundledSkinDecoratesHalloweenOnly() throws {
+        let pack = try SkinPack.load(from: repo.appendingPathComponent("Assets/Skins/pibbo"))
+        let halloween = try XCTUnwrap(pack.decor(for: "halloween"))
+        XCTAssertGreaterThan(halloween.frames, 1)
+        XCTAssertNil(pack.decor(for: nil))
+        XCTAssertNil(pack.decor(for: "valentines"))
+        let png = try Data(contentsOf: pack.spriteSheetURL)
+        let sheetRows = png[20..<24].reduce(0) { $0 << 8 | Int($1) } / pack.manifest.frameSize
+        XCTAssertLessThan(halloween.row, sheetRows)
+    }
+
+    func testNoDecorWithoutAGarden() throws {
+        let clip = Clip(row: 0, frames: 2, fps: 2)
+        let manifest = SkinManifest(id: "t", name: "t", author: "t", version: "1", type: "skin", frameSize: 16,
+                                    states: Dictionary(uniqueKeysWithValues: SkinPack.requiredStates.map { ($0, clip) }),
+                                    actions: nil, decor: ["halloween": clip])
+        XCTAssertNil(try SkinPack(manifest: manifest, directory: repo).decor(for: "halloween"))
+    }
+}

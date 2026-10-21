@@ -320,5 +320,12 @@
       "fps": 8,
       "loop": false
     }
+  },
+  "decor": {
+    "halloween": {
+      "row": 241,
+      "frames": 4,
+      "fps": 3
+    }
   }
 }

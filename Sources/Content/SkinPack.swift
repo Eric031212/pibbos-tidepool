@@ -51,11 +51,13 @@ public struct SkinManifest: Codable, Equatable, Sendable {
     /// In-between clips played once when switching clips, keyed "from>to";
     /// either side is a clip name or "@pose" (see `transition(from:to:)`).
     public let transitions: [String: Clip]?
+    /// Holiday extras played over the flower's cell, keyed like `outfits`.
+    public let decor: [String: Clip]?
 
     public init(id: String, name: String, author: String, version: String, type: String,
                 frameSize: Int, states: [String: Clip], actions: [String: Clip]?, garden: GardenSpec? = nil,
                 outfits: [String: OutfitSpec]? = nil, poses: [String: String]? = nil,
-                transitions: [String: Clip]? = nil) {
+                transitions: [String: Clip]? = nil, decor: [String: Clip]? = nil) {
         self.id = id
         self.name = name
         self.author = author
@@ -68,6 +70,7 @@ public struct SkinManifest: Codable, Equatable, Sendable {
         self.outfits = outfits
         self.poses = poses
         self.transitions = transitions
+        self.decor = decor
     }
 }
 
@@ -129,6 +132,7 @@ public struct SkinPack: Sendable {
         guard missing.isEmpty else { throw SkinError.missingStates(missing) }
         let all = manifest.states.merging(manifest.actions ?? [:]) { state, _ in state }
             .merging(manifest.transitions ?? [:]) { clip, _ in clip }
+            .merging((manifest.decor ?? [:]).map { ("decor \($0.key)", $0.value) }) { clip, _ in clip }
         for (name, clip) in all where clip.row < 0 || clip.frames < 1 || clip.fps <= 0 || (clip.beats ?? 1) < 1 {
             throw SkinError.invalidClip(name)
         }
@@ -174,6 +178,13 @@ public struct SkinPack: Sendable {
         guard let clip = keys.lazy.compactMap({ transitions[$0] }).first else { return nil }
         guard let outfit, let spec = manifest.outfits?[outfit] else { return clip }
         return Clip(row: clip.row + spec.offset, frames: clip.frames, fps: clip.fps, loop: false)
+    }
+
+    /// The holiday extras for `holiday`, or nil. They sit in the flower's
+    /// cell, so skins without a garden show none.
+    public func decor(for holiday: String?) -> Clip? {
+        guard let holiday, manifest.garden != nil else { return nil }
+        return manifest.decor?[holiday]
     }
 
     /// Actions the app plays for a reason of its own, never at random.

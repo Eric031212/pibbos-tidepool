@@ -65,6 +65,10 @@ PALETTE = {
     "F": (214, 108, 146),  # dark petal
     "t": (196, 110, 74),   # terracotta pot
     "T": (160, 85, 58),    # pot rim
+    "j": (176, 88, 36),    # pumpkin ridge
+    "y": (255, 226, 120),  # candle glow
+    "Y": (250, 176, 70),   # candle glow, dimmer
+    "v": (52, 44, 64),     # bat
 }
 
 # Left half of Pibbo's base pose (columns 0-7); mirrored to columns 8-15.
@@ -648,6 +652,34 @@ OUTFITS = {
 NO_OUTFIT = {"submerged", "ripple"}  # no otter visible in these
 
 
+# ---------------------------------------------------------------- holiday decor
+# Animated extras drawn over the flower's frame (same 16x16 cell, transparent
+# elsewhere) while a holiday is on. Keys match World.Holiday raw values.
+
+def frame_decor_halloween(i):
+    """A jack-o'-lantern bobbing in the water in front of the rock, its candle
+    flickering, and a little bat flapping above the flower."""
+    g = blank()
+    top = [9, 9, 10, 10][i]
+    glow = "y" if i in (0, 3) else "Y"
+    stamp(g, top, 0, ["..K..", ".LjL.", "LyLyL", "LLLLL", "jyyyj"])
+    put(g, [(top + 2, 1), (top + 2, 3), (top + 4, 1), (top + 4, 2), (top + 4, 3)], glow)
+    # it floats: the water covers its bottom (same pattern as the garden's water)
+    pool = water(blank(), 0)
+    for r in range(14, 16):
+        for c in range(5):
+            if g[r][c] != ".":
+                g[r][c] = pool[r][c]
+    bat = [["v.....v", "vv.v.vv", ".vvvvv."], ["..v.v..", ".vvvvv.", "vv...vv"]][i % 2]
+    stamp(g, [1, 2, 1, 0][i], 0, bat)
+    return g
+
+
+DECOR = {
+    "halloween": (frame_decor_halloween, 4, 3),
+}
+
+
 def wear(grid, hat):
     """Puts `hat` on the head: the topmost run of 4+ outline pixels (a raised
     paw or a heart above the head is never that wide)."""
@@ -919,7 +951,7 @@ def build_skin():
     SKIN_DIR.mkdir(parents=True, exist_ok=True)
     entries = list(STATES.items()) + list(ACTIONS.items()) + list(TRANSITIONS.items())
     max_frames = max(max(n for _, (_, n, _) in entries), GARDEN_STAGES)
-    rows = len(entries) + 1 + len(OUTFITS) * len(entries)  # clips, garden row, then each outfit's clips
+    rows = len(entries) + 1 + len(OUTFITS) * len(entries) + len(DECOR)  # clips, garden, outfits, decor
     sheet = Image.new("RGBA", (SIZE * max_frames, SIZE * rows), (0, 0, 0, 0))
     frames = {}
     for row, (name, (fn, n, _)) in enumerate(entries):
@@ -940,6 +972,13 @@ def build_skin():
             for i in range(n):
                 grid = fn(i) if name in NO_OUTFIT else wear(fn(i), hat)
                 sheet.paste(to_image(grid), (i * SIZE, (row + offset) * SIZE))
+
+    decor_rows = {}
+    for k, (holiday, (fn, n, _)) in enumerate(DECOR.items()):
+        decor_rows[holiday] = garden_row + 1 + len(OUTFITS) * len(entries) + k
+        frames[f"decor:{holiday}"] = [to_image(fn(i)) for i in range(n)]
+        for i, f in enumerate(frames[f"decor:{holiday}"]):
+            sheet.paste(f, (i * SIZE, decor_rows[holiday] * SIZE))
     sheet.save(SKIN_DIR / "sprites.png")
 
     manifest = {
@@ -955,6 +994,8 @@ def build_skin():
         "outfits": {name: {"offset": offset} for name, offset in outfit_offsets.items()},
         "poses": {name: pose_of(name) for name in list(STATES) + list(ACTIONS) if name not in NO_POSE},
         "transitions": {},
+        "decor": {holiday: {"row": decor_rows[holiday], "frames": n, "fps": fps}
+                  for holiday, (_, n, fps) in DECOR.items()},
     }
     for row, (name, (_, n, fps)) in enumerate(entries):
         key = "states" if name in STATES else "actions" if name in ACTIONS else "transitions"
@@ -973,6 +1014,9 @@ def write_previews(entries, frames, garden, sheet):
     transition between two sample clips."""
     items = [(name, frames[name], fps) for name, (_, _, fps) in entries if name not in TRANSITIONS]
     items += [(f"flower {s}", [garden[s]], 1) for s in range(GARDEN_STAGES)]
+    for holiday in DECOR:
+        bloom = garden[-1]
+        items.append((holiday, [Image.alpha_composite(bloom, f) for f in frames[f"decor:{holiday}"]], DECOR[holiday][2]))
     write_gif(items, SKIN_DIR / "preview.gif", 24)
 
     # Each transition as "from, in-between, to", held a beat on both ends.
