@@ -12,6 +12,8 @@ final class SpriteRenderer {
     /// Holiday extras over the flower; a sublayer of `gardenLayer`, so they
     /// show and hide with the flower.
     private let decorLayer = CALayer()
+    /// The playing radio theme's prop, beside the flower (also a sublayer of it).
+    private let propLayer = CALayer()
     /// Splash effect drawn over the water where the user clicked.
     let rippleLayer = CALayer()
     let pointSize: CGFloat
@@ -47,6 +49,7 @@ final class SpriteRenderer {
                 showGarden(stage: stage)
             }
             showDecor()
+            showProp()
             restartCurrentClip()
         }
     }
@@ -87,9 +90,11 @@ final class SpriteRenderer {
         pointSize = CGFloat(pack.manifest.frameSize * scale)
         let noFades: [String: CAAction] = ["contents": NSNull(), "position": NSNull(), "bounds": NSNull(), "hidden": NSNull(), "opacity": NSNull()]
         rippleLayer.isHidden = true
-        decorLayer.isHidden = true
-        gardenLayer.addSublayer(decorLayer)
-        for sprite in [layer, gardenLayer, rippleLayer, decorLayer] {
+        for extra in [decorLayer, propLayer] {
+            extra.isHidden = true
+            gardenLayer.addSublayer(extra)
+        }
+        for sprite in [layer, gardenLayer, rippleLayer, decorLayer, propLayer] {
             sprite.frame = CGRect(x: 0, y: 0, width: pointSize, height: pointSize)
             sprite.magnificationFilter = .nearest
             sprite.actions = noFades
@@ -105,20 +110,34 @@ final class SpriteRenderer {
         gardenLayer.contents = sheet.cropping(to: CGRect(x: rect.x, y: rect.y, width: rect.width, height: rect.height))
     }
 
+    /// Name of the radio prop to show (nil = none). See `SkinPack.prop(named:)`.
+    var prop: String? {
+        didSet { if prop != oldValue { showProp() } }
+    }
+
     /// Plays the current holiday's extras over the flower, or hides them.
     private func showDecor() {
-        decorLayer.removeAllAnimations()
-        guard let clip = pack.decor(for: outfit) else {
-            decorLayer.isHidden = true
+        loop(pack.decor(for: outfit), named: "decor#\(outfit ?? "")", on: decorLayer)
+    }
+
+    private func showProp() {
+        loop(pack.prop(named: prop), named: "prop#\(prop ?? "")", on: propLayer)
+    }
+
+    /// Loops `clip` on one of the flower's extra layers, or hides the layer.
+    private func loop(_ clip: Clip?, named name: String, on extra: CALayer) {
+        extra.removeAllAnimations()
+        guard let clip else {
+            extra.isHidden = true
             return
         }
-        let frames = self.frames(for: "decor#\(outfit ?? "")", clip: clip)
-        decorLayer.contents = frames.first
-        decorLayer.isHidden = false
+        let frames = self.frames(for: name, clip: clip)
+        extra.contents = frames.first
+        extra.isHidden = false
         guard frames.count > 1 else { return }
         let animation = keyframes(frames, fps: clip.fps)
         animation.repeatCount = .infinity
-        decorLayer.add(animation, forKey: "frames")
+        extra.add(animation, forKey: "frames")
     }
 
     /// Shows or hides the flower in step with Pibbo's last clip switch: it

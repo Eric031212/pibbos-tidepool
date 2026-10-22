@@ -88,3 +88,29 @@ final class BeatGridTests: XCTestCase {
         XCTAssertEqual(grid.phase(at: 0.25, beats: 2), 1.75, accuracy: 1e-9, "before the first beat")
     }
 }
+
+final class ThemePropTests: XCTestCase {
+    let repo = URL(fileURLWithPath: #filePath).deletingLastPathComponent().deletingLastPathComponent().deletingLastPathComponent()
+
+    func testEveryBundledThemeNamesAPropTheSkinHas() throws {
+        let library = MusicLibrary.load(from: repo.appendingPathComponent("Assets/Music"))
+        let pack = try SkinPack.load(from: repo.appendingPathComponent("Assets/Skins/pibbo"))
+        XCTAssertEqual(library.themes.count, 3)
+        for theme in library.themes {
+            let prop = try XCTUnwrap(theme.prop, theme.title)
+            XCTAssertNotNil(pack.prop(named: prop), "\(theme.title): skin has no prop \(prop)")
+        }
+        XCTAssertEqual(Set(library.themes.compactMap(\.prop)).count, 3, "each theme has its own prop")
+    }
+
+    func testUnknownOrMissingPropShowsNothing() throws {
+        let pack = try SkinPack.load(from: repo.appendingPathComponent("Assets/Skins/pibbo"))
+        XCTAssertNil(pack.prop(named: nil))
+        XCTAssertNil(pack.prop(named: "jukebox"))
+        let clip = Clip(row: 0, frames: 2, fps: 2)
+        let bare = SkinManifest(id: "t", name: "t", author: "t", version: "1", type: "skin", frameSize: 16,
+                                states: Dictionary(uniqueKeysWithValues: SkinPack.requiredStates.map { ($0, clip) }),
+                                actions: nil, props: ["streetlamp": clip])
+        XCTAssertNil(try SkinPack(manifest: bare, directory: repo).prop(named: "streetlamp"), "no garden, no prop")
+    }
+}

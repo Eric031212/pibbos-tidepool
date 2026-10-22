@@ -680,6 +680,59 @@ DECOR = {
 }
 
 
+# ---------------------------------------------------------------- radio props
+# While the built-in radio plays, the theme's prop stands in the gap between
+# the flower and Pibbo (columns 11-15 of the flower's cell; the left side is
+# kept for holiday decor). A theme names its prop in theme.json ("prop").
+
+def pebble(g):
+    """A little stone for a prop to stand on, at the water line."""
+    stamp(g, 11, 11, [".rrr.", "rrrrr", "RRRRR"])
+
+
+def frame_prop_streetlamp(i):
+    """Pibbo in the City: a tiny street lamp, its light flickering softly."""
+    g = blank()
+    pebble(g)
+    stamp(g, 1, 12, ["qqq", "qyq", ".q."])
+    put(g, [(r, 13) for r in range(4, 11)], "q")
+    put(g, [(10, 12), (10, 14)], "q")
+    if i % 2 == 0:
+        put(g, [(2, 11), (2, 15), (4, 12), (4, 14)], "Y")  # glow
+    else:
+        put(g, [(2, 11), (2, 15)], "Y")
+    return g
+
+
+def frame_prop_teacup(i):
+    """Solo Float: a cup of tea for one, steaming."""
+    g = blank()
+    pebble(g)
+    stamp(g, 7, 11, ["oggo.", "oXXoo", "oXXoo", ".oo.."])
+    put(g, [[(6, 12), (5, 13), (4, 12)], [(6, 13), (5, 12), (4, 13)]][i % 2], "W")
+    return g
+
+
+def frame_prop_paperboat(i):
+    """Pibbo's Raft Days: a paper boat bobbing on the water."""
+    g = blank()
+    top = [8, 8, 9, 9][i]
+    stamp(g, top, 11, ["..o..", ".oXo.", "oXXXo", "oXXXo", ".ooo."])
+    pool = water(blank(), 0)
+    for r in range(14, 16):  # it floats: the water covers its keel
+        for c in range(11, 16):
+            if g[r][c] != ".":
+                g[r][c] = pool[r][c]
+    return g
+
+
+PROPS = {
+    "streetlamp": (frame_prop_streetlamp, 2, 2),
+    "teacup": (frame_prop_teacup, 2, 2),
+    "paperboat": (frame_prop_paperboat, 4, 2),
+}
+
+
 def wear(grid, hat):
     """Puts `hat` on the head: the topmost run of 4+ outline pixels (a raised
     paw or a heart above the head is never that wide)."""
@@ -980,7 +1033,7 @@ def build_skin():
     SKIN_DIR.mkdir(parents=True, exist_ok=True)
     entries = list(STATES.items()) + list(ACTIONS.items()) + list(TRANSITIONS.items())
     max_frames = max(max(n for _, (_, n, _) in entries), GARDEN_STAGES)
-    rows = len(entries) + 1 + len(OUTFITS) * len(entries) + len(DECOR)  # clips, garden, outfits, decor
+    rows = len(entries) + 1 + len(OUTFITS) * len(entries) + len(DECOR) + len(PROPS)  # clips, garden, outfits, decor, props
     sheet = Image.new("RGBA", (SIZE * max_frames, SIZE * rows), (0, 0, 0, 0))
     frames = {}
     for row, (name, (fn, n, _)) in enumerate(entries):
@@ -1008,6 +1061,13 @@ def build_skin():
         frames[f"decor:{holiday}"] = [to_image(fn(i)) for i in range(n)]
         for i, f in enumerate(frames[f"decor:{holiday}"]):
             sheet.paste(f, (i * SIZE, decor_rows[holiday] * SIZE))
+
+    prop_rows = {}
+    for k, (name, (fn, n, _)) in enumerate(PROPS.items()):
+        prop_rows[name] = garden_row + 1 + len(OUTFITS) * len(entries) + len(DECOR) + k
+        frames[f"prop:{name}"] = [to_image(fn(i)) for i in range(n)]
+        for i, f in enumerate(frames[f"prop:{name}"]):
+            sheet.paste(f, (i * SIZE, prop_rows[name] * SIZE))
     sheet.save(SKIN_DIR / "sprites.png")
 
     manifest = {
@@ -1025,6 +1085,8 @@ def build_skin():
         "transitions": {},
         "water": {time: {hex_rgb(PALETTE[k]): hex_rgb(v) for k, v in colors.items()}
                   for time, colors in WATER_LIGHT.items()},
+        "props": {name: {"row": prop_rows[name], "frames": n, "fps": fps}
+                  for name, (_, n, fps) in PROPS.items()},
         "decor": {holiday: {"row": decor_rows[holiday], "frames": n, "fps": fps}
                   for holiday, (_, n, fps) in DECOR.items()},
     }
@@ -1048,6 +1110,8 @@ def write_previews(entries, frames, garden, sheet):
     for holiday in DECOR:
         bloom = garden[-1]
         items.append((holiday, [Image.alpha_composite(bloom, f) for f in frames[f"decor:{holiday}"]], DECOR[holiday][2]))
+    for name in PROPS:
+        items.append((name, [Image.alpha_composite(garden[-1], f) for f in frames[f"prop:{name}"]], PROPS[name][2]))
     write_gif(items, SKIN_DIR / "preview.gif", 24)
 
     # The tide pool through the day: flower + Pibbo, water coloured per time.

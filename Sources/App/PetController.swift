@@ -132,7 +132,10 @@ final class PetController {
     }
 
     private func musicEvent(_ event: MusicEvent, from source: MusicSource) {
-        if source === lofi { renderer.beat = lofi.beat }
+        if source === lofi {
+            renderer.beat = lofi.beat
+            renderer.prop = lofi.prop
+        }
         send(.musicChanged(source: source.id, playing: event != .paused))
         if source === lofi, event == .trackChanged {
             send(.builtInTrackStarted)

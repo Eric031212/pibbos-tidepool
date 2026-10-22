@@ -243,9 +243,10 @@ Goal: **the app never triggers a system permission prompt.**
 - **No song picking, on purpose:** every start (menu or bubble) is a random theme in shuffled order (`Content.RadioPlan`); when a theme runs out, another theme follows (a different one when there is more than one). Fewer clicks, no choice paralysis.
 - **Now playing:** while the radio plays, a fixed-width pixel bubble above the tide pool (same width and edges as the pool, tail over Pibbo, ♪ icon) scrolls "theme - track" inside a fixed window. The scroll is one discrete Core Animation keyframe animation stepping one art pixel at a time: crisp, and no timers in our process. It shows for ~15 s when a track starts and while the mouse is on Pibbo (+3 s after), so it stays quiet the rest of the time.
 - **Gentle start and stop:** tracks fade in over 1 s. "Tunes off" fades the volume to silence over 1.6 s while Pibbo plays `unplug` (headphones off), then pauses. When external music (Apple Music) stops, Pibbo also plays `unplug`; its volume can't be faded because external playback is read only.
-- Current set: "Pibbo's Raft Days" (12 tracks, ~37 min, 35 MB, 2026-10-13) and "Solo Float" (12 tracks, ~37 min, 35 MB, 2026-10-17). Estimated tempos are mostly 60–83 bpm; "Pibbo's Night", "Holding Paws" and "Lights Off" came out ~120, likely double-time of ~60 (half-time feel). Confirm by ear before writing cues.
+- Current set: "Pibbo's Raft Days" (12 tracks, ~37 min, 35 MB, 2026-10-13), "Solo Float" (12 tracks, ~37 min, 35 MB, 2026-10-17) and "Pibbo in the City" (12 tracks, ~37 min, 35 MB, 2026-10-22): 36 tracks, ~1 h 50 min. Estimated tempos are mostly 60–83 bpm; "Pibbo's Night", "Holding Paws" and "Lights Off" came out ~120, likely double-time of ~60 (half-time feel). Confirm by ear before writing cues.
 - `Tools/generate_placeholder_lofi.py` can still synthesize a 27 s placeholder loop for testing.
 - Never plays automatically; the user starts it from the menu or the invitation bubble
+- **Theme props (v0.6.0):** while a theme plays, its prop stands in the gap between the flower and Pibbo: a street lamp with flickering light (City), a steaming teacup (Solo Float), a bobbing paper boat (Raft Days). `theme.json` names it (`"prop": "streetlamp"`); the skin draws it (`props`, Section 11). It shows with the flower, changes with the theme and goes away when the radio stops. `Tools/import_track.py` keeps extra `theme.json` keys and drops Suno's " - usesuno.com" file-name suffix from titles.
 
 ### Beat maps (built-in tracks only)
 Each built-in track has a JSON file describing tempo and action cues:
@@ -324,6 +325,7 @@ Example `manifest.json`:
 - Optional `"beats": n` on a clip: one loop spans n beats; with built-in music the app plays it in time with the track instead of at `fps` (used by `music`, n = 2).
 - Optional `outfits`: `{"halloween": {"offset": 24}, …}`; the outfit version of a clip is at `row + offset`. Skins without an outfit show the plain clip.
 - Optional `water`: `{"night": {"6fb7d9": "3a548a", …}, …}`, per time of day (`dawn`, `day`, `dusk`, `night`), hex RGB of a water colour → its replacement, applied to the bottom 3 rows of every frame only. Missing times keep the sheet's colours.
+- Optional `props`: `{"streetlamp": {"row": …, "frames": 2, "fps": 2}}`, looping clips drawn over the garden frame (in columns 11–15, between the flower and Pibbo; holiday decor keeps the left side) while a radio theme that names the prop plays. Needs a `garden`.
 - Optional `decor`: `{"halloween": {"row": …, "frames": 4, "fps": 3}}`, a looping clip drawn over the garden frame (transparent elsewhere) while that holiday is on. Needs a `garden`.
 - Optional `poses` + `transitions` (smooth switches): `poses` maps each clip to a body pose (`under`, `low`, `peek`, `up`, `back`); `transitions` holds in-between clips (played once, then the new clip takes over, scheduled in Core Animation with no timers) keyed `"from>to"`, each side a clip name or `@pose`. Most specific wins: `a>b`, `@poseA>b`, `a>@poseB`, `@poseA>@poseB`; no key means a straight cut. Keep each under ~0.6 s, because Brain's timings start when the clip is shown. Outfits apply to transitions too. `preview-transitions.gif` shows them all.
 - Validate on load: reject skins missing a required state; missing optional actions fall back to `chill`
@@ -480,7 +482,7 @@ Code: `Spikes/06-launch-at-login/`. `run.sh register|unregister|status` installs
 2. `swift test` (all pass) → `xcodegen generate` → Release build → check `CFBundleShortVersionString` in the built Info.plist.
 3. Launch the Release build; after Pibbo hides, `top -c d -pid <pid>` should show ~0 % CPU and ~0 idle wakeups.
 4. Commit with a summary message → push `main` → annotated tag `vX.Y.Z` → push the tag → `python3 Tools/package_dmg.py` → `gh release create vX.Y.Z dist/PibbosTidepool-X.Y.Z.dmg` with casual emoji notes (point to the README's Open Anyway steps until a notarized build exists; credit Suno / MET Norway).
-5. Releases so far: v0.1.0 app shell · v0.2.0 actions, flower, pixel UI · v0.3.0 themed radio, ticker, drag · v0.3.1 mouse play · v0.3.2 holiday outfits · v0.3.3 smooth transitions · v0.4.0 second theme "Solo Float", nodding to the beat · v0.4.1 Halloween decor · v0.5.0 water light by time of day.
+5. Releases so far: v0.1.0 app shell · v0.2.0 actions, flower, pixel UI · v0.3.0 themed radio, ticker, drag · v0.3.1 mouse play · v0.3.2 holiday outfits · v0.3.3 smooth transitions · v0.4.0 second theme "Solo Float", nodding to the beat · v0.4.1 Halloween decor · v0.5.0 water light by time of day · v0.6.0 third theme "Pibbo in the City", theme props.
 
 ## 16. Open items
 
@@ -497,6 +499,6 @@ Code: `Spikes/06-launch-at-login/`. `run.sh register|unregister|status` installs
 - [ ] Test the x86_64 slice on an Intel Mac or with Rosetta (the dev Mac has neither)
 - [ ] Re-test launch at login with a Developer ID-signed build in `/Applications` (spike 6 used an ad-hoc-signed app in `~/Applications`)
 - [x] Privacy note in README (IP → ipwho.is, ~1 km coordinate → MET Norway); repeat it on a store page later
-- [x] Built-in lofi tracks: 24 tracks in 2 themes, ~75 min (planned 1–2 hours)
+- [x] Built-in lofi tracks: 36 tracks in 3 themes, ~1 h 50 min (planned 1–2 hours)
 - [x] Pibbo sprite art: drawn by code in `Tools/generate_sprites.py` (v0.2.0)
 - [ ] Display name: "Tidepool" or "Pibbo's Tidepool"

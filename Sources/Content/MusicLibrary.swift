@@ -3,7 +3,7 @@ import Foundation
 /// Built-in lofi, grouped into themes (CLAUDE.md Section 9).
 ///
 /// Layout, written by Tools/import_track.py:
-///     Music/<theme-slug>/theme.json      {"title": "Pibbo's Raft Days"}
+///     Music/<theme-slug>/theme.json      {"title": "Pibbo's Raft Days", "prop": "paperboat"}
 ///     Music/<theme-slug>/<track>.caf     audio
 ///     Music/<theme-slug>/<track>.json    beat map with "title", "bpm", ...
 public struct MusicLibrary: Sendable {
@@ -18,6 +18,8 @@ public struct MusicLibrary: Sendable {
     public struct Theme: Equatable, Sendable {
         public let title: String
         public let tracks: [Track]
+        /// Skin prop shown beside the flower while this theme plays (theme.json "prop").
+        public var prop: String? = nil
     }
 
     public let themes: [Theme]
@@ -28,7 +30,10 @@ public struct MusicLibrary: Sendable {
 
     public var isEmpty: Bool { themes.isEmpty }
 
-    private struct ThemeFile: Decodable { let title: String }
+    private struct ThemeFile: Decodable {
+        let title: String
+        let prop: String?
+    }
     private struct BeatMap: Decodable {
         let track: String
         let title: String?
@@ -55,7 +60,7 @@ public struct MusicLibrary: Sendable {
                     guard fm.fileExists(atPath: audio.path) else { return nil }
                     return Track(title: map.title ?? audio.deletingPathExtension().lastPathComponent, url: audio, bpm: map.bpm, offset: map.offset)
                 }
-            themes.append(Theme(title: theme.title, tracks: tracks))
+            themes.append(Theme(title: theme.title, tracks: tracks, prop: theme.prop))
         }
         return MusicLibrary(themes: themes)
     }

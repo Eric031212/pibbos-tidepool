@@ -31,6 +31,8 @@ final class BuiltInLofiSource: NSObject, MusicSource, AVAudioPlayerDelegate {
     private(set) var nowPlaying: String?
     /// Beats of the current track (nil without a beat map or when stopped).
     private(set) var beat: BeatSync?
+    /// The playing theme's skin prop (nil when stopped or the theme has none).
+    private(set) var prop: String?
 
     var isAvailable: Bool { !library.isEmpty }
     /// True while playing, false once a fade-out has begun.
@@ -74,6 +76,7 @@ final class BuiltInLofiSource: NSObject, MusicSource, AVAudioPlayerDelegate {
             self.player = nil
             self.nowPlaying = nil
             self.beat = nil
+            self.prop = nil
             self.continuation.yield(.paused)
         }
         RunLoop.main.add(timer, forMode: .common)
@@ -95,6 +98,7 @@ final class BuiltInLofiSource: NSObject, MusicSource, AVAudioPlayerDelegate {
             BeatSync(grid: $0, trackStart: CACurrentMediaTime() - player.currentTime)
         }
         nowPlaying = "\(theme) - \(track.title)"
+        prop = plan.theme.prop
         continuation.yield(.trackChanged)
     }
 

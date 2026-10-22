@@ -56,12 +56,15 @@ public struct SkinManifest: Codable, Equatable, Sendable {
     /// Water colours per time of day ("dawn", "dusk", "night"): hex RGB →
     /// hex RGB. Missing times keep the sheet's own colours.
     public let water: [String: [String: String]]?
+    /// Radio props by name, played over the flower's cell while a theme that
+    /// names one plays (theme.json "prop").
+    public let props: [String: Clip]?
 
     public init(id: String, name: String, author: String, version: String, type: String,
                 frameSize: Int, states: [String: Clip], actions: [String: Clip]?, garden: GardenSpec? = nil,
                 outfits: [String: OutfitSpec]? = nil, poses: [String: String]? = nil,
                 transitions: [String: Clip]? = nil, decor: [String: Clip]? = nil,
-                water: [String: [String: String]]? = nil) {
+                water: [String: [String: String]]? = nil, props: [String: Clip]? = nil) {
         self.id = id
         self.name = name
         self.author = author
@@ -76,6 +79,7 @@ public struct SkinManifest: Codable, Equatable, Sendable {
         self.transitions = transitions
         self.decor = decor
         self.water = water
+        self.props = props
     }
 }
 
@@ -138,6 +142,7 @@ public struct SkinPack: Sendable {
         let all = manifest.states.merging(manifest.actions ?? [:]) { state, _ in state }
             .merging(manifest.transitions ?? [:]) { clip, _ in clip }
             .merging((manifest.decor ?? [:]).map { ("decor \($0.key)", $0.value) }) { clip, _ in clip }
+            .merging((manifest.props ?? [:]).map { ("prop \($0.key)", $0.value) }) { clip, _ in clip }
         for (name, clip) in all where clip.row < 0 || clip.frames < 1 || clip.fps <= 0 || (clip.beats ?? 1) < 1 {
             throw SkinError.invalidClip(name)
         }
@@ -190,6 +195,13 @@ public struct SkinPack: Sendable {
     public func decor(for holiday: String?) -> Clip? {
         guard let holiday, manifest.garden != nil else { return nil }
         return manifest.decor?[holiday]
+    }
+
+    /// The radio prop called `name`, or nil. Like decor, it sits in the
+    /// flower's cell, so skins without a garden show none.
+    public func prop(named name: String?) -> Clip? {
+        guard let name, manifest.garden != nil else { return nil }
+        return manifest.props?[name]
     }
 
     /// How to colour the water at a time of day, or nil to keep the sheet's colours.

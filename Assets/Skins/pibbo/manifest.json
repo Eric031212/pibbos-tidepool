@@ -338,6 +338,23 @@
       "4c93bd": "1e3478"
     }
   },
+  "props": {
+    "streetlamp": {
+      "row": 242,
+      "frames": 2,
+      "fps": 2
+    },
+    "teacup": {
+      "row": 243,
+      "frames": 2,
+      "fps": 2
+    },
+    "paperboat": {
+      "row": 244,
+      "frames": 4,
+      "fps": 2
+    }
+  },
   "decor": {
     "halloween": {
       "row": 241,

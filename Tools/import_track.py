@@ -5,10 +5,11 @@ Tracks are grouped into themes. Put masters (e.g. Suno WAV exports) in one
 folder per theme, named after the theme (git-ignored, never bundled):
     Assets/MusicMasters/Pibbo's Raft Days/Floating Pibbo.wav
 For each theme this writes Assets/Music/<theme-slug>/:
-    theme.json    {"title": "<theme name>"}
+    theme.json    {"title": "<theme name>"}; other keys you add (e.g. "prop") are kept
     <slug>.caf    AAC 128 kbps in CAF (~1 MB per minute)
     <slug>.json   beat map (CLAUDE.md Section 9): track, title, bpm, offset, cues
-Titles come from the folder and file names (curly apostrophes become ').
+Titles come from the folder and file names (curly apostrophes become ', a
+Suno " - usesuno.com" suffix is dropped).
 
 BPM and offset are estimated offline from the audio (spectral-flux onsets +
 autocorrelation), never at runtime. Check them by ear; edit the JSON if needed.
@@ -96,6 +97,8 @@ def estimate_tempo(envelope, rate):
 
 
 def title(name):
+    # Suno exports are named "<Title> - usesuno.com"; keep just the title.
+    name = re.sub(r"\s*-\s*usesuno\.com$", "", name, flags=re.IGNORECASE)
     return name.replace("\u2019", "'").replace("\u2018", "'")
 
 
@@ -130,7 +133,11 @@ def main():
         theme = title(theme_dir.name)
         out_dir = OUT_DIR / slug(theme)
         out_dir.mkdir(parents=True, exist_ok=True)
-        (out_dir / "theme.json").write_text(json.dumps({"title": theme}, indent=2, ensure_ascii=False) + "\n")
+        theme_file = out_dir / "theme.json"
+        # keep hand-written keys such as "prop" (the skin prop shown while it plays)
+        meta = json.loads(theme_file.read_text()) if theme_file.exists() else {}
+        meta["title"] = theme
+        theme_file.write_text(json.dumps(meta, indent=2, ensure_ascii=False) + "\n")
         print(f"theme: {theme} -> {out_dir.relative_to(ROOT)}")
         for master in sorted(theme_dir.glob("*.wav")):
             import_track(master, out_dir)
