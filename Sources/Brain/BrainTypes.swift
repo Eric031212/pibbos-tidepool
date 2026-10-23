@@ -22,6 +22,9 @@ public enum Bubble: Equatable, Sendable {
     case musicInvitation
     /// Scrolling "theme - track" while the built-in lofi plays.
     case nowPlaying
+    /// The note from a message in a bottle. `pick` in 0..<1 chooses which of
+    /// the string table's notes (Brain doesn't know the strings).
+    case note(pick: Double)
 }
 
 /// Why Pibbo must be fully hidden with everything paused.
@@ -53,6 +56,8 @@ public enum BrainEvent: Equatable, Sendable {
     case holdEnded
     /// A click on the water beside him: he turns to look.
     case splashed
+    /// A click on the message in a bottle: Pibbo comes out and reads the note.
+    case bottleClicked
     case suspended(SuspendReason)
     case resumed(SuspendReason)
     case timeOfDayChanged(TimeOfDay)
@@ -73,6 +78,8 @@ public struct BrainOutput: Equatable, Sendable {
     public var isSuspended: Bool
     public var isWorkMode: Bool
     public var bubble: Bubble?
+    /// A message in a bottle is floating beside Pibbo (shown even while he hides).
+    public var bottle: Bool = false
 }
 
 /// Timing values (seconds). Starting points from CLAUDE.md Section 5, to be tuned.
@@ -107,6 +114,12 @@ public struct BrainConfig: Sendable {
     public var backfloatDuration: TimeInterval = 4
     /// Looking at a splash.
     public var lookDuration: TimeInterval = 1.5
+    /// A message in a bottle drifts in every few days...
+    public var bottleInterval: ClosedRange<TimeInterval> = (2 * 86_400)...(4 * 86_400)
+    /// ...and drifts off again if nobody opens it.
+    public var bottleStay: TimeInterval = 30 * 60
+    /// How long Pibbo reads the note (and its bubble stays up).
+    public var noteDuration: TimeInterval = 7
 
     public init() {}
 
@@ -122,6 +135,8 @@ public struct BrainConfig: Sendable {
         config.musicInvitationChance = 1
         config.musicInvitationCooldown = 60
         config.bubbleDuration = 8
+        config.bottleInterval = 40...70
+        config.bottleStay = 45
         return config
     }
 }

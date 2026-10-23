@@ -124,3 +124,20 @@ final class WorldTests: XCTestCase {
         XCTAssertEqual(Garden.stage(daysSinceFirstLaunch: -3, stageCount: 6), 0, "clock set backwards")
     }
 }
+
+final class MeadowTests: XCTestCase {
+    func testTheMeadowFillsUpOverThreeMonthsAndStays() {
+        XCTAssertEqual(Garden.meadowStage(daysSinceFirstLaunch: 0, stageCount: 7), 0)
+        XCTAssertEqual(Garden.meadowStage(daysSinceFirstLaunch: 20.9, stageCount: 7), 0, "nothing new until the flower has bloomed a while")
+        XCTAssertEqual(Garden.meadowStage(daysSinceFirstLaunch: 21, stageCount: 7), 1)
+        XCTAssertEqual(Garden.meadowStage(daysSinceFirstLaunch: 91, stageCount: 7), 6)
+        XCTAssertEqual(Garden.meadowStage(daysSinceFirstLaunch: 5000, stageCount: 7), 6, "never resets")
+        XCTAssertEqual(Garden.meadowStage(daysSinceFirstLaunch: 91, stageCount: 3), 2, "clamped to the skin's stages")
+    }
+
+    func testEveryNewStageComesAfterTheFlowerHasBloomed() {
+        let bloom = Garden.stageDays.last!
+        for day in Garden.meadowDays.dropFirst() { XCTAssertGreaterThan(day, bloom) }
+        XCTAssertEqual(Garden.meadowDays, Garden.meadowDays.sorted())
+    }
+}

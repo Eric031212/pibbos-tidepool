@@ -51,6 +51,8 @@ open build/Build/Products/Debug/Tidepool.app
 open build/Build/Products/Debug/Tidepool.app --args --demo   # everything sped up, for trying things out
 open build/Build/Products/Debug/Tidepool.app --args --holiday halloween   # preview a holiday outfit
 open build/Build/Products/Debug/Tidepool.app --args --time night          # force dawn / day / dusk / night
+open build/Build/Products/Debug/Tidepool.app --args --bottle              # a message in a bottle drifts in after 3 s
+open build/Build/Products/Debug/Tidepool.app --args --garden-days 91      # flower + meadow as on day 91
 ```
 
 Builds are ad-hoc signed until a Developer ID certificate exists. Login-item registration only happens when the app runs from `/Applications` or `~/Applications`, so development builds never register themselves.
@@ -99,6 +101,12 @@ Every clip exists once more per outfit, wearing a small 3-row hat that sits *on*
 
 A flower in a pot on a rock to Pibbo's left. It grows with real days since the first launch (seed → full bloom in ~2 weeks, `World.Garden`), needs no care and never wilts, so it is not a pet stat. It only shows while Pibbo shows his face; when he sinks, it hides too. Skins provide it through the optional `garden` key (Section 11); skins without one simply have no flower.
 
+**The meadow (v0.7.0, approved 2026-10-23):** after the flower blooms, the long rock to its left slowly fills up: moss (day 21), mushrooms (35), a succulent (49), a little blue flower (63), a starfish (77), a shell and a butterfly (91), then it stays like that. Nothing resets or wilts, and there is no counter or progress UI, so it is not a collectible. It is drawn by the garden layer one cell to the left (the window is one cell wider), so it shows and hides with the flower. `World.Garden.meadowDays`; skin key `meadow`. In `--demo` the real flower seemed to "start over": that was only the demo clock (30 s = 1 day) restarting at every launch; real users never see a reset. `--garden-days <n>` previews any day.
+
+### Message in a bottle (v0.7.0, approved 2026-10-23)
+
+Every 2–4 days a bottle drifts into the channel between the meadow rock and the flower's rock (it brings its own strip of water, so it shows even while Pibbo hides). Click it and Pibbo comes out, reads the note (`note` action) and a bubble shows one of `Strings.bottleNotes` for ~7 s, even over music. Unopened, it drifts off after 30 min. Never in work mode (a bottle due then waits until work mode ends); arrival is quiet, Pibbo doesn't pop up. `Brain.nextBottle` is saved in UserDefaults so the wait carries over launches. Demo: every 40–70 s, stays 45 s.
+
 ### Work mode look
 
 Pibbo sinks under the water. Only a few small bubbles rise occasionally. Skins provide this as the optional action `submerged`; if missing, fall back to `hidden`.
@@ -116,6 +124,7 @@ Pibbo sinks under the water. Only a few small bubbles rise occasionally. Skins p
 - Pixel-style speech bubbles and click menu (pixel font drawn by `Tools/generate_sprites.py`)
 - Gentle mouse play (approved 2026-10-14): rub to pet, rest the cursor to hold paws, click the water to splash. Mouse only, inside our own window, no permission. (Reacting to what the user types anywhere was considered and dropped: it needs Input Monitoring and would put private text on screen.)
 - Holiday outfits
+- The meadow and messages in a bottle (approved 2026-10-23)
 - Launch at login
 
 **Out of scope:**
@@ -154,6 +163,7 @@ launch → peek (~5 s) → chill → no interaction for a while → hidden
 | Mouse rubs back and forth over Pibbo (4 direction changes of ≥ 4 pt within 1.5 s) | `backfloat` for ~4 s, then back to what he was doing |
 | Cursor rests on Pibbo (moves < 3 pt for 2 s) | `holdpaw` until the cursor moves or leaves |
 | Click on the water / flower beside Pibbo | A `ripple` where you clicked; Pibbo plays `look` for ~1.5 s |
+| A message in a bottle is due (every 2–4 days) | The bottle floats beside Pibbo for 30 min; click it → Pibbo reads the note (~7 s) |
 | Click on Pibbo | Open the menu |
 
 Play (rub, hold, splash) wakes Pibbo, restarts the hide timer, shows over `music` for its duration, and is ignored in work mode. Mouse moves are only tracked while the cursor is over Pibbo, so idle cost stays zero.
@@ -325,6 +335,8 @@ Example `manifest.json`:
 - Optional `"beats": n` on a clip: one loop spans n beats; with built-in music the app plays it in time with the track instead of at `fps` (used by `music`, n = 2).
 - Optional `outfits`: `{"halloween": {"offset": 24}, …}`; the outfit version of a clip is at `row + offset`. Skins without an outfit show the plain clip.
 - Optional `water`: `{"night": {"6fb7d9": "3a548a", …}, …}`, per time of day (`dawn`, `day`, `dusk`, `night`), hex RGB of a water colour → its replacement, applied to the bottom 3 rows of every frame only. Missing times keep the sheet's colours.
+- Optional `meadow`: `{"row": …, "stages": 7}`, like `garden` but for the long rock one cell left of the flower (cumulative stages, `World.Garden.meadowDays`). Needs a `garden`.
+- Optional `bottle`: `{"row": …, "frames": 4, "fps": 2}`, the message in a bottle, drawn in the flower's cell under the garden with its own water strip.
 - Optional `props`: `{"streetlamp": {"row": …, "frames": 2, "fps": 2}}`, looping clips drawn over the garden frame (in columns 11–15, between the flower and Pibbo; holiday decor keeps the left side) while a radio theme that names the prop plays. Needs a `garden`.
 - Optional `decor`: `{"halloween": {"row": …, "frames": 4, "fps": 3}}`, a looping clip drawn over the garden frame (transparent elsewhere) while that holiday is on. Needs a `garden`.
 - Optional `poses` + `transitions` (smooth switches): `poses` maps each clip to a body pose (`under`, `low`, `peek`, `up`, `back`); `transitions` holds in-between clips (played once, then the new clip takes over, scheduled in Core Animation with no timers) keyed `"from>to"`, each side a clip name or `@pose`. Most specific wins: `a>b`, `@poseA>b`, `a>@poseB`, `@poseA>@poseB`; no key means a straight cut. Keep each under ~0.6 s, because Brain's timings start when the clip is shown. Outfits apply to transitions too. `preview-transitions.gif` shows them all.
@@ -472,7 +484,7 @@ Code: `Spikes/06-launch-at-login/`. `run.sh register|unregister|status` installs
 
 - The developer writes in Chinese; reply in Chinese. User-facing app text stays English (Section 6). README and release notes: short, casual, with emoji.
 - New features are proposed first and built only after a yes (Principle 1). Present options with a recommendation; flag anything that conflicts with this file instead of changing the design silently.
-- Hand-off for testing: build, launch the app yourself, then give a short numbered checklist of what to try. `open` on an already-running app ignores `--args`, so relaunch with `pkill -x Tidepool; open … --args …`. `--demo` speeds everything up; `--holiday <name>` previews an outfit; `--time <dawn|day|dusk|night>` forces the time of day.
+- Hand-off for testing: build, launch the app yourself, then give a short numbered checklist of what to try. `open` on an already-running app ignores `--args`, so relaunch with `pkill -x Tidepool; open … --args …`. `--demo` speeds everything up; `--holiday <name>` previews an outfit; `--time <dawn|day|dusk|night>` forces the time of day; `--bottle` brings a bottle in 3 s; `--garden-days <n>` previews the flower and meadow on day n.
 - The repo is **public**: never put personal data (city or location, machine host name, email) in files, test fixtures, or commit messages. Commits use the repo-local identity already set in `.git/config`; don't change it.
 - Music: new tracks arrive as WAVs in `Assets/MusicMasters/<Theme Name>/` → `python3 Tools/import_track.py`. It re-encodes every theme and the old CAFs come out byte-different (same audio): `git checkout -- Assets/Music/<old-theme>` afterwards so only the new theme is committed. Art: edit `Tools/generate_sprites.py` and rerun; rerun `Tools/generate_promo.py` / `Tools/generate_promo_video.py` when the promo material should follow.
 
@@ -482,7 +494,7 @@ Code: `Spikes/06-launch-at-login/`. `run.sh register|unregister|status` installs
 2. `swift test` (all pass) → `xcodegen generate` → Release build → check `CFBundleShortVersionString` in the built Info.plist.
 3. Launch the Release build; after Pibbo hides, `top -c d -pid <pid>` should show ~0 % CPU and ~0 idle wakeups.
 4. Commit with a summary message → push `main` → annotated tag `vX.Y.Z` → push the tag → `python3 Tools/package_dmg.py` → `gh release create vX.Y.Z dist/PibbosTidepool-X.Y.Z.dmg` with casual emoji notes (point to the README's Open Anyway steps until a notarized build exists; credit Suno / MET Norway).
-5. Releases so far: v0.1.0 app shell · v0.2.0 actions, flower, pixel UI · v0.3.0 themed radio, ticker, drag · v0.3.1 mouse play · v0.3.2 holiday outfits · v0.3.3 smooth transitions · v0.4.0 second theme "Solo Float", nodding to the beat · v0.4.1 Halloween decor · v0.5.0 water light by time of day · v0.6.0 third theme "Pibbo in the City", theme props.
+5. Releases so far: v0.1.0 app shell · v0.2.0 actions, flower, pixel UI · v0.3.0 themed radio, ticker, drag · v0.3.1 mouse play · v0.3.2 holiday outfits · v0.3.3 smooth transitions · v0.4.0 second theme "Solo Float", nodding to the beat · v0.4.1 Halloween decor · v0.5.0 water light by time of day · v0.6.0 third theme "Pibbo in the City", theme props · v0.7.0 the meadow, messages in a bottle.
 
 ## 16. Open items
 

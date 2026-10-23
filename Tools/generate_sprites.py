@@ -331,6 +331,16 @@ def frame_water(i):
     return water(g, i)
 
 
+def frame_note(i):
+    """Opens a message in a bottle and reads the note, eyes moving along it."""
+    g = base()
+    remove_shell(g)
+    put(g, [(4, 5), (4, 10)] if i % 2 == 0 else [(4, 6), (4, 11)], "e")  # reading left to right
+    stamp(g, 8, 4, ["XXXXXXXX", "XzzXzzzX", "XXXXXXXX", "XzzzXzzX"])
+    put(g, [(9, 3), (11, 3), (9, 12), (11, 12)], "p")  # paws holding the note
+    return water(g, i // 2)
+
+
 def frame_crack(i):
     """Idle: cracks the shell on his belly with a rock."""
     g = base()
@@ -639,6 +649,46 @@ def garden_stage(stage):
 
 GARDEN_STAGES = 6
 
+# The meadow: a long rock to the left of the flower that slowly fills up over
+# a few months after the flower blooms (World.Garden.meadowDays). Each stage
+# keeps everything from the ones before; nothing ever wilts or resets.
+MEADOW_PLANTS = [
+    [],                                                                   # bare rock
+    [(10, 4, "k"), (10, 5, "K"), (10, 6, "k"), (11, 4, "K"), (10, 7, "k")],  # moss
+    [(8, 12, "M"), (9, 11, "M"), (9, 12, "X"), (9, 13, "M"), (10, 12, "l"),  # mushrooms
+     (9, 14, "M"), (10, 14, "l")],
+    [(7, 5, "k"), (8, 4, "k"), (8, 5, "K"), (8, 6, "k"), (9, 3, "k"),       # succulent
+     (9, 4, "K"), (9, 5, "k"), (9, 6, "K"), (9, 7, "k"), (10, 4, "K"), (10, 5, "K"), (10, 6, "K")],
+    [(3, 9, "h"), (2, 9, "h"), (3, 8, "h"), (3, 10, "h"), (4, 9, "h"),     # a little blue flower
+     (3, 9, "m"), (5, 9, "K"), (6, 9, "K"), (7, 9, "K"), (8, 9, "K"), (9, 9, "K"), (10, 9, "K"),
+     (7, 8, "k"), (8, 10, "k")],
+    [(11, 13, "L"), (12, 12, "L"), (12, 13, "L"), (12, 14, "L"), (13, 12, "L"), (13, 14, "L")],  # starfish
+    [(10, 2, "s"), (10, 3, "S"), (9, 2, "s"), (2, 12, "f"), (2, 14, "f"), (3, 13, "q")],  # shell, butterfly
+]
+MEADOW_STAGES = len(MEADOW_PLANTS)
+
+
+def meadow_stage(stage):
+    g = water(blank(), 0)
+    stamp(g, 11, 2, [".rrrrrrrrrrrrr", "rrrrrrrrrrrrrr", "RRRRRRRRRRRRRR"])
+    for plants in MEADOW_PLANTS[: stage + 1]:
+        for r, c, ch in plants:
+            put(g, [(r, c)], ch)
+    return g
+
+
+def frame_bottle(i):
+    """A message in a bottle bobbing in the channel left of the flower's rock.
+    It brings its own strip of water, so it shows even while the garden hides."""
+    g = water(blank(), 0)
+    top = [8, 8, 9, 9][i]
+    stamp(g, top, 0, [".D.", ".G.", "GuG", "GXG", "GXG", "GuG", "GGG"])  # cork, neck, glass, note
+    pool = water(blank(), 0)
+    for r in range(14, 16):  # the water covers its underside
+        for c in range(3):
+            g[r][c] = pool[r][c]
+    return g
+
 # ---------------------------------------------------------------- holiday outfits
 # Hats are 3 rows tall and sit *on* the head (there is only one free row above
 # it in a 16x16 frame): their bottom row covers the head's top outline and the
@@ -763,6 +813,7 @@ ACTIONS = {
     "holdpaw": (frame_holdpaw, 4, 2),      # cursor resting on him
     "look": (frame_look, 2, 2),            # a splash nearby
     "ripple": (frame_ripple, 4, 7),        # splash effect, drawn over the water
+    "note": (frame_note, 4, 2),            # reading a message in a bottle
     "water": (frame_water, 4, 3),
     "crack": (frame_crack, 4, 4),
     "groom": (frame_groom, 4, 4),
@@ -896,6 +947,8 @@ ICONS = {
            "osSsSsSso", "oSsSsSsSo", ".ooooooo.", "........."],
     "🫧": [".....xx..", "....xuux.", "....xuux.", ".....xx..", ".xx......",
            "xuux..x..", "xuux.xux.", ".xx...x..", "........."],
+    "🌊": [".........", "...oooo..", "..oxxxxo.", ".oxxoooxo", ".oxo...o.",
+           "oxxxo....", "xxxxxxxxx", "xuxxuxxux", "xxxxxxxxx"],
     "❄": ["....x....", ".x..x..x.", "..x.x.x..", "...xxx...", "xxxxxxxxx",
           "...xxx...", "..x.x.x..", ".x..x..x.", "....x...."],
 }
@@ -1032,8 +1085,8 @@ def build_icon():
 def build_skin():
     SKIN_DIR.mkdir(parents=True, exist_ok=True)
     entries = list(STATES.items()) + list(ACTIONS.items()) + list(TRANSITIONS.items())
-    max_frames = max(max(n for _, (_, n, _) in entries), GARDEN_STAGES)
-    rows = len(entries) + 1 + len(OUTFITS) * len(entries) + len(DECOR) + len(PROPS)  # clips, garden, outfits, decor, props
+    max_frames = max(max(n for _, (_, n, _) in entries), GARDEN_STAGES, MEADOW_STAGES)
+    rows = len(entries) + 1 + len(OUTFITS) * len(entries) + len(DECOR) + len(PROPS) + 2  # + meadow, bottle
     sheet = Image.new("RGBA", (SIZE * max_frames, SIZE * rows), (0, 0, 0, 0))
     frames = {}
     for row, (name, (fn, n, _)) in enumerate(entries):
@@ -1068,6 +1121,15 @@ def build_skin():
         frames[f"prop:{name}"] = [to_image(fn(i)) for i in range(n)]
         for i, f in enumerate(frames[f"prop:{name}"]):
             sheet.paste(f, (i * SIZE, prop_rows[name] * SIZE))
+    meadow_row = garden_row + 1 + len(OUTFITS) * len(entries) + len(DECOR) + len(PROPS)
+    meadow = [to_image(meadow_stage(s)) for s in range(MEADOW_STAGES)]
+    for s, f in enumerate(meadow):
+        sheet.paste(f, (s * SIZE, meadow_row * SIZE))
+    bottle_row = meadow_row + 1
+    frames["bottle"] = [to_image(frame_bottle(i)) for i in range(4)]
+    for i, f in enumerate(frames["bottle"]):
+        sheet.paste(f, (i * SIZE, bottle_row * SIZE))
+    frames["meadow"] = meadow
     sheet.save(SKIN_DIR / "sprites.png")
 
     manifest = {
@@ -1080,6 +1142,8 @@ def build_skin():
         "states": {},
         "actions": {},
         "garden": {"row": garden_row, "stages": GARDEN_STAGES},
+        "meadow": {"row": meadow_row, "stages": MEADOW_STAGES},
+        "bottle": {"row": bottle_row, "frames": 4, "fps": 2},
         "outfits": {name: {"offset": offset} for name, offset in outfit_offsets.items()},
         "poses": {name: pose_of(name) for name in list(STATES) + list(ACTIONS) if name not in NO_POSE},
         "transitions": {},
@@ -1113,6 +1177,18 @@ def write_previews(entries, frames, garden, sheet):
     for name in PROPS:
         items.append((name, [Image.alpha_composite(garden[-1], f) for f in frames[f"prop:{name}"]], PROPS[name][2]))
     write_gif(items, SKIN_DIR / "preview.gif", 24)
+
+    # The meadow filling up over the months (with the bloomed flower and Pibbo).
+    strip = Image.new("RGBA", (MEADOW_STAGES * (SIZE * 3 * 4 + 8) + 8, SIZE * 4 + 16), (247, 242, 232, 255))
+    for s in range(MEADOW_STAGES):
+        scene = Image.new("RGBA", (SIZE * 3, SIZE))
+        scene.alpha_composite(frames["meadow"][s], (0, 0))
+        if s == 0:  # a bottle drifting in the channel (drawn under the garden, like the app)
+            scene.alpha_composite(frames["bottle"][0], (SIZE, 0))
+        scene.alpha_composite(garden[-1], (SIZE, 0))
+        scene.alpha_composite(frames["chill"][0], (SIZE * 2, 0))
+        strip.alpha_composite(scene.resize((SIZE * 3 * 4, SIZE * 4), Image.NEAREST), (8 + s * (SIZE * 3 * 4 + 8), 8))
+    strip.save(SKIN_DIR / "preview-meadow.png")
 
     # The tide pool through the day: flower + Pibbo, water coloured per time.
     scene = Image.new("RGBA", (SIZE * 2, SIZE))

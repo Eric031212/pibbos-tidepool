@@ -56,6 +56,12 @@ public struct SkinManifest: Codable, Equatable, Sendable {
     /// Water colours per time of day ("dawn", "dusk", "night"): hex RGB →
     /// hex RGB. Missing times keep the sheet's own colours.
     public let water: [String: [String: String]]?
+    /// Optional long rock left of the flower that fills up over months:
+    /// one static frame per stage (`World.Garden.meadowDays`). Needs a garden.
+    public let meadow: GardenSpec?
+    /// Optional message in a bottle: a looping clip for the flower's cell,
+    /// with its own strip of water so it shows while the garden hides.
+    public let bottle: Clip?
     /// Radio props by name, played over the flower's cell while a theme that
     /// names one plays (theme.json "prop").
     public let props: [String: Clip]?
@@ -64,7 +70,8 @@ public struct SkinManifest: Codable, Equatable, Sendable {
                 frameSize: Int, states: [String: Clip], actions: [String: Clip]?, garden: GardenSpec? = nil,
                 outfits: [String: OutfitSpec]? = nil, poses: [String: String]? = nil,
                 transitions: [String: Clip]? = nil, decor: [String: Clip]? = nil,
-                water: [String: [String: String]]? = nil, props: [String: Clip]? = nil) {
+                water: [String: [String: String]]? = nil, props: [String: Clip]? = nil,
+                meadow: GardenSpec? = nil, bottle: Clip? = nil) {
         self.id = id
         self.name = name
         self.author = author
@@ -80,6 +87,8 @@ public struct SkinManifest: Codable, Equatable, Sendable {
         self.decor = decor
         self.water = water
         self.props = props
+        self.meadow = meadow
+        self.bottle = bottle
     }
 }
 
@@ -146,8 +155,11 @@ public struct SkinPack: Sendable {
         for (name, clip) in all where clip.row < 0 || clip.frames < 1 || clip.fps <= 0 || (clip.beats ?? 1) < 1 {
             throw SkinError.invalidClip(name)
         }
-        if let garden = manifest.garden, garden.row < 0 || garden.stages < 1 {
-            throw SkinError.invalidClip("garden")
+        for (name, spec) in [("garden", manifest.garden), ("meadow", manifest.meadow)] {
+            if let spec, spec.row < 0 || spec.stages < 1 { throw SkinError.invalidClip(name) }
+        }
+        if let bottle = manifest.bottle, bottle.row < 0 || bottle.frames < 1 || bottle.fps <= 0 {
+            throw SkinError.invalidClip("bottle")
         }
         for (name, outfit) in manifest.outfits ?? [:] where outfit.offset < 1 {
             throw SkinError.invalidClip("outfit \(name)")
@@ -216,6 +228,17 @@ public struct SkinPack: Sendable {
     /// Optional actions this skin provides for random/idle use.
     public var availableActions: [String] {
         (manifest.actions ?? [:]).keys.filter { !SkinPack.systemActions.contains($0) }.sorted()
+    }
+
+    /// Whether the skin has a meadow (it sits left of the flower, so it needs one).
+    public var hasMeadow: Bool { manifest.garden != nil && manifest.meadow != nil }
+
+    /// Frame of the meadow at a stage; nil without one.
+    public func meadowFrameRect(stage: Int) -> FrameRect? {
+        guard hasMeadow, let meadow = manifest.meadow else { return nil }
+        let size = manifest.frameSize
+        let clamped = min(max(stage, 0), meadow.stages - 1)
+        return FrameRect(x: clamped * size, y: meadow.row * size, width: size, height: size)
     }
 
     /// Frame of the flower at a growth stage; nil when the skin has no garden.

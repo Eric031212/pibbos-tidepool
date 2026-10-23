@@ -14,10 +14,18 @@ final class SpriteRenderer {
     private let decorLayer = CALayer()
     /// The playing radio theme's prop, beside the flower (also a sublayer of it).
     private let propLayer = CALayer()
+    /// The meadow on the long rock left of the flower; a sublayer of
+    /// `gardenLayer` one cell to its left, so it shows and hides with it.
+    private let meadowLayer = CALayer()
+    /// A message in a bottle, in the flower's cell *under* the garden: the
+    /// rocks cover it, the channel between them shows it, and its own strip
+    /// of water carries it while the garden hides.
+    let bottleLayer = CALayer()
     /// Splash effect drawn over the water where the user clicked.
     let rippleLayer = CALayer()
     let pointSize: CGFloat
     var hasGarden: Bool { pack.manifest.garden != nil }
+    var hasMeadow: Bool { pack.hasMeadow }
 
     private let pack: SkinPack
     /// The sheet as drawn; `sheet` is it with the water coloured for `lighting`.
@@ -47,6 +55,14 @@ final class SpriteRenderer {
             if let stage = gardenStage {
                 gardenStage = nil
                 showGarden(stage: stage)
+            }
+            if let stage = meadowStage {
+                meadowStage = nil
+                showMeadow(stage: stage)
+            }
+            if !bottleLayer.isHidden {
+                bottleLayer.isHidden = true
+                showBottle(true)
             }
             showDecor()
             showProp()
@@ -94,14 +110,43 @@ final class SpriteRenderer {
             extra.isHidden = true
             gardenLayer.addSublayer(extra)
         }
-        for sprite in [layer, gardenLayer, rippleLayer, decorLayer, propLayer] {
+        meadowLayer.isHidden = !pack.hasMeadow
+        gardenLayer.insertSublayer(meadowLayer, at: 0)
+        bottleLayer.isHidden = true
+        for sprite in [layer, gardenLayer, rippleLayer, decorLayer, propLayer, meadowLayer, bottleLayer] {
             sprite.frame = CGRect(x: 0, y: 0, width: pointSize, height: pointSize)
             sprite.magnificationFilter = .nearest
             sprite.actions = noFades
         }
+        meadowLayer.frame.origin.x = -pointSize
     }
 
     private var gardenStage: Int?
+    private var meadowStage: Int?
+
+    /// Shows the meadow at a stage (no-op for skins without one).
+    func showMeadow(stage: Int) {
+        guard stage != meadowStage, let rect = pack.meadowFrameRect(stage: stage) else { return }
+        meadowStage = stage
+        meadowLayer.contents = sheet.cropping(to: CGRect(x: rect.x, y: rect.y, width: rect.width, height: rect.height))
+    }
+
+    /// Floats the message in a bottle, or takes it away.
+    func showBottle(_ visible: Bool) {
+        guard visible != !bottleLayer.isHidden else { return }
+        bottleLayer.removeAllAnimations()
+        guard visible, let clip = pack.manifest.bottle else {
+            bottleLayer.isHidden = true
+            return
+        }
+        let frames = self.frames(for: "bottle", clip: clip)
+        bottleLayer.contents = frames.first
+        bottleLayer.isHidden = false
+        guard frames.count > 1 else { return }
+        let animation = keyframes(frames, fps: clip.fps)
+        animation.repeatCount = .infinity
+        bottleLayer.add(animation, forKey: "frames")
+    }
 
     /// Shows the flower at a growth stage (no-op for skins without a garden).
     func showGarden(stage: Int) {
@@ -245,7 +290,7 @@ final class SpriteRenderer {
     func pause() {
         guard !isPaused else { return }
         isPaused = true
-        for sprite in [layer, gardenLayer] {
+        for sprite in [layer, gardenLayer, bottleLayer] {
             sprite.timeOffset = sprite.convertTime(CACurrentMediaTime(), from: nil)
             sprite.speed = 0
         }
@@ -254,7 +299,7 @@ final class SpriteRenderer {
     func resume() {
         guard isPaused else { return }
         isPaused = false
-        for sprite in [layer, gardenLayer] {
+        for sprite in [layer, gardenLayer, bottleLayer] {
             let pausedAt = sprite.timeOffset
             sprite.speed = 1
             sprite.timeOffset = 0

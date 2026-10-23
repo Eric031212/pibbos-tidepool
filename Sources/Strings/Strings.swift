@@ -18,11 +18,39 @@ public enum Strings {
         public static let snowCocoa = "Snow! Cocoa? ❄️"
     }
 
+    /// Notes found in a message in a bottle; one is picked at random.
+    public static let bottleNotes: [String] = [
+        "The sea says hi 🌊",
+        "Float on, friend 🫧",
+        "Tea break? ☕",
+        "Someone far away waves 👋",
+        "Found a nice shell 🐚",
+        "Tides come, tides go 🌊",
+        "Hum a little tune ♪",
+        "No rush today 🫧",
+        "The kelp says hello 🐚",
+        "Stretch your paws 👋",
+        "It's snowing somewhere ❄️",
+        "You float nicely 🫧",
+        "Rest is good too ☕",
+        "A wave, just for you 🌊",
+        "Keep it slow 🐚",
+        "Listen to the water ♪",
+        "Cocoa later? ☕",
+        "Hello from the deep 🫧",
+    ]
+
+    /// The note for Brain's `pick` (0..<1).
+    public static func bottleNote(pick: Double) -> String {
+        let index = Int(pick * Double(bottleNotes.count))
+        return bottleNotes[min(max(index, 0), bottleNotes.count - 1)]
+    }
+
     /// Everything above that is drawn in pixel text.
     public static let allPixelText: [String] = [
         Menu.music, Menu.stopMusic, Menu.workMode, Menu.quit,
         Bubble.musicInvitation, Bubble.goodbye, Bubble.napTime, Bubble.brb, Bubble.snowCocoa,
-    ]
+    ] + bottleNotes
 
     public enum Errors {
         /// Shown in the log only (the app has no error UI).

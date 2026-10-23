@@ -45,8 +45,20 @@ public enum ActionRules {
 }
 
 /// The flower beside Pibbo grows with real days since the first launch: no
-/// care needed, never wilts (decided 2026-10-12).
+/// care needed, never wilts (decided 2026-10-12). After it blooms, the
+/// meadow on the long rock to its left keeps filling up for about three
+/// months (v0.7.0): something new every two weeks, nothing ever resets.
 public enum Garden {
+    /// Day thresholds for each meadow stage: bare rock, moss, mushrooms,
+    /// succulent, little blue flower, starfish, shell and butterfly.
+    public static let meadowDays: [Double] = [0, 21, 35, 49, 63, 77, 91]
+
+    public static func meadowStage(daysSinceFirstLaunch days: Double, stageCount: Int) -> Int {
+        guard stageCount > 0 else { return 0 }
+        let reached = meadowDays.lastIndex(where: { days >= $0 }) ?? 0
+        return min(reached, stageCount - 1)
+    }
+
     /// Day thresholds for each stage: seed, sprout, leaves, bud, bloom, full bloom.
     public static let stageDays: [Double] = [0, 1, 3, 6, 10, 14]
 

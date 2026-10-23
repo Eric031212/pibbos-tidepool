@@ -63,11 +63,19 @@ public struct Brain {
     /// The cursor is resting on Pibbo and he holds its "paw".
     private var holdingPaw = false
 
+    /// When the next message in a bottle drifts in. The platform saves it, so
+    /// the wait carries over across launches.
+    public private(set) var nextBottle: Date
+    /// While a bottle floats beside Pibbo: when it drifts off unopened.
+    private var bottleUntil: Date?
+
     /// Starts in the launch flow: `peek` for a few seconds, then `chill`.
-    public init(config: BrainConfig = BrainConfig(), now: Date,
+    /// `nextBottle`: a saved arrival time; nil schedules a fresh one.
+    public init(config: BrainConfig = BrainConfig(), now: Date, nextBottle: Date? = nil,
                 random: @escaping (ClosedRange<Double>) -> Double = { Double.random(in: $0) }) {
         self.config = config
         self.random = random
+        self.nextBottle = nextBottle ?? now.addingTimeInterval(random(config.bottleInterval))
         presence = .peek(until: now.addingTimeInterval(config.launchPeek))
         lastInteraction = now
         output = BrainOutput(visual: .state(.peek), isSuspended: false, isWorkMode: false, bubble: nil)
@@ -83,6 +91,7 @@ public struct Brain {
         if let unplugUntil { candidates.append(unplugUntil) }
         if let reaction { candidates.append(reaction.until) }
         if let nowPlayingUntil, nowPlayingUntil != .distantFuture { candidates.append(nowPlayingUntil) }
+        if let bottleUntil { candidates.append(bottleUntil) } else if !workMode { candidates.append(nextBottle) }
         switch presence {
         case .hidden:
             if let nextAppearance, !workMode { candidates.append(nextAppearance) }
@@ -210,6 +219,15 @@ public struct Brain {
         case .builtInMusicAvailable(let available):
             builtInMusicAvailable = available
 
+        case .bottleClicked:
+            guard bottleUntil != nil, !workMode else { break }
+            bottleUntil = nil
+            nextBottle = now.addingTimeInterval(random(config.bottleInterval))
+            interact(at: now)
+            holdingPaw = false
+            reaction = ("note", now.addingTimeInterval(config.noteDuration))
+            bubble = (.note(pick: random(0...0.999_999)), now.addingTimeInterval(config.noteDuration))
+
         case .bubbleClicked:
             bubble = nil
 
@@ -272,6 +290,14 @@ public struct Brain {
         if let current = reaction, current.until <= now { reaction = nil }
         if let until = nowPlayingUntil, until <= now { nowPlayingUntil = nil }
         if let current = bubble, current.until <= now { bubble = nil }
+        if let until = bottleUntil, until <= now {
+            // Nobody opened it: it drifts off, and another comes in a few days.
+            bottleUntil = nil
+            nextBottle = until.addingTimeInterval(random(config.bottleInterval))
+        }
+        if bottleUntil == nil, nextBottle <= now, !workMode {
+            bottleUntil = now.addingTimeInterval(config.bottleStay)
+        }
 
         // A few passes cover chains such as peek → chill → hidden after a long gap.
         for _ in 0..<4 {
@@ -367,12 +393,15 @@ public struct Brain {
         }
         var shown: Bubble?
         if suspendReasons.isEmpty && !workMode {
-            if playingSources.isEmpty, let bubble {
+            if let bubble, case .note = bubble.kind {
+                shown = bubble.kind  // a note shows even over music
+            } else if playingSources.isEmpty, let bubble {
                 shown = bubble.kind
             } else if isBuiltInPlaying, nowPlayingUntil != nil {
                 shown = .nowPlaying
             }
         }
-        output = BrainOutput(visual: visual, isSuspended: !suspendReasons.isEmpty, isWorkMode: workMode, bubble: shown)
+        output = BrainOutput(visual: visual, isSuspended: !suspendReasons.isEmpty, isWorkMode: workMode, bubble: shown,
+                             bottle: bottleUntil != nil && suspendReasons.isEmpty && !workMode)
     }
 }

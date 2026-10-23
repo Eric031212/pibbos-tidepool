@@ -45,6 +45,15 @@ final class PetController {
     /// Bubbles and the menu use half of Pibbo's pixel size: readable, but small.
     private static let uiScale = 2
     private static let firstLaunchKey = "firstLaunchDate"
+    private static let nextBottleKey = "nextBottle"
+    /// x range (view points) where a click opens the bottle: its channel.
+    private let bottleHitRange: ClosedRange<CGFloat>
+    /// `--garden-days <n>` shows the flower and meadow as on day n.
+    private static let forcedGardenDays: Double? = {
+        let args = CommandLine.arguments
+        guard let i = args.firstIndex(of: "--garden-days"), i + 1 < args.count else { return nil }
+        return Double(args[i + 1])
+    }()
 
     init(resources: Resources, demo: Bool) throws {
         self.demo = demo
@@ -52,11 +61,17 @@ final class PetController {
         renderer = try SpriteRenderer(pack: pack, scale: Self.scale)
         bubbleRenderer = try BubbleRenderer(directory: resources.ui)
 
-        // Flower on the left, Pibbo on the right.
+        // Meadow, flower, then Pibbo, left to right. The meadow is drawn by
+        // the garden layer one cell to its left; the bottle floats under the
+        // garden, in the flower's cell.
         let cell = renderer.pointSize
-        let petX = renderer.hasGarden ? cell : 0
+        let gardenX = renderer.hasMeadow ? cell : 0
+        let petX = gardenX + (renderer.hasGarden ? cell : 0)
+        renderer.gardenLayer.frame.origin.x = gardenX
+        renderer.bottleLayer.frame.origin.x = gardenX
         renderer.layer.frame.origin.x = petX
-        panel = PetPanel(layers: [renderer.gardenLayer, renderer.rippleLayer, renderer.layer],
+        bottleHitRange = gardenX...(gardenX + cell / 4)
+        panel = PetPanel(layers: [renderer.bottleLayer, renderer.gardenLayer, renderer.rippleLayer, renderer.layer],
                          size: NSSize(width: petX + cell, height: cell),
                          petRect: NSRect(x: petX, y: 0, width: cell, height: cell))
         bubblePanel = BubblePanel(scale: Self.uiScale)
@@ -67,7 +82,9 @@ final class PetController {
         lofi = BuiltInLofiSource(directory: resources.music)
         musicSources = [AppleMusicWatcher(), lofi]
         brainConfig = demo ? .demo : BrainConfig()
-        brain = Brain(config: brainConfig, now: Date())
+        let savedBottle = UserDefaults.standard.object(forKey: Self.nextBottleKey) as? Date
+        let forcedBottle = CommandLine.arguments.contains("--bottle") ? Date().addingTimeInterval(3) : nil
+        brain = Brain(config: brainConfig, now: Date(), nextBottle: forcedBottle ?? (demo ? nil : savedBottle))
 
         if UserDefaults.standard.object(forKey: Self.firstLaunchKey) == nil {
             UserDefaults.standard.set(Date(), forKey: Self.firstLaunchKey)
@@ -176,23 +193,24 @@ final class PetController {
         // The flower only shows while Pibbo shows his face.
         let pibboIsOut = output.visual != .state(.hidden) && output.visual != .submerged
         renderer.setGardenVisible(pibboIsOut)
-        renderer.showGarden(stage: gardenStage())
+        renderer.showGarden(stage: Garden.stage(daysSinceFirstLaunch: gardenDays(), stageCount: pack.manifest.garden?.stages ?? 0))
+        renderer.showMeadow(stage: Garden.meadowStage(daysSinceFirstLaunch: gardenDays(), stageCount: pack.manifest.meadow?.stages ?? 0))
+        renderer.showBottle(output.bottle && !output.isSuspended)
+        if !demo, UserDefaults.standard.object(forKey: Self.nextBottleKey) as? Date != brain.nextBottle {
+            UserDefaults.standard.set(brain.nextBottle, forKey: Self.nextBottleKey)
+        }
 
         updateBubble(output.isSuspended ? nil : output.bubble)
         scheduleDeadline()
     }
 
-    /// Days since the first launch; in `--demo`, every 30 seconds counts as a day.
-    private func gardenStage() -> Int {
-        let stages = pack.manifest.garden?.stages ?? 0
-        let days: Double
-        if demo {
-            days = Date().timeIntervalSince(launchDate) / 30
-        } else {
-            let first = UserDefaults.standard.object(forKey: Self.firstLaunchKey) as? Date ?? Date()
-            days = Date().timeIntervalSince(first) / 86_400
-        }
-        return Garden.stage(daysSinceFirstLaunch: days, stageCount: stages)
+    /// Days since the first launch; in `--demo`, every 30 seconds counts as a
+    /// day; `--garden-days <n>` pins it.
+    private func gardenDays() -> Double {
+        if let forced = Self.forcedGardenDays { return forced }
+        if demo { return Date().timeIntervalSince(launchDate) / 30 }
+        let first = UserDefaults.standard.object(forKey: Self.firstLaunchKey) as? Date ?? Date()
+        return Date().timeIntervalSince(first) / 86_400
     }
 
     private func updateBubble(_ bubble: Bubble?) {
@@ -210,6 +228,11 @@ final class PetController {
                              anchorX: anchor.x, bottomY: anchor.y)
         case .nowPlaying:
             showNowPlaying()
+        case .note(let pick):
+            guard let image = bubbleRenderer.image(for: Strings.bottleNote(pick: pick)) else { return }
+            let anchor = bubbleAnchor()
+            bubblePanel.show(image, tailInsetFromRight: bubbleRenderer.tailInsetFromRight,
+                             anchorX: anchor.x, bottomY: anchor.y)
         }
     }
 
@@ -225,6 +248,10 @@ final class PetController {
 
     private func splashed(atX x: CGFloat) {
         guard !brain.output.isWorkMode else { return }
+        if brain.output.bottle, bottleHitRange.contains(x) {
+            send(.bottleClicked)  // Pibbo fishes it out and reads the note
+            return
+        }
         renderer.playRipple(atX: x, within: panel.frame.width)
         send(.splashed)
     }
@@ -273,8 +300,9 @@ final class PetController {
     // MARK: - Click, bubble and menu
 
     private func bubbleClicked() {
+        let wasInvitation = shownBubble == .musicInvitation
         send(.bubbleClicked)
-        lofi.play()
+        if wasInvitation { lofi.play() }
     }
 
     private func clicked(_ event: NSEvent) {
