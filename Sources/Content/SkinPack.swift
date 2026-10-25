@@ -28,6 +28,12 @@ public struct GardenSpec: Codable, Equatable, Sendable {
     public let stages: Int
 }
 
+/// Which sheet colours are the water's glints and its plain surface (see `SkinManifest.moonGlint`).
+public struct MoonGlint: Codable, Equatable, Sendable {
+    public let glint: String
+    public let water: String
+}
+
 /// Optional holiday outfit: every clip again, `offset` rows further down.
 public struct OutfitSpec: Codable, Equatable, Sendable {
     public let offset: Int
@@ -62,6 +68,12 @@ public struct SkinManifest: Codable, Equatable, Sendable {
     /// Optional message in a bottle: a looping clip for the flower's cell,
     /// with its own strip of water so it shows while the garden hides.
     public let bottle: Clip?
+    /// Optional moonlight at night: the glint colour's night replacement is
+    /// mixed toward the plain water's by how dark the moon is (new moon: no
+    /// glints). Both are hex RGB source colours of the sheet.
+    public let moonGlint: MoonGlint?
+    /// Optional one-shot shooting star over the pool on clear nights.
+    public let shootingStar: Clip?
     /// Radio props by name, played over the flower's cell while a theme that
     /// names one plays (theme.json "prop").
     public let props: [String: Clip]?
@@ -71,7 +83,8 @@ public struct SkinManifest: Codable, Equatable, Sendable {
                 outfits: [String: OutfitSpec]? = nil, poses: [String: String]? = nil,
                 transitions: [String: Clip]? = nil, decor: [String: Clip]? = nil,
                 water: [String: [String: String]]? = nil, props: [String: Clip]? = nil,
-                meadow: GardenSpec? = nil, bottle: Clip? = nil) {
+                meadow: GardenSpec? = nil, bottle: Clip? = nil, moonGlint: MoonGlint? = nil,
+                shootingStar: Clip? = nil) {
         self.id = id
         self.name = name
         self.author = author
@@ -89,6 +102,8 @@ public struct SkinManifest: Codable, Equatable, Sendable {
         self.props = props
         self.meadow = meadow
         self.bottle = bottle
+        self.moonGlint = moonGlint
+        self.shootingStar = shootingStar
     }
 }
 
@@ -217,9 +232,16 @@ public struct SkinPack: Sendable {
     }
 
     /// How to colour the water at a time of day, or nil to keep the sheet's colours.
-    public func waterTint(for timeOfDay: String?) -> WaterTint? {
-        guard let timeOfDay, let map = manifest.water?[timeOfDay] else { return nil }
-        return WaterTint(hex: map)
+    /// At night, `moonlight` (0 = new moon, 1 = full) sets how bright the
+    /// glints on the water are, when the skin names them (`moonGlint`).
+    public func waterTint(for timeOfDay: String?, moonlight: Double = 1) -> WaterTint? {
+        guard let timeOfDay, let map = manifest.water?[timeOfDay], let tint = WaterTint(hex: map) else { return nil }
+        guard timeOfDay == "night", let moon = manifest.moonGlint,
+              let glint = WaterTint.parse(moon.glint), let water = WaterTint.parse(moon.water),
+              let litGlint = tint.colors[glint], let dark = tint.colors[water] else { return tint }
+        var colors = tint.colors
+        colors[glint] = WaterTint.blend(dark, litGlint, moonlight)
+        return WaterTint(colors: colors)
     }
 
     /// Actions the app plays for a reason of its own, never at random.

@@ -16,6 +16,7 @@ public enum Strings {
         public static let napTime = "Kelp nap zzz"
         public static let brb = "Brb, diving 🫧"
         public static let snowCocoa = "Snow! Cocoa? ❄️"
+        public static let wish = "Made a wish ✨"
     }
 
     /// Notes found in a message in a bottle; one is picked at random.
@@ -49,7 +50,7 @@ public enum Strings {
     /// Everything above that is drawn in pixel text.
     public static let allPixelText: [String] = [
         Menu.music, Menu.stopMusic, Menu.workMode, Menu.quit,
-        Bubble.musicInvitation, Bubble.goodbye, Bubble.napTime, Bubble.brb, Bubble.snowCocoa,
+        Bubble.musicInvitation, Bubble.goodbye, Bubble.napTime, Bubble.brb, Bubble.snowCocoa, Bubble.wish,
     ] + bottleNotes
 
     public enum Errors {

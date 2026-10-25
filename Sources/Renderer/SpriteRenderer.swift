@@ -21,6 +21,8 @@ final class SpriteRenderer {
     /// rocks cover it, the channel between them shows it, and its own strip
     /// of water carries it while the garden hides.
     let bottleLayer = CALayer()
+    /// A shooting star streaking over the pool (plays once, on top of everything).
+    let starLayer = CALayer()
     /// Splash effect drawn over the water where the user clicked.
     let rippleLayer = CALayer()
     let pointSize: CGFloat
@@ -48,26 +50,34 @@ final class SpriteRenderer {
     /// Time of day ("dawn", "day", "dusk", "night"): colours the water.
     /// Changing it redraws everything once.
     var lighting: String? {
-        didSet {
-            guard lighting != oldValue else { return }
-            sheet = pack.waterTint(for: lighting).flatMap { Self.tinted(baseSheet, with: $0, frameSize: pack.manifest.frameSize) } ?? baseSheet
-            frameCache.removeAll()
-            if let stage = gardenStage {
-                gardenStage = nil
-                showGarden(stage: stage)
-            }
-            if let stage = meadowStage {
-                meadowStage = nil
-                showMeadow(stage: stage)
-            }
-            if !bottleLayer.isHidden {
-                bottleLayer.isHidden = true
-                showBottle(true)
-            }
-            showDecor()
-            showProp()
-            restartCurrentClip()
+        didSet { if lighting != oldValue { applyLighting() } }
+    }
+
+    /// How full the moon is (0…1): the glints on the night water.
+    var moonlight: Double = 1 {
+        didSet { if moonlight != oldValue && lighting == "night" { applyLighting() } }
+    }
+
+    /// Recolours the water for `lighting` and `moonlight` and redraws everything once.
+    private func applyLighting() {
+        let tint = pack.waterTint(for: lighting, moonlight: moonlight)
+        sheet = tint.flatMap { Self.tinted(baseSheet, with: $0, frameSize: pack.manifest.frameSize) } ?? baseSheet
+        frameCache.removeAll()
+        if let stage = gardenStage {
+            gardenStage = nil
+            showGarden(stage: stage)
         }
+        if let stage = meadowStage {
+            meadowStage = nil
+            showMeadow(stage: stage)
+        }
+        if !bottleLayer.isHidden {
+            bottleLayer.isHidden = true
+            showBottle(true)
+        }
+        showDecor()
+        showProp()
+        restartCurrentClip()
     }
 
     private static func tinted(_ image: CGImage, with tint: WaterTint, frameSize: Int) -> CGImage? {
@@ -113,7 +123,8 @@ final class SpriteRenderer {
         meadowLayer.isHidden = !pack.hasMeadow
         gardenLayer.insertSublayer(meadowLayer, at: 0)
         bottleLayer.isHidden = true
-        for sprite in [layer, gardenLayer, rippleLayer, decorLayer, propLayer, meadowLayer, bottleLayer] {
+        starLayer.isHidden = true
+        for sprite in [layer, gardenLayer, rippleLayer, decorLayer, propLayer, meadowLayer, bottleLayer, starLayer] {
             sprite.frame = CGRect(x: 0, y: 0, width: pointSize, height: pointSize)
             sprite.magnificationFilter = .nearest
             sprite.actions = noFades
@@ -285,6 +296,21 @@ final class SpriteRenderer {
         guard let name = currentClip else { return }
         currentClip = nil
         show(name)
+    }
+
+    /// Plays the skin's shooting star once (no-op for skins without one).
+    func playShootingStar() {
+        guard let clip = pack.manifest.shootingStar else { return }
+        let frames = self.frames(for: "shootingStar", clip: clip)
+        guard !frames.isEmpty else { return }
+        starLayer.removeAllAnimations()
+        starLayer.contents = nil
+        starLayer.isHidden = false
+        let animation = keyframes(frames, fps: clip.fps)
+        starLayer.add(animation, forKey: "star")
+        DispatchQueue.main.asyncAfter(deadline: .now() + animation.duration) { [weak self] in
+            self?.starLayer.isHidden = true
+        }
     }
 
     func pause() {

@@ -69,6 +69,12 @@ public struct Brain {
     /// While a bottle floats beside Pibbo: when it drifts off unopened.
     private var bottleUntil: Date?
 
+    private var isClearNight = false
+    /// Next shooting star (only scheduled on clear nights).
+    private var nextStar: Date?
+    /// Just after a star fell: until when a click on Pibbo is a wish.
+    private var wishUntil: Date?
+
     /// Starts in the launch flow: `peek` for a few seconds, then `chill`.
     /// `nextBottle`: a saved arrival time; nil schedules a fresh one.
     public init(config: BrainConfig = BrainConfig(), now: Date, nextBottle: Date? = nil,
@@ -92,6 +98,8 @@ public struct Brain {
         if let reaction { candidates.append(reaction.until) }
         if let nowPlayingUntil, nowPlayingUntil != .distantFuture { candidates.append(nowPlayingUntil) }
         if let bottleUntil { candidates.append(bottleUntil) } else if !workMode { candidates.append(nextBottle) }
+        if let wishUntil { candidates.append(wishUntil) }
+        if let nextStar, !workMode { candidates.append(nextStar) }
         switch presence {
         case .hidden:
             if let nextAppearance, !workMode { candidates.append(nextAppearance) }
@@ -228,6 +236,22 @@ public struct Brain {
             reaction = ("note", now.addingTimeInterval(config.noteDuration))
             bubble = (.note(pick: random(0...0.999_999)), now.addingTimeInterval(config.noteDuration))
 
+        case .clearNightChanged(let clear):
+            isClearNight = clear
+            if !clear {
+                nextStar = nil
+            } else if nextStar == nil {
+                nextStar = now.addingTimeInterval(random(config.shootingStarInterval))
+            }
+
+        case .wished:
+            guard wishUntil != nil, !workMode else { break }
+            wishUntil = nil
+            interact(at: now)
+            holdingPaw = false
+            reaction = ("wish", now.addingTimeInterval(config.wishDuration))
+            bubble = (.wish, now.addingTimeInterval(config.wishDuration))
+
         case .bubbleClicked:
             bubble = nil
 
@@ -297,6 +321,12 @@ public struct Brain {
         }
         if bottleUntil == nil, nextBottle <= now, !workMode {
             bottleUntil = now.addingTimeInterval(config.bottleStay)
+        }
+        if let until = wishUntil, until <= now { wishUntil = nil }
+        if let due = nextStar, due <= now, !workMode {
+            // Nobody to see it while away: let that one go by unseen.
+            if !isUserAway { wishUntil = now.addingTimeInterval(config.wishWindow) }
+            nextStar = isClearNight ? now.addingTimeInterval(random(config.shootingStarInterval)) : nil
         }
 
         // A few passes cover chains such as peek → chill → hidden after a long gap.
@@ -393,8 +423,8 @@ public struct Brain {
         }
         var shown: Bubble?
         if suspendReasons.isEmpty && !workMode {
-            if let bubble, case .note = bubble.kind {
-                shown = bubble.kind  // a note shows even over music
+            if let bubble, bubble.kind.showsOverMusic {
+                shown = bubble.kind
             } else if playingSources.isEmpty, let bubble {
                 shown = bubble.kind
             } else if isBuiltInPlaying, nowPlayingUntil != nil {
@@ -402,6 +432,7 @@ public struct Brain {
             }
         }
         output = BrainOutput(visual: visual, isSuspended: !suspendReasons.isEmpty, isWorkMode: workMode, bubble: shown,
-                             bottle: bottleUntil != nil && suspendReasons.isEmpty && !workMode)
+                             bottle: bottleUntil != nil && suspendReasons.isEmpty && !workMode,
+                             shootingStar: wishUntil != nil && suspendReasons.isEmpty && !workMode)
     }
 }

@@ -23,6 +23,20 @@ public struct WaterTint: Equatable, Sendable {
         self.colors = colors
     }
 
+    public init(colors: [UInt32: UInt32]) {
+        self.colors = colors
+    }
+
+    /// Mixes two RGB colours: `t` = 0 gives `a`, 1 gives `b`.
+    public static func blend(_ a: UInt32, _ b: UInt32, _ t: Double) -> UInt32 {
+        let t = min(max(t, 0), 1)
+        func channel(_ shift: UInt32) -> UInt32 {
+            let x = Double(a >> shift & 0xFF), y = Double(b >> shift & 0xFF)
+            return UInt32((x + (y - x) * t).rounded()) << shift
+        }
+        return channel(16) | channel(8) | channel(0)
+    }
+
     static func parse(_ hex: String) -> UInt32? {
         let digits = hex.hasPrefix("#") ? String(hex.dropFirst()) : hex
         guard digits.count == 6 else { return nil }

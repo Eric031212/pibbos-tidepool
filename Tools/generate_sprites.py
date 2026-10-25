@@ -341,6 +341,17 @@ def frame_note(i):
     return water(g, i // 2)
 
 
+def frame_wish(i):
+    """Saw a shooting star: paws together, eyes shut, making a wish."""
+    g = base()
+    eyes(g, "closed")
+    put(g, [(7, 7), (7, 8), (8, 7), (8, 8)], "p")  # paws together under his chin
+    put(g, [(6, 6), (6, 9)], "o")
+    sparkles = [[(1, 2), (3, 14)], [(0, 13), (2, 1)], [(1, 14), (3, 2)], [(0, 2), (2, 13)]][i]
+    put(g, sparkles, "y")
+    return water(g, i // 2)
+
+
 def frame_crack(i):
     """Idle: cracks the shell on his belly with a rock."""
     g = base()
@@ -677,6 +688,25 @@ def meadow_stage(stage):
     return g
 
 
+def frame_shooting_star(i):
+    """A shooting star streaking down over the pool, right to left (plays once)."""
+    g = blank()
+    path = [(0, 15), (1, 13), (2, 11), (3, 9), (4, 7), (5, 5)]
+    if i < 5:
+        put(g, [path[i]], "X")
+        if i >= 1:
+            put(g, [path[i - 1]], "y")
+        if i >= 2:
+            put(g, [path[i - 2]], "Y")
+    else:  # it fades into a little twinkle
+        r, c = path[4]
+        put(g, [(r, c - 1), (r - 1, c), (r + 1, c), (r, c + 1)], "Y")
+    return g
+
+
+SHOOTING_STAR_FRAMES = 6
+
+
 def frame_bottle(i):
     """A message in a bottle bobbing in the channel left of the flower's rock.
     It brings its own strip of water, so it shows even while the garden hides."""
@@ -814,6 +844,7 @@ ACTIONS = {
     "look": (frame_look, 2, 2),            # a splash nearby
     "ripple": (frame_ripple, 4, 7),        # splash effect, drawn over the water
     "note": (frame_note, 4, 2),            # reading a message in a bottle
+    "wish": (frame_wish, 4, 3),            # wishing on a shooting star
     "water": (frame_water, 4, 3),
     "crack": (frame_crack, 4, 4),
     "groom": (frame_groom, 4, 4),
@@ -947,6 +978,8 @@ ICONS = {
            "osSsSsSso", "oSsSsSsSo", ".ooooooo.", "........."],
     "🫧": [".....xx..", "....xuux.", "....xuux.", ".....xx..", ".xx......",
            "xuux..x..", "xuux.xux.", ".xx...x..", "........."],
+    "✨": ["....m....", "....m....", "..mmmmm..", "....m....", "....m..m.", ".m.....mm",
+          "mmm.....m", ".m.......", "........."],
     "🌊": [".........", "...oooo..", "..oxxxxo.", ".oxxoooxo", ".oxo...o.",
            "oxxxo....", "xxxxxxxxx", "xuxxuxxux", "xxxxxxxxx"],
     "❄": ["....x....", ".x..x..x.", "..x.x.x..", "...xxx...", "xxxxxxxxx",
@@ -1086,7 +1119,7 @@ def build_skin():
     SKIN_DIR.mkdir(parents=True, exist_ok=True)
     entries = list(STATES.items()) + list(ACTIONS.items()) + list(TRANSITIONS.items())
     max_frames = max(max(n for _, (_, n, _) in entries), GARDEN_STAGES, MEADOW_STAGES)
-    rows = len(entries) + 1 + len(OUTFITS) * len(entries) + len(DECOR) + len(PROPS) + 2  # + meadow, bottle
+    rows = len(entries) + 1 + len(OUTFITS) * len(entries) + len(DECOR) + len(PROPS) + 3  # + meadow, bottle, star
     sheet = Image.new("RGBA", (SIZE * max_frames, SIZE * rows), (0, 0, 0, 0))
     frames = {}
     for row, (name, (fn, n, _)) in enumerate(entries):
@@ -1130,6 +1163,10 @@ def build_skin():
     for i, f in enumerate(frames["bottle"]):
         sheet.paste(f, (i * SIZE, bottle_row * SIZE))
     frames["meadow"] = meadow
+    star_row = bottle_row + 1
+    frames["shootingStar"] = [to_image(frame_shooting_star(i)) for i in range(SHOOTING_STAR_FRAMES)]
+    for i, f in enumerate(frames["shootingStar"]):
+        sheet.paste(f, (i * SIZE, star_row * SIZE))
     sheet.save(SKIN_DIR / "sprites.png")
 
     manifest = {
@@ -1144,6 +1181,8 @@ def build_skin():
         "garden": {"row": garden_row, "stages": GARDEN_STAGES},
         "meadow": {"row": meadow_row, "stages": MEADOW_STAGES},
         "bottle": {"row": bottle_row, "frames": 4, "fps": 2},
+        "shootingStar": {"row": star_row, "frames": SHOOTING_STAR_FRAMES, "fps": 10, "loop": False},
+        "moonGlint": {"glint": hex_rgb(PALETTE["W"]), "water": hex_rgb(PALETTE["w"])},
         "outfits": {name: {"offset": offset} for name, offset in outfit_offsets.items()},
         "poses": {name: pose_of(name) for name in list(STATES) + list(ACTIONS) if name not in NO_POSE},
         "transitions": {},

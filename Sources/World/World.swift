@@ -68,11 +68,18 @@ public struct WorldContext: Equatable, Sendable {
     public var weather: Weather?
     /// The holiday Pibbo dresses up for today, if any.
     public var holiday: Holiday?
+    /// How full the moon is, in eighths (0 = new, 1 = full): moonlight on the
+    /// night water.
+    public var moonlight: Double
 
-    public init(timeOfDay: TimeOfDay, season: Season, weather: Weather?, holiday: Holiday? = nil) {
+    public init(timeOfDay: TimeOfDay, season: Season, weather: Weather?, holiday: Holiday? = nil, moonlight: Double = 1) {
         self.timeOfDay = timeOfDay
         self.season = season
         self.weather = weather
         self.holiday = holiday
+        self.moonlight = moonlight
     }
+
+    /// A clear night: shooting stars can happen.
+    public var isClearNight: Bool { timeOfDay == .night && weather == .clear }
 }

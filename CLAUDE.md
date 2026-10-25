@@ -53,6 +53,7 @@ open build/Build/Products/Debug/Tidepool.app --args --holiday halloween   # prev
 open build/Build/Products/Debug/Tidepool.app --args --time night          # force dawn / day / dusk / night
 open build/Build/Products/Debug/Tidepool.app --args --bottle              # a message in a bottle drifts in after 3 s
 open build/Build/Products/Debug/Tidepool.app --args --garden-days 91      # flower + meadow as on day 91
+open build/Build/Products/Debug/Tidepool.app --args --demo --time night --stars --moon 1   # clear full-moon night, a shooting star every 15–25 s
 ```
 
 Builds are ad-hoc signed until a Developer ID certificate exists. Login-item registration only happens when the app runs from `/Applications` or `~/Applications`, so development builds never register themselves.
@@ -125,6 +126,7 @@ Pibbo sinks under the water. Only a few small bubbles rise occasionally. Skins p
 - Gentle mouse play (approved 2026-10-14): rub to pet, rest the cursor to hold paws, click the water to splash. Mouse only, inside our own window, no permission. (Reacting to what the user types anywhere was considered and dropped: it needs Input Monitoring and would put private text on screen.)
 - Holiday outfits
 - The meadow and messages in a bottle (approved 2026-10-23)
+- Moonlight on the water and shooting stars with wishes (approved 2026-10-24)
 - Launch at login
 
 **Out of scope:**
@@ -164,6 +166,7 @@ launch → peek (~5 s) → chill → no interaction for a while → hidden
 | Cursor rests on Pibbo (moves < 3 pt for 2 s) | `holdpaw` until the cursor moves or leaves |
 | Click on the water / flower beside Pibbo | A `ripple` where you clicked; Pibbo plays `look` for ~1.5 s |
 | A message in a bottle is due (every 2–4 days) | The bottle floats beside Pibbo for 30 min; click it → Pibbo reads the note (~7 s) |
+| Clear night, every 20–60 min | A shooting star; a click on Pibbo within 6 s makes a wish (`wish` + `Made a wish ✨`) instead of opening the menu |
 | Click on Pibbo | Open the menu |
 
 Play (rub, hold, splash) wakes Pibbo, restarts the hide timer, shows over `music` for its duration, and is ignored in work mode. Mouse moves are only tracked while the cursor is over Pibbo, so idle cost stays zero.
@@ -292,6 +295,8 @@ Implementations: `BuiltInLofiSource`, `AppleMusicWatcher`, `SpotifyWatcher`. `Br
 - **Season:** from the date and hemisphere (sign of the latitude from Section 8's coordinate)
 - **Time of day:** dawn / day / dusk / night, computed locally from the coordinate with the sunrise equation (civil twilight = −6°); no network needed; affects actions and lighting on the water
 - **Water light (v0.5.0):** the tide pool takes the colour of the time of day: misty pale blue with pink glints at dawn, blue by day, golden at dusk, deep blue with moon glints at night (tuned with the developer 2026-10-21: purple dawn looked odd). The skin's `water` key (Section 11) maps water colours per time; `Content.WaterTint` recolours only the bottom 3 rows of every frame in a copy of the sheet, once per time-of-day change (4 times a day), so splashes, steam and Pibbo keep their colours and idle cost stays zero. `preview-water.png` shows all four; `--time <dawn|day|dusk|night>` forces one.
+- **Moonlight (v0.8.0):** `World.MoonPhase` computes the moon's illumination locally (mean synodic month from the 2000-01-06 new moon; within ~half a day), rounded to eighths in `WorldContext.moonlight`. At night the glints on the water (`moonGlint` in the skin) fade from bright at full moon to none at new moon. `--moon <0…1>` forces it.
+- **Shooting stars (v0.8.0, approved 2026-10-24):** on clear nights (`WorldContext.isClearNight`), every 20–60 min a shooting star streaks over the pool (one-shot `shootingStar` clip, drawn on top). For 6 s afterwards a click on Pibbo is a wish instead of opening the menu: he puts his paws together (`wish` action) and says `Made a wish ✨`. Missed stars just go by; none in work mode or while the user is away. `--stars` makes any night count as clear.
 - **Weather:** map MET Norway `symbol_code` to `clear / cloudy / rain / snow / storm` (mapping in the spike 5 result)
 - **Holidays (v0.3.2):** `World.Holidays`, a bundled table keyed by the region setting; no remote updates. Halloween Oct 25–31, Christmas Dec 20–26, New Year Dec 31–Jan 2 (all regions); Lunar New Year from its eve to the 6th day (CN, TW, HK, MO, SG, MY, KR, VN), computed with the system's Chinese calendar. Checked at launch and at every time-of-day change. `--holiday <halloween|christmas|newYear|lunarNewYear>` forces one for testing.
 - Examples: snow → hot cocoa, steam rising; rain → Pibbo happily catches raindrops; Christmas → Santa hat
@@ -337,6 +342,8 @@ Example `manifest.json`:
 - Optional `water`: `{"night": {"6fb7d9": "3a548a", …}, …}`, per time of day (`dawn`, `day`, `dusk`, `night`), hex RGB of a water colour → its replacement, applied to the bottom 3 rows of every frame only. Missing times keep the sheet's colours.
 - Optional `meadow`: `{"row": …, "stages": 7}`, like `garden` but for the long rock one cell left of the flower (cumulative stages, `World.Garden.meadowDays`). Needs a `garden`.
 - Optional `bottle`: `{"row": …, "frames": 4, "fps": 2}`, the message in a bottle, drawn in the flower's cell under the garden with its own water strip.
+- Optional `shootingStar`: a one-shot clip (`"loop": false`) drawn on top over the flower's cell on clear nights.
+- Optional `moonGlint`: `{"glint": "bfe6f5", "water": "6fb7d9"}`, which sheet colours are the water's glints and plain surface; at night the glint's replacement is mixed toward the water's by how dark the moon is.
 - Optional `props`: `{"streetlamp": {"row": …, "frames": 2, "fps": 2}}`, looping clips drawn over the garden frame (in columns 11–15, between the flower and Pibbo; holiday decor keeps the left side) while a radio theme that names the prop plays. Needs a `garden`.
 - Optional `decor`: `{"halloween": {"row": …, "frames": 4, "fps": 3}}`, a looping clip drawn over the garden frame (transparent elsewhere) while that holiday is on. Needs a `garden`.
 - Optional `poses` + `transitions` (smooth switches): `poses` maps each clip to a body pose (`under`, `low`, `peek`, `up`, `back`); `transitions` holds in-between clips (played once, then the new clip takes over, scheduled in Core Animation with no timers) keyed `"from>to"`, each side a clip name or `@pose`. Most specific wins: `a>b`, `@poseA>b`, `a>@poseB`, `@poseA>@poseB`; no key means a straight cut. Keep each under ~0.6 s, because Brain's timings start when the clip is shown. Outfits apply to transitions too. `preview-transitions.gif` shows them all.
@@ -357,6 +364,7 @@ Example `manifest.json`:
 - Periodic work: idle check about every 30 s, weather every 1–3 h, all timers with tolerance
 - Network: every request (ipwho.is, MET Norway) runs in its own `URLSession`, invalidated when it finishes. A shared session kept its HTTP/3 (QUIC) connection open with keepalive wakeups (~1.5/s) after each request; found and fixed in v0.5.0
 - Pause everything when fullscreen, locked, or asleep
+- Timers run on a clock that stops while the Mac sleeps, so a long timer (time of day, weather) fires late by however long the Mac slept. `WorldMonitor` recomputes the world on wake, screen wake, unlock, clock change and time-zone change (found 2026-10-24: day-coloured water at 8 pm after an evening of sleep). Anything scheduled hours ahead must re-check on wake the same way
 - Verification: Activity Monitor "Energy Impact" stays low; spot-check with `powermetrics` or Instruments
 
 ## 13. Distribution
@@ -484,7 +492,7 @@ Code: `Spikes/06-launch-at-login/`. `run.sh register|unregister|status` installs
 
 - The developer writes in Chinese; reply in Chinese. User-facing app text stays English (Section 6). README and release notes: short, casual, with emoji.
 - New features are proposed first and built only after a yes (Principle 1). Present options with a recommendation; flag anything that conflicts with this file instead of changing the design silently.
-- Hand-off for testing: build, launch the app yourself, then give a short numbered checklist of what to try. `open` on an already-running app ignores `--args`, so relaunch with `pkill -x Tidepool; open … --args …`. `--demo` speeds everything up; `--holiday <name>` previews an outfit; `--time <dawn|day|dusk|night>` forces the time of day; `--bottle` brings a bottle in 3 s; `--garden-days <n>` previews the flower and meadow on day n.
+- Hand-off for testing: build, launch the app yourself, then give a short numbered checklist of what to try. `open` on an already-running app ignores `--args`, so relaunch with `pkill -x Tidepool; open … --args …`. `--demo` speeds everything up; `--holiday <name>` previews an outfit; `--time <dawn|day|dusk|night>` forces the time of day; `--bottle` brings a bottle in 3 s; `--garden-days <n>` previews the flower and meadow on day n; `--stars` makes any night clear (shooting stars); `--moon <0…1>` sets the moonlight.
 - The repo is **public**: never put personal data (city or location, machine host name, email) in files, test fixtures, or commit messages. Commits use the repo-local identity already set in `.git/config`; don't change it.
 - Music: new tracks arrive as WAVs in `Assets/MusicMasters/<Theme Name>/` → `python3 Tools/import_track.py`. It re-encodes every theme and the old CAFs come out byte-different (same audio): `git checkout -- Assets/Music/<old-theme>` afterwards so only the new theme is committed. Art: edit `Tools/generate_sprites.py` and rerun; rerun `Tools/generate_promo.py` / `Tools/generate_promo_video.py` when the promo material should follow.
 
@@ -494,7 +502,7 @@ Code: `Spikes/06-launch-at-login/`. `run.sh register|unregister|status` installs
 2. `swift test` (all pass) → `xcodegen generate` → Release build → check `CFBundleShortVersionString` in the built Info.plist.
 3. Launch the Release build; after Pibbo hides, `top -c d -pid <pid>` should show ~0 % CPU and ~0 idle wakeups.
 4. Commit with a summary message → push `main` → annotated tag `vX.Y.Z` → push the tag → `python3 Tools/package_dmg.py` → `gh release create vX.Y.Z dist/PibbosTidepool-X.Y.Z.dmg` with casual emoji notes (point to the README's Open Anyway steps until a notarized build exists; credit Suno / MET Norway).
-5. Releases so far: v0.1.0 app shell · v0.2.0 actions, flower, pixel UI · v0.3.0 themed radio, ticker, drag · v0.3.1 mouse play · v0.3.2 holiday outfits · v0.3.3 smooth transitions · v0.4.0 second theme "Solo Float", nodding to the beat · v0.4.1 Halloween decor · v0.5.0 water light by time of day · v0.6.0 third theme "Pibbo in the City", theme props · v0.7.0 the meadow, messages in a bottle.
+5. Releases so far: v0.1.0 app shell · v0.2.0 actions, flower, pixel UI · v0.3.0 themed radio, ticker, drag · v0.3.1 mouse play · v0.3.2 holiday outfits · v0.3.3 smooth transitions · v0.4.0 second theme "Solo Float", nodding to the beat · v0.4.1 Halloween decor · v0.5.0 water light by time of day · v0.6.0 third theme "Pibbo in the City", theme props · v0.7.0 the meadow, messages in a bottle · v0.8.0 shooting stars, moonlight, wake fix for time of day.
 
 ## 16. Open items
 

@@ -46,6 +46,9 @@ final class PetController {
     private static let uiScale = 2
     private static let firstLaunchKey = "firstLaunchDate"
     private static let nextBottleKey = "nextBottle"
+    /// `--stars`: treat it as a clear night, so shooting stars fall (with `--demo`, every 15–25 s).
+    private static let forcedStars = CommandLine.arguments.contains("--stars")
+    private var starWasFalling = false
     /// x range (view points) where a click opens the bottle: its channel.
     private let bottleHitRange: ClosedRange<CGFloat>
     /// `--garden-days <n>` shows the flower and meadow as on day n.
@@ -71,7 +74,8 @@ final class PetController {
         renderer.bottleLayer.frame.origin.x = gardenX
         renderer.layer.frame.origin.x = petX
         bottleHitRange = gardenX...(gardenX + cell / 4)
-        panel = PetPanel(layers: [renderer.bottleLayer, renderer.gardenLayer, renderer.rippleLayer, renderer.layer],
+        renderer.starLayer.frame.origin.x = renderer.hasGarden ? gardenX : petX
+        panel = PetPanel(layers: [renderer.bottleLayer, renderer.gardenLayer, renderer.rippleLayer, renderer.layer, renderer.starLayer],
                          size: NSSize(width: petX + cell, height: cell),
                          petRect: NSRect(x: petX, y: 0, width: cell, height: cell))
         bubblePanel = BubblePanel(scale: Self.uiScale)
@@ -163,6 +167,8 @@ final class PetController {
     private func worldChanged(_ context: WorldContext) {
         renderer.outfit = context.holiday?.rawValue
         renderer.lighting = context.timeOfDay.rawValue
+        renderer.moonlight = context.moonlight
+        send(.clearNightChanged(Self.forcedStars || context.isClearNight))
         let provided = Set(pack.availableActions)
         let actions = ActionRules.actions(for: context).filter(provided.contains)
         brain.handle(.timeOfDayChanged(context.timeOfDay), at: Date())
@@ -196,6 +202,8 @@ final class PetController {
         renderer.showGarden(stage: Garden.stage(daysSinceFirstLaunch: gardenDays(), stageCount: pack.manifest.garden?.stages ?? 0))
         renderer.showMeadow(stage: Garden.meadowStage(daysSinceFirstLaunch: gardenDays(), stageCount: pack.manifest.meadow?.stages ?? 0))
         renderer.showBottle(output.bottle && !output.isSuspended)
+        if output.shootingStar && !starWasFalling { renderer.playShootingStar() }
+        starWasFalling = output.shootingStar
         if !demo, UserDefaults.standard.object(forKey: Self.nextBottleKey) as? Date != brain.nextBottle {
             UserDefaults.standard.set(brain.nextBottle, forKey: Self.nextBottleKey)
         }
@@ -228,8 +236,10 @@ final class PetController {
                              anchorX: anchor.x, bottomY: anchor.y)
         case .nowPlaying:
             showNowPlaying()
-        case .note(let pick):
-            guard let image = bubbleRenderer.image(for: Strings.bottleNote(pick: pick)) else { return }
+        case .note, .wish:
+            let text: String
+            if case .note(let pick) = bubble { text = Strings.bottleNote(pick: pick) } else { text = Strings.Bubble.wish }
+            guard let image = bubbleRenderer.image(for: text) else { return }
             let anchor = bubbleAnchor()
             bubblePanel.show(image, tailInsetFromRight: bubbleRenderer.tailInsetFromRight,
                              anchorX: anchor.x, bottomY: anchor.y)
@@ -312,6 +322,10 @@ final class PetController {
         }
         if menuPanel.isOpen {
             menuPanel.close()  // a second click closes the menu
+            return
+        }
+        if brain.output.shootingStar {
+            send(.wished)  // right after a shooting star, a click is a wish
             return
         }
         send(.clicked)

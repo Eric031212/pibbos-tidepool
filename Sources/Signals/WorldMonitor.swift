@@ -1,4 +1,4 @@
-import Foundation
+import AppKit
 import World
 
 /// Time of day, season and weather for Pibbo's small actions (spike 5).
@@ -8,7 +8,9 @@ import World
 /// - Weather: MET Norway every 1–3 hours, never before `Expires`, with an
 ///   identifying User-Agent and coordinates rounded to ~1 km.
 /// - Time of day and season: computed locally; one timer for the next change.
-/// No polling: three low-frequency timers, all with tolerance.
+/// No polling: three low-frequency timers, all with tolerance. Timers run on
+/// a clock that stops while the Mac sleeps, so on wake, unlock, or a clock or
+/// time zone change everything is recomputed at once (see `catchUp`).
 final class WorldMonitor {
     var onChange: ((WorldContext) -> Void)?
     private(set) var context: WorldContext
@@ -34,12 +36,20 @@ final class WorldMonitor {
         return TimeOfDay(rawValue: args[i + 1])
     }()
 
+    /// `--moon <0…1>` forces how full the moon is.
+    private static let forcedMoonlight: Double? = {
+        let args = CommandLine.arguments
+        guard let i = args.firstIndex(of: "--moon"), i + 1 < args.count else { return nil }
+        return Double(args[i + 1])
+    }()
+
     private var coordinate: Coordinate
     private let zoneCoordinate: Coordinate?
     private let sessionConfig: URLSessionConfiguration
     private var timeTimer: Timer?
     private var weatherTimer: Timer?
     private var lastModified: String?
+    private var catchUpTokens: [(NotificationCenter, NSObjectProtocol)] = []
 
     init(zoneTab: URL?) {
         let table = zoneTab.flatMap { try? String(contentsOf: $0, encoding: .utf8) } ?? ""
@@ -59,6 +69,31 @@ final class WorldMonitor {
     func start() {
         scheduleTimeOfDay()
         locate { [weak self] in self?.refreshWeather() }
+        let workspace = NSWorkspace.shared.notificationCenter
+        let catchUpAfter: [(NotificationCenter, Notification.Name)] = [
+            (workspace, NSWorkspace.didWakeNotification),
+            (workspace, NSWorkspace.screensDidWakeNotification),
+            (DistributedNotificationCenter.default(), Notification.Name("com.apple.screenIsUnlocked")),
+            (NotificationCenter.default, .NSSystemClockDidChange),
+            (NotificationCenter.default, .NSSystemTimeZoneDidChange),
+        ]
+        catchUpTokens = catchUpAfter.map { center, name in
+            (center, center.addObserver(forName: name, object: nil, queue: .main) { [weak self] _ in self?.catchUp() })
+        }
+    }
+
+    /// The time-of-day timer may have slept through dusk (its clock stops while
+    /// the Mac sleeps; seen 2026-10-24: day-coloured water at night after an
+    /// evening of sleep). Recompute now, re-arm the timer, and fetch weather
+    /// if that refresh came due meanwhile.
+    private func catchUp() {
+        publish(weather: context.weather)
+        scheduleTimeOfDay()
+        if let due = weatherTimer?.fireDate, due <= Date() { refreshWeather() }
+    }
+
+    deinit {
+        catchUpTokens.forEach { center, token in center.removeObserver(token) }
     }
 
     /// One request in its own session, invalidated as soon as it finishes:
@@ -179,6 +214,7 @@ final class WorldMonitor {
         return WorldContext(timeOfDay: forcedTimeOfDay ?? SunClock.timeOfDay(at: now, coordinate: coordinate),
                             season: Season.of(month: month, latitude: coordinate.latitude),
                             weather: weather,
-                            holiday: forcedHoliday ?? Holidays.current(on: now, region: Locale.current.region?.identifier))
+                            holiday: forcedHoliday ?? Holidays.current(on: now, region: Locale.current.region?.identifier),
+                            moonlight: forcedMoonlight ?? MoonPhase.moonlight(at: now))
     }
 }

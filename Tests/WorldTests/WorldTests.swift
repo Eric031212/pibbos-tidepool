@@ -141,3 +141,40 @@ final class MeadowTests: XCTestCase {
         XCTAssertEqual(Garden.meadowDays, Garden.meadowDays.sorted())
     }
 }
+
+final class MoonPhaseTests: XCTestCase {
+    private func utc(_ text: String) -> Date {
+        let formatter = ISO8601DateFormatter()
+        return formatter.date(from: text)!
+    }
+
+    func testFullMoonOfTheJanuary2000Eclipse() {
+        XCTAssertEqual(MoonPhase.illumination(at: utc("2000-01-21T04:44:00Z")), 1, accuracy: 0.02)
+        XCTAssertEqual(MoonPhase.moonlight(at: utc("2000-01-21T04:44:00Z")), 1)
+    }
+
+    func testNewMoonOfTheApril2024SolarEclipse() {
+        XCTAssertEqual(MoonPhase.illumination(at: utc("2024-04-08T18:21:00Z")), 0, accuracy: 0.02)
+        XCTAssertEqual(MoonPhase.moonlight(at: utc("2024-04-08T18:21:00Z")), 0)
+    }
+
+    func testHalfMoonAQuarterCycleLater() {
+        let firstQuarter = utc("2024-04-08T18:21:00Z").addingTimeInterval(29.53 / 4 * 86_400)
+        XCTAssertEqual(MoonPhase.illumination(at: firstQuarter), 0.5, accuracy: 0.05)
+    }
+
+    func testAgeWrapsWithinOneCycle() {
+        for days in stride(from: -400.0, through: 400, by: 13.7) {
+            let age = MoonPhase.age(at: utc("2026-01-01T00:00:00Z").addingTimeInterval(days * 86_400))
+            XCTAssertGreaterThanOrEqual(age, 0)
+            XCTAssertLessThan(age, 29.54)
+        }
+    }
+
+    func testOnlyClearNightsAreStarry() {
+        XCTAssertTrue(WorldContext(timeOfDay: .night, season: .autumn, weather: .clear).isClearNight)
+        XCTAssertFalse(WorldContext(timeOfDay: .night, season: .autumn, weather: .cloudy).isClearNight)
+        XCTAssertFalse(WorldContext(timeOfDay: .dusk, season: .autumn, weather: .clear).isClearNight)
+        XCTAssertFalse(WorldContext(timeOfDay: .night, season: .autumn, weather: nil).isClearNight)
+    }
+}

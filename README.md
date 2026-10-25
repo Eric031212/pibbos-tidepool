@@ -16,6 +16,8 @@ No to-dos, no timers, no chat. Just a little company while you do your thing.
 - 🐚 floats around and keeps busy: cracks shells, grooms, waters his flower
 - 🌷 his flower grows a little every day (no chores, it never wilts), and over the next few months moss, mushrooms and more slowly show up on the rock next to it
 - 🍾 every few days a message in a bottle drifts in. Click it and Pibbo reads you the note
+- 🌠 on clear nights a shooting star sometimes streaks by. Click Pibbo quickly and he makes a wish
+- 🌕 moonlight on the water follows the real moon: sparkly at full moon, dark at new moon
 - 🌅 his pool changes colour through the day: misty blue at dawn, blue by day, golden at dusk, moonlit deep blue at night
 - ☀️🌧❄️ reacts to your weather, the season and the time of day: sunglasses in the sun, catching raindrops, hot cocoa in the snow, stargazing at night
 - 🎶 nods along to the beat of his own radio
@@ -34,7 +36,7 @@ Everything you see, from the otter to the little speech bubbles and the font, is
 
 ## Status
 
-**v0.7.0, still early!** More lofi themes on the way 🎶
+**v0.8.0, still early!** More lofi themes on the way 🎶
 
 ## Download
 

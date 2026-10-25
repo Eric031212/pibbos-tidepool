@@ -25,6 +25,16 @@ public enum Bubble: Equatable, Sendable {
     /// The note from a message in a bottle. `pick` in 0..<1 chooses which of
     /// the string table's notes (Brain doesn't know the strings).
     case note(pick: Double)
+    /// `Made a wish ✨` after wishing on a shooting star.
+    case wish
+
+    /// Bubbles that answer something the user just did show even over music.
+    var showsOverMusic: Bool {
+        switch self {
+        case .note, .wish: return true
+        case .musicInvitation, .nowPlaying: return false
+        }
+    }
 }
 
 /// Why Pibbo must be fully hidden with everything paused.
@@ -58,6 +68,11 @@ public enum BrainEvent: Equatable, Sendable {
     case splashed
     /// A click on the message in a bottle: Pibbo comes out and reads the note.
     case bottleClicked
+    /// Whether it is a clear night (shooting stars only fall then).
+    case clearNightChanged(Bool)
+    /// A click on Pibbo right after a shooting star: he makes a wish (instead
+    /// of the menu opening). Platform sends it while `output.shootingStar`.
+    case wished
     case suspended(SuspendReason)
     case resumed(SuspendReason)
     case timeOfDayChanged(TimeOfDay)
@@ -80,6 +95,9 @@ public struct BrainOutput: Equatable, Sendable {
     public var bubble: Bubble?
     /// A message in a bottle is floating beside Pibbo (shown even while he hides).
     public var bottle: Bool = false
+    /// A shooting star just fell: the platform plays it once, and a click on
+    /// Pibbo while this is true is a wish.
+    public var shootingStar: Bool = false
 }
 
 /// Timing values (seconds). Starting points from CLAUDE.md Section 5, to be tuned.
@@ -120,6 +138,12 @@ public struct BrainConfig: Sendable {
     public var bottleStay: TimeInterval = 30 * 60
     /// How long Pibbo reads the note (and its bubble stays up).
     public var noteDuration: TimeInterval = 7
+    /// On clear nights, a shooting star now and then.
+    public var shootingStarInterval: ClosedRange<TimeInterval> = (20 * 60)...(60 * 60)
+    /// How long after a star a click on Pibbo still counts as a wish.
+    public var wishWindow: TimeInterval = 6
+    /// Pibbo wishing (and the `Made a wish ✨` bubble).
+    public var wishDuration: TimeInterval = 4
 
     public init() {}
 
@@ -137,6 +161,7 @@ public struct BrainConfig: Sendable {
         config.bubbleDuration = 8
         config.bottleInterval = 40...70
         config.bottleStay = 45
+        config.shootingStarInterval = 15...25
         return config
     }
 }
