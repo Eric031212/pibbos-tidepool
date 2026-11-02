@@ -529,6 +529,12 @@ Code: `Spikes/08-call-signal/` (`run.sh [seconds]` wraps it in its own ad-hoc-si
 - The repo is **public**: never put personal data (city or location, machine host name, email) in files, test fixtures, or commit messages. Commits use the repo-local identity already set in `.git/config`; don't change it.
 - Music: new tracks arrive as WAVs in `Assets/MusicMasters/<Theme Name>/` → `python3 Tools/import_track.py`. It re-encodes every theme and the old CAFs come out byte-different (same audio): `git checkout -- Assets/Music/<old-theme>` afterwards so only the new theme is committed. Art: edit `Tools/generate_sprites.py` and rerun; rerun `Tools/generate_promo.py` / `Tools/generate_promo_video.py` when the promo material should follow.
 
+### Working on two machines (decided 2026-11-02)
+
+- The Windows port is built on the developer's own Windows PC; the Mac stays the home of the macOS app. GitHub (`main` of github.com/Eric031212/pibbos-tidepool) is the only link between them.
+- **On Windows, always start by cloning the repo or `git pull` on `main`**, before reading or changing anything; push when a piece of work is done.
+- On the Mac, push finished work before the developer switches to Windows, so the PC starts from the latest state.
+
 ### Release checklist (only when the developer says to release)
 
 1. Bump `MARKETING_VERSION` and `CURRENT_PROJECT_VERSION` in `project.yml`; update README (features, status line) and this file.
