@@ -178,3 +178,25 @@ final class MoonPhaseTests: XCTestCase {
         XCTAssertFalse(WorldContext(timeOfDay: .night, season: .autumn, weather: nil).isClearNight)
     }
 }
+
+final class VisitorRulesTests: XCTestCase {
+    func testWhoComesWhen() {
+        let sunny = Visitors.candidates(for: WorldContext(timeOfDay: .day, season: .summer, weather: .clear))
+        XCTAssertEqual(Set(sunny), ["crab", "seagull", "fish", "friend"])
+        XCTAssertLessThan(sunny.filter { $0 == "friend" }.count, sunny.filter { $0 == "crab" }.count, "the friend is rarer")
+
+        let rainyNight = Visitors.candidates(for: WorldContext(timeOfDay: .night, season: .autumn, weather: .rain))
+        XCTAssertEqual(Set(rainyNight), ["fish", "friend"])
+
+        let storm = Visitors.candidates(for: WorldContext(timeOfDay: .day, season: .summer, weather: .storm))
+        XCTAssertTrue(storm.isEmpty, "nobody visits in a storm")
+
+        let snow = Visitors.candidates(for: WorldContext(timeOfDay: .day, season: .winter, weather: .snow))
+        XCTAssertEqual(Set(snow), ["seagull", "friend"])
+    }
+
+    func testPibboHoldsPawsWithHisFriendAndLooksAtEveryoneElse() {
+        XCTAssertEqual(Visitors.reaction(to: "friend"), "friendpaw")
+        XCTAssertEqual(Visitors.reaction(to: "crab"), "look")
+    }
+}

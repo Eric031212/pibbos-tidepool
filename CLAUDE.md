@@ -55,6 +55,7 @@ open build/Build/Products/Debug/Tidepool.app --args --bottle              # a me
 open build/Build/Products/Debug/Tidepool.app --args --garden-days 91      # flower + meadow as on day 91
 open build/Build/Products/Debug/Tidepool.app --args --demo --time night --stars --moon 1   # clear full-moon night, a shooting star every 15–25 s
 open build/Build/Products/Debug/Tidepool.app --args --weather rain        # or snow: rain / snow over the pool
+open build/Build/Products/Debug/Tidepool.app --args --visitor friend      # crab / seagull / fish / friend, every few seconds
 ```
 
 Builds are ad-hoc signed until a Developer ID certificate exists. Login-item registration only happens when the app runs from `/Applications` or `~/Applications`, so development builds never register themselves.
@@ -108,6 +109,10 @@ A flower in a pot on a rock to Pibbo's left. It grows with real days since the f
 ### Message in a bottle (v0.7.0, approved 2026-10-23)
 
 Every 2–4 days a bottle drifts into the channel between the meadow rock and the flower's rock (it brings its own strip of water, so it shows even while Pibbo hides). Click it and Pibbo comes out, reads the note (`note` action) and a bubble shows one of `Strings.bottleNotes` for ~7 s, even over music. Unopened, it drifts off after 30 min. Never in work mode (a bottle due then waits until work mode ends); arrival is quiet, Pibbo doesn't pop up. `Brain.nextBottle` is saved in UserDefaults so the wait carries over launches. Demo: every 40–70 s, stays 45 s.
+
+### Visitors (v1.0, approved 2026-11-02)
+
+Some of Pibbo's own appearances (35 %, demo 70 %) bring a visitor instead of an idle action, chosen by `World.Visitors` (weighted; crab ×3 on dry days, seagull ×3 by day when it isn't raining, fish ×3 unless stormy or snowing, the friend otter ×1 unless stormy; nobody in a storm). Pibbo looks at the shore folk (`look`) and reaches out to hold paws with his friend (`friendpaw`, the paw-hold mirrored). He stays out for the whole visit plus 1.5 s; no music invitation then. Brain outputs `visitor`; the platform plays it once on its own layer (between the garden and Pibbo) and lets it finish even if Brain moves on. Visits never happen during calls or work mode. Crab: walks along the shore toward Pibbo, waves its claws, walks back (5.5 s). Seagull: glides down onto the meadow rock, hops, looks round, flies off (5.3 s). Fish: jumps between the flower and Pibbo (1.2 s). Friend otter (lighter fur): swims in from the left, holds paws, swims away (14 s). `preview-visitors.gif` shows them all; `--visitor <name>` brings one every few seconds.
 
 ### Quiet during calls (v1.0)
 
@@ -353,6 +358,8 @@ Example `manifest.json`:
 - Optional `bottle`: `{"row": …, "frames": 4, "fps": 2}`, the message in a bottle, drawn in the flower's cell under the garden with its own water strip.
 - Optional `shootingStar`: a one-shot clip (`"loop": false`) drawn on top over the flower's cell on clear nights.
 - Optional `moonGlint`: `{"glint": "bfe6f5", "water": "6fb7d9"}`, which sheet colours are the water's glints and plain surface; at night the glint's replacement is mixed toward the water's by how dark the moon is.
+- Optional `visitors`: `{"crab": {"row": …, "frames": 22, "fps": 4, "wrap": 8, "path": [2, 4, …]}}`, one-shot visits: `path[i]` is the visitor layer's left edge during frame i, in art pixels from the window's left edge (meadow 0, flower 16, Pibbo 32). Frames and position step together (discrete keyframes), so the walk stays pixel-crisp.
+- Optional `"wrap": n` on a clip or visit: n frames per sheet row, longer clips continue on the rows below. Keeps the sheet narrow: the renderer keeps the whole sheet decoded (plus a recoloured copy at dusk, dawn and night), so a 42-frame row would cost ~20 MB.
 - Optional `weatherEffects`: `{"rain": {…}, "snow": {…}}`, looping clips drawn over every cell of the pool while it rains (or storms) / snows; ripples sit in the water rows so the water light recolours them.
 - Optional `snowCover`: `{"row": …, "stages": 2}`, static snow on the rocks: frame 0 over the flower's cell, frame 1 over the meadow's. Shown while it snows and for 2 h after.
 - Optional `props`: `{"streetlamp": {"row": …, "frames": 2, "fps": 2}}`, looping clips drawn over the garden frame (in columns 11–15, between the flower and Pibbo; holiday decor keeps the left side) while a radio theme that names the prop plays. Needs a `garden`.
@@ -513,7 +520,7 @@ Code: `Spikes/08-call-signal/` (`run.sh [seconds]` wraps it in its own ad-hoc-si
 
 - The developer writes in Chinese; reply in Chinese. User-facing app text stays English (Section 6). README and release notes: short, casual, with emoji.
 - New features are proposed first and built only after a yes (Principle 1). Present options with a recommendation; flag anything that conflicts with this file instead of changing the design silently.
-- Hand-off for testing: build, launch the app yourself, then give a short numbered checklist of what to try. `open` on an already-running app ignores `--args`, so relaunch with `pkill -x Tidepool; open … --args …`. `--demo` speeds everything up; `--holiday <name>` previews an outfit; `--time <dawn|day|dusk|night>` forces the time of day; `--bottle` brings a bottle in 3 s; `--garden-days <n>` previews the flower and meadow on day n; `--stars` makes any night clear (shooting stars); `--moon <0…1>` sets the moonlight; `--weather <rain|snow>` forces the weather.
+- Hand-off for testing: build, launch the app yourself, then give a short numbered checklist of what to try. `open` on an already-running app ignores `--args`, so relaunch with `pkill -x Tidepool; open … --args …`. `--demo` speeds everything up; `--holiday <name>` previews an outfit; `--time <dawn|day|dusk|night>` forces the time of day; `--bottle` brings a bottle in 3 s; `--garden-days <n>` previews the flower and meadow on day n; `--stars` makes any night clear (shooting stars); `--moon <0…1>` sets the moonlight; `--weather <rain|snow>` forces the weather; `--visitor <crab|seagull|fish|friend>` brings that visitor every few seconds.
 - The repo is **public**: never put personal data (city or location, machine host name, email) in files, test fixtures, or commit messages. Commits use the repo-local identity already set in `.git/config`; don't change it.
 - Music: new tracks arrive as WAVs in `Assets/MusicMasters/<Theme Name>/` → `python3 Tools/import_track.py`. It re-encodes every theme and the old CAFs come out byte-different (same audio): `git checkout -- Assets/Music/<old-theme>` afterwards so only the new theme is committed. Art: edit `Tools/generate_sprites.py` and rerun; rerun `Tools/generate_promo.py` / `Tools/generate_promo_video.py` when the promo material should follow.
 

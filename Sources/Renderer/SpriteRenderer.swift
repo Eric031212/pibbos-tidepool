@@ -25,6 +25,8 @@ final class SpriteRenderer {
     private let weatherLayers = [CALayer(), CALayer(), CALayer()]
     /// Snow resting on the flower's rock and the meadow's.
     private let snowLayers = [CALayer(), CALayer()]
+    /// A visitor walking, flying or swimming along the pool (plays once).
+    let visitorLayer = CALayer()
     /// A shooting star streaking over the pool (plays once, on top of everything).
     let starLayer = CALayer()
     /// Splash effect drawn over the water where the user clicked.
@@ -137,7 +139,9 @@ final class SpriteRenderer {
         (weatherLayers + snowLayers).forEach { $0.isHidden = true }
         bottleLayer.isHidden = true
         starLayer.isHidden = true
-        for sprite in [layer, gardenLayer, rippleLayer, decorLayer, propLayer, meadowLayer, bottleLayer, starLayer] + weatherLayers + snowLayers {
+        visitorLayer.isHidden = true
+        for sprite in [layer, gardenLayer, rippleLayer, decorLayer, propLayer, meadowLayer, bottleLayer, starLayer, visitorLayer]
+            + weatherLayers + snowLayers {
             sprite.frame = CGRect(x: 0, y: 0, width: pointSize, height: pointSize)
             sprite.magnificationFilter = .nearest
             sprite.actions = noFades
@@ -335,6 +339,35 @@ final class SpriteRenderer {
         guard let name = currentClip else { return }
         currentClip = nil
         show(name)
+    }
+
+    /// Plays a visit once: frames and position step together, in whole art
+    /// pixels, scheduled in Core Animation (no timers while it plays).
+    func playVisitor(_ name: String) {
+        guard let visit = pack.manifest.visitors?[name] else { return }
+        let frames = self.frames(for: "visitor#\(name)", clip: visit.clip)
+        guard !frames.isEmpty else { return }
+        let artPixel = pointSize / CGFloat(pack.manifest.frameSize)
+        visitorLayer.removeAllAnimations()
+        visitorLayer.contents = nil
+        visitorLayer.isHidden = false
+
+        let look = keyframes(frames, fps: visit.fps)
+        let walk = CAKeyframeAnimation(keyPath: "position.x")
+        walk.values = visit.path.map { CGFloat($0) * artPixel + pointSize / 2 }
+        walk.calculationMode = .discrete
+        walk.keyTimes = look.keyTimes
+        walk.duration = look.duration
+        for animation in [look, walk] {
+            // Hold the last frame and spot until the layer hides (no jump back).
+            animation.fillMode = .forwards
+            animation.isRemovedOnCompletion = false
+        }
+        visitorLayer.add(look, forKey: "visit")
+        visitorLayer.add(walk, forKey: "walk")
+        DispatchQueue.main.asyncAfter(deadline: .now() + look.duration) { [weak self] in
+            self?.visitorLayer.isHidden = true
+        }
     }
 
     /// Plays the skin's shooting star once (no-op for skins without one).

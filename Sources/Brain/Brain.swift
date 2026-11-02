@@ -74,6 +74,11 @@ public struct Brain {
     /// While a bottle floats beside Pibbo: when it drifts off unopened.
     private var bottleUntil: Date?
 
+    private var visitors: [String] = []
+    private var visitDurations: [String: TimeInterval] = [:]
+    /// Who is visiting during the current appearance.
+    private var visitor: String?
+
     private var isClearNight = false
     /// Next shooting star (only scheduled on clear nights).
     private var nextStar: Date?
@@ -141,6 +146,10 @@ public struct Brain {
             if presence.isChill {
                 setPresence(.chill(hideAt: now.addingTimeInterval(config.hideAfterNoInteraction)), at: now)
             }
+
+        case .visitorsChanged(let names, let durations):
+            visitors = names.filter { durations[$0] != nil }
+            visitDurations = durations
 
         case .callChanged(let active):
             guard active != inCall else { break }
@@ -300,6 +309,7 @@ public struct Brain {
     /// Changes presence, starting or clearing the small-action cycle that
     /// runs while Pibbo is out.
     private mutating func setPresence(_ new: Presence, at now: Date) {
+        if case .appearance = new {} else { visitor = nil }  // a visit only lasts its appearance
         if new.isChill && !presence.isChill {
             nextChillAction = now.addingTimeInterval(random(config.chillActionInterval))
         } else if !new.isChill {
@@ -392,8 +402,17 @@ public struct Brain {
         }
     }
 
-    /// A random appearance, sometimes with the music invitation.
+    /// A random appearance: sometimes a visitor drops by, otherwise sometimes
+    /// with the music invitation.
     private mutating func appear(at now: Date) {
+        if !visitors.isEmpty, random(0...1) < config.visitorChance {
+            let index = Int(random(0...Double(visitors.count - 1)).rounded())
+            let name = visitors[min(max(index, 0), visitors.count - 1)]
+            let length = (visitDurations[name] ?? 0) + config.visitorLinger
+            setPresence(.appearance(action: Visitors.reaction(to: name), until: now.addingTimeInterval(length)), at: now)
+            visitor = name
+            return
+        }
         var until = now.addingTimeInterval(random(config.actionDuration))
         if shouldInviteToMusic(at: now) {
             let bubbleUntil = now.addingTimeInterval(config.bubbleDuration)
@@ -451,6 +470,7 @@ public struct Brain {
         }
         output = BrainOutput(visual: visual, isSuspended: !suspendReasons.isEmpty, isWorkMode: workMode, bubble: shown,
                              bottle: bottleUntil != nil && suspendReasons.isEmpty && !isQuiet,
-                             shootingStar: wishUntil != nil && suspendReasons.isEmpty && !isQuiet)
+                             shootingStar: wishUntil != nil && suspendReasons.isEmpty && !isQuiet,
+                             visitor: isQuiet || !suspendReasons.isEmpty ? nil : visitor)
     }
 }

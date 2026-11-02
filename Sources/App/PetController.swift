@@ -50,6 +50,13 @@ final class PetController {
     /// `--stars`: treat it as a clear night, so shooting stars fall (with `--demo`, every 15–25 s).
     private static let forcedStars = CommandLine.arguments.contains("--stars")
     private var starWasFalling = false
+    private var shownVisitor: String?
+    /// `--visitor <crab|seagull|fish|friend>`: only that visitor, every few seconds.
+    private static let forcedVisitor: String? = {
+        let args = CommandLine.arguments
+        guard let i = args.firstIndex(of: "--visitor"), i + 1 < args.count else { return nil }
+        return args[i + 1]
+    }()
     private var lastSnow: Date?
     private static let snowLingers: TimeInterval = 2 * 3600
     /// x range (view points) where a click opens the bottle: its channel.
@@ -78,7 +85,8 @@ final class PetController {
         renderer.layer.frame.origin.x = petX
         bottleHitRange = gardenX...(gardenX + cell / 4)
         renderer.starLayer.frame.origin.x = renderer.hasGarden ? gardenX : petX
-        panel = PetPanel(layers: [renderer.bottleLayer, renderer.gardenLayer, renderer.rippleLayer, renderer.layer, renderer.starLayer],
+        panel = PetPanel(layers: [renderer.bottleLayer, renderer.gardenLayer, renderer.visitorLayer, renderer.rippleLayer,
+                                  renderer.layer, renderer.starLayer],
                          size: NSSize(width: petX + cell, height: cell),
                          petRect: NSRect(x: petX, y: 0, width: cell, height: cell))
         bubblePanel = BubblePanel(scale: Self.uiScale)
@@ -88,7 +96,14 @@ final class PetController {
         worldMonitor = WorldMonitor(zoneTab: resources.zoneTab)
         lofi = BuiltInLofiSource(directory: resources.music)
         musicSources = [AppleMusicWatcher(), lofi]
-        brainConfig = demo ? .demo : BrainConfig()
+        var config = demo ? BrainConfig.demo : BrainConfig()
+        if Self.forcedVisitor != nil {
+            // `--visitor <name>`: that visitor, on every appearance, every few seconds.
+            config.visitorChance = 1
+            config.hideAfterNoInteraction = 6
+            config.randomAppearanceInterval = 4...6
+        }
+        brainConfig = config
         let savedBottle = UserDefaults.standard.object(forKey: Self.nextBottleKey) as? Date
         let forcedBottle = CommandLine.arguments.contains("--bottle") ? Date().addingTimeInterval(3) : nil
         brain = Brain(config: brainConfig, now: Date(), nextBottle: forcedBottle ?? (demo ? nil : savedBottle))
@@ -182,6 +197,9 @@ final class PetController {
         if context.weather == .snow { lastSnow = Date() }
         renderer.snowCovered = lastSnow.map { Date().timeIntervalSince($0) < Self.snowLingers } ?? false
         send(.clearNightChanged(Self.forcedStars || context.isClearNight))
+        let drawn = pack.manifest.visitors ?? [:]
+        let welcome = Self.forcedVisitor.map { [$0] } ?? Visitors.candidates(for: context)
+        send(.visitorsChanged(welcome.filter { drawn[$0] != nil }, durations: drawn.mapValues(\.duration)))
         let provided = Set(pack.availableActions)
         let actions = ActionRules.actions(for: context).filter(provided.contains)
         brain.handle(.timeOfDayChanged(context.timeOfDay), at: Date())
@@ -216,6 +234,8 @@ final class PetController {
         renderer.showMeadow(stage: Garden.meadowStage(daysSinceFirstLaunch: gardenDays(), stageCount: pack.manifest.meadow?.stages ?? 0))
         renderer.showBottle(output.bottle && !output.isSuspended)
         if output.shootingStar && !starWasFalling { renderer.playShootingStar() }
+        if let visitor = output.visitor, visitor != shownVisitor { renderer.playVisitor(visitor) }
+        shownVisitor = output.visitor
         starWasFalling = output.shootingStar
         if !demo, UserDefaults.standard.object(forKey: Self.nextBottleKey) as? Date != brain.nextBottle {
             UserDefaults.standard.set(brain.nextBottle, forKey: Self.nextBottleKey)

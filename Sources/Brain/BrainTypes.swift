@@ -68,6 +68,9 @@ public enum BrainEvent: Equatable, Sendable {
     case splashed
     /// A click on the message in a bottle: Pibbo comes out and reads the note.
     case bottleClicked
+    /// Who may visit now (weighted, like `availableActionsChanged`) and how long
+    /// each visit takes on screen.
+    case visitorsChanged([String], durations: [String: TimeInterval])
     /// A camera or microphone started / stopped being used by any app: Pibbo
     /// dives during calls so he never shows up on a shared screen.
     case callChanged(Bool)
@@ -101,6 +104,9 @@ public struct BrainOutput: Equatable, Sendable {
     /// A shooting star just fell: the platform plays it once, and a click on
     /// Pibbo while this is true is a wish.
     public var shootingStar: Bool = false
+    /// Someone is visiting the pool (e.g. "crab"): the platform plays the visit
+    /// once when this appears.
+    public var visitor: String? = nil
 }
 
 /// Timing values (seconds). Starting points from CLAUDE.md Section 5, to be tuned.
@@ -147,6 +153,10 @@ public struct BrainConfig: Sendable {
     public var wishWindow: TimeInterval = 6
     /// Pibbo wishing (and the `Made a wish ✨` bubble).
     public var wishDuration: TimeInterval = 4
+    /// Chance that one of Pibbo's own appearances brings a visitor.
+    public var visitorChance: Double = 0.35
+    /// Pibbo stays out a moment after his visitor has gone.
+    public var visitorLinger: TimeInterval = 1.5
 
     public init() {}
 
@@ -165,6 +175,7 @@ public struct BrainConfig: Sendable {
         config.bottleInterval = 40...70
         config.bottleStay = 45
         config.shootingStarInterval = 15...25
+        config.visitorChance = 0.7
         return config
     }
 }

@@ -69,6 +69,10 @@ PALETTE = {
     "y": (255, 226, 120),  # candle glow
     "Y": (250, 176, 70),   # candle glow, dimmer
     "v": (52, 44, 64),     # bat
+    "C": (214, 92, 72),    # crab
+    "Q": (150, 58, 46),    # crab dark
+    "B": (198, 160, 118),  # friend otter's fur (lighter than Pibbo)
+    "A": (166, 128, 92),   # friend otter's dark fur / paws
 }
 
 # Left half of Pibbo's base pose (columns 0-7); mirrored to columns 8-15.
@@ -287,6 +291,12 @@ def frame_holdpaw(i):
     stamp(g, top, col - 1, arm)
     put(g, [(top + 4, col), (top + 4, col + 1)], "b")
     return water(g, i // 2)
+
+
+def frame_friendpaw(i):
+    """Holding paws with the friend otter on his left (holdpaw, mirrored)."""
+    g = frame_holdpaw(i)
+    return [row[::-1] for row in g[:13]] + g[13:]  # mirror the otter, keep the water as is
 
 
 def frame_look(i):
@@ -745,6 +755,114 @@ def snow_cover(cell):
     return g
 
 
+# ---------------------------------------------------------------- visitors
+# Each visit is one sequence played once on a layer that moves along the pool
+# in whole art pixels (`path`: the layer's left edge per frame, in art pixels
+# from the window's left edge: meadow 0-15, flower 16-31, Pibbo 32-47).
+# Frames are transparent outside the visitor; nothing in the water rows except
+# splashes, so the pool's own water shows through.
+
+FRIEND = {"b": "B", "d": "A", "p": "A"}  # Pibbo's colours -> the friend's
+
+
+def recolor(grid, mapping):
+    return [[mapping.get(ch, ch) for ch in row] for row in grid]
+
+
+def no_water(grid):
+    """Clears the water rows so the visitor sits in the pool's own water."""
+    return [row if r < 13 else ["."] * SIZE for r, row in enumerate(grid)]
+
+
+def crab_frame(legs, wave=False):
+    g = blank()
+    if wave:
+        put(g, [(9, 0), (9, 4)], "C")
+    put(g, [(10, 1), (10, 3)], "e")                     # eyes on stalks
+    put(g, [(11, c) for c in range(5)], "C")
+    put(g, [(11, 0), (11, 4)] if not wave else [], "Q")  # claws down while walking
+    put(g, [(12, c) for c in ((0, 2, 4) if legs else (1, 3))], "Q")
+    return g
+
+
+def visit_crab():
+    walk_in = list(range(2, 20, 2))          # 9 steps along the shore toward Pibbo
+    frames = [crab_frame(i % 2) for i in range(len(walk_in))]
+    frames += [crab_frame(i % 2, wave=True) for i in range(4)]  # waves its claws
+    frames += [crab_frame(i % 2) for i in range(len(walk_in))]
+    path = walk_in + [walk_in[-1]] * 4 + walk_in[::-1]
+    return frames, path, 4
+
+
+def gull_frame(pose, top=6, left=1):
+    """pose: stand, hop, look (head turned back), fly (wings up), glide (wings out)."""
+    g = blank()
+    if pose in ("fly", "glide"):
+        body = {"fly": ["R.....R", ".RXXXR.", "..XXXem", "...m..."],
+                "glide": [".......", "RRXXXRR", "..XXXem", "......."]}[pose]
+        stamp(g, top, left, body)
+        return g
+    head = "...XXe." if pose != "look" else "..eXX.."
+    beak = "...XXXm" if pose != "look" else ".mXXX.."
+    stamp(g, top - (1 if pose == "hop" else 0), left, [head, beak, ".RXXXX.", "RRXXXX.", "..m.m.."])
+    return g
+
+
+def visit_seagull():
+    frames = [gull_frame("glide", 0, 6), gull_frame("fly", 2, 4), gull_frame("glide", 4, 2)]  # coming down
+    frames += [gull_frame("stand")] * 2 + [gull_frame("hop"), gull_frame("stand"), gull_frame("hop"), gull_frame("stand")]
+    frames += [gull_frame("look")] * 2 + [gull_frame("stand")] * 2
+    frames += [gull_frame("fly", 4, 3), gull_frame("glide", 2, 6), gull_frame("fly", 0, 9)]  # off again
+    return frames, [0] * len(frames), 3
+
+
+def fish_frame(i):
+    g = blank()
+    fish = [None, (11, 12, ["LLm"]), (8, 11, [".mL.", "LLLL", ".L.."]), (7, 12, ["LLL", "mLL", "..L"]),
+            (9, 13, ["L.", "LL", "Lm"]), None, None][i]
+    if fish:
+        stamp(g, fish[0], fish[1], fish[2])
+    splash = [[(13, 12), (13, 14)], [(13, 11), (13, 15)], [], [], [(12, 13)],
+              [(11, 12), (11, 14), (12, 13), (13, 11), (13, 15)], [(13, 10), (13, 15)]][i]
+    put(g, splash, "W")
+    return g
+
+
+def visit_fish():
+    frames = [fish_frame(i) for i in range(7)]
+    return frames, [16] * len(frames), 6
+
+
+def friend_swim(i):
+    g = base()
+    eyes(g, "lazy")
+    remove_shell(g)
+    return no_water(recolor(shift(g, [5, 6][i % 2]), FRIEND))
+
+
+def friend_hold(i):
+    return no_water(recolor(shift(frame_holdpaw(i), 1), FRIEND))
+
+
+def visit_friend():
+    swim_in = list(range(-12, 20, 2))         # from off the left edge to just beside Pibbo
+    frames = [friend_swim(i) for i in range(len(swim_in))]
+    frames += [friend_hold(i % 4) for i in range(10)]
+    frames += [friend_swim(i) for i in range(len(swim_in))]
+    path = swim_in + [swim_in[-1]] * 10 + swim_in[::-1]
+    return frames, path, 3
+
+
+VISIT_WRAP = 8  # long visits wrap onto further rows, 8 frames per row (keeps the sheet narrow)
+
+VISITORS = {
+    "crab": visit_crab,
+    "seagull": visit_seagull,
+    "fish": visit_fish,
+    "friend": visit_friend,
+}
+
+
 WEATHER_EFFECTS = {
     "rain": (frame_rain, 4, 6),
     "snow": (frame_snowfall, 4, 2),
@@ -886,6 +1004,7 @@ ACTIONS = {
     "backfloat": (frame_backfloat, 4, 3),  # petted (rub)
     "holdpaw": (frame_holdpaw, 4, 2),      # cursor resting on him
     "look": (frame_look, 2, 2),            # a splash nearby
+    "friendpaw": (frame_friendpaw, 4, 2),  # holding paws with the friend otter
     "ripple": (frame_ripple, 4, 7),        # splash effect, drawn over the water
     "note": (frame_note, 4, 2),            # reading a message in a bottle
     "wish": (frame_wish, 4, 3),            # wishing on a shooting star
@@ -1162,8 +1281,10 @@ def build_icon():
 def build_skin():
     SKIN_DIR.mkdir(parents=True, exist_ok=True)
     entries = list(STATES.items()) + list(ACTIONS.items()) + list(TRANSITIONS.items())
-    max_frames = max(max(n for _, (_, n, _) in entries), GARDEN_STAGES, MEADOW_STAGES)
-    rows = len(entries) + 1 + len(OUTFITS) * len(entries) + len(DECOR) + len(PROPS) + 4 + len(WEATHER_EFFECTS)  # + meadow, bottle, star, snow cover, weather
+    visits = {name: fn() for name, fn in VISITORS.items()}
+    max_frames = max(max(n for _, (_, n, _) in entries), GARDEN_STAGES, MEADOW_STAGES, VISIT_WRAP)
+    visit_rows = {name: -(-len(fn()[0]) // VISIT_WRAP) for name, fn in VISITORS.items()}
+    rows = len(entries) + 1 + len(OUTFITS) * len(entries) + len(DECOR) + len(PROPS) + 4 + len(WEATHER_EFFECTS) + sum(visit_rows.values())
     sheet = Image.new("RGBA", (SIZE * max_frames, SIZE * rows), (0, 0, 0, 0))
     frames = {}
     for row, (name, (fn, n, _)) in enumerate(entries):
@@ -1220,6 +1341,14 @@ def build_skin():
         frames[f"weather:{name}"] = [to_image(fn(i)) for i in range(n)]
         for i, f in enumerate(frames[f"weather:{name}"]):
             sheet.paste(f, (i * SIZE, weather_rows[name] * SIZE))
+    visitor_rows = {}
+    next_row = weather_rows[list(WEATHER_EFFECTS)[-1]] + 1
+    for name, (grids, _, _) in visits.items():
+        visitor_rows[name] = next_row
+        next_row += visit_rows[name]
+        frames[f"visitor:{name}"] = [to_image(grid) for grid in grids]
+        for i, f in enumerate(frames[f"visitor:{name}"]):
+            sheet.paste(f, ((i % VISIT_WRAP) * SIZE, (visitor_rows[name] + i // VISIT_WRAP) * SIZE))
     sheet.save(SKIN_DIR / "sprites.png")
 
     manifest = {
@@ -1237,6 +1366,8 @@ def build_skin():
         "shootingStar": {"row": star_row, "frames": SHOOTING_STAR_FRAMES, "fps": 10, "loop": False},
         "moonGlint": {"glint": hex_rgb(PALETTE["W"]), "water": hex_rgb(PALETTE["w"])},
         "snowCover": {"row": snow_row, "stages": 2},
+        "visitors": {name: {"row": visitor_rows[name], "frames": len(grids), "fps": fps, "wrap": VISIT_WRAP, "path": path}
+                     for name, (grids, path, fps) in visits.items()},
         "weatherEffects": {name: {"row": weather_rows[name], "frames": n, "fps": fps}
                            for name, (_, n, fps) in WEATHER_EFFECTS.items()},
         "outfits": {name: {"offset": offset} for name, offset in outfit_offsets.items()},
@@ -1285,6 +1416,9 @@ def write_previews(entries, frames, garden, sheet):
         strip.alpha_composite(scene.resize((SIZE * 3 * 4, SIZE * 4), Image.NEAREST), (8 + s * (SIZE * 3 * 4 + 8), 8))
     strip.save(SKIN_DIR / "preview-meadow.png")
 
+    # Every visit across the whole pool, as the app plays it.
+    visitor_gif(frames, garden)
+
     # The tide pool through the day: flower + Pibbo, water coloured per time.
     scene = Image.new("RGBA", (SIZE * 2, SIZE))
     scene.alpha_composite(garden[-1], (0, 0))
@@ -1305,6 +1439,33 @@ def write_previews(entries, frames, garden, sheet):
         sequences.append((key.replace("@", ""), clip, TRANSITION_FPS))
     write_gif(sequences, SKIN_DIR / "preview-transitions.gif", 13, tick=1 / TRANSITION_FPS)
     sheet.resize((sheet.width * 8, sheet.height * 8), Image.NEAREST).save(SKIN_DIR / "sprites@8x.png")
+
+
+def visitor_gif(frames, garden):
+    """preview-visitors.gif: each visit in turn over the full pool (meadow, flower, Pibbo)."""
+    scale = 5
+    reaction = {"friend": "friendpaw"}
+    gif = []
+    durations = []
+    for name, fn in VISITORS.items():
+        _, path, fps = fn()
+        pet = frames[reaction.get(name, "look")]
+        for i, sprite in enumerate(frames[f"visitor:{name}"]):
+            scene = Image.new("RGBA", (SIZE * 3, SIZE), (247, 242, 232, 255))
+            scene.alpha_composite(frames["meadow"][-1], (0, 0))
+            scene.alpha_composite(garden[-1], (SIZE, 0))
+            scene.alpha_composite(pet[i % len(pet)], (SIZE * 2, 0))
+            layer = Image.new("RGBA", scene.size)
+            x = path[i]
+            if x < 0:
+                sprite = sprite.crop((-x, 0, SIZE, SIZE))
+                x = 0
+            layer.paste(sprite, (x, 0))
+            scene.alpha_composite(layer)
+            gif.append(scene.resize((SIZE * 3 * scale, SIZE * scale), Image.NEAREST).convert("RGB"))
+            durations.append(int(1000 / fps))
+        durations[-1] += 600  # a pause between visitors
+    gif[0].save(SKIN_DIR / "preview-visitors.gif", save_all=True, append_images=gif[1:], duration=durations, loop=0)
 
 
 def write_gif(items, path, ticks, tick=1 / 12):

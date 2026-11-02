@@ -7,16 +7,20 @@ public struct Clip: Codable, Equatable, Sendable {
     public let fps: Double
     /// `false`: play once and hold the last frame (e.g. `unplug`). Default true.
     public let loop: Bool?
+    /// Frames per sheet row; longer clips continue on the rows below (keeps
+    /// the sheet narrow). Default: all frames on one row.
+    public let wrap: Int?
     /// Beats one loop spans. When set, the app may play the clip in time
     /// with built-in music instead of at `fps` (the `music` bob).
     public let beats: Int?
 
-    public init(row: Int, frames: Int, fps: Double, loop: Bool? = nil, beats: Int? = nil) {
+    public init(row: Int, frames: Int, fps: Double, loop: Bool? = nil, beats: Int? = nil, wrap: Int? = nil) {
         self.row = row
         self.frames = frames
         self.fps = fps
         self.loop = loop
         self.beats = beats
+        self.wrap = wrap
     }
 
     public var loops: Bool { loop ?? true }
@@ -26,6 +30,28 @@ public struct Clip: Codable, Equatable, Sendable {
 public struct GardenSpec: Codable, Equatable, Sendable {
     public let row: Int
     public let stages: Int
+}
+
+/// A visitor's walk-on: frames played once while the layer steps along the
+/// pool. `path[i]` is the layer's left edge during frame i, in art pixels from
+/// the window's left edge (meadow 0, flower 16, Pibbo 32 for 16-px frames).
+public struct Visit: Codable, Equatable, Sendable {
+    public let row: Int
+    public let frames: Int
+    public let fps: Double
+    public let wrap: Int?
+    public let path: [Int]
+
+    public init(row: Int, frames: Int, fps: Double, wrap: Int? = nil, path: [Int]) {
+        self.row = row
+        self.frames = frames
+        self.fps = fps
+        self.wrap = wrap
+        self.path = path
+    }
+
+    public var clip: Clip { Clip(row: row, frames: frames, fps: fps, loop: false, wrap: wrap) }
+    public var duration: Double { Double(frames) / fps }
 }
 
 /// Which sheet colours are the water's glints and its plain surface (see `SkinManifest.moonGlint`).
@@ -80,6 +106,8 @@ public struct SkinManifest: Codable, Equatable, Sendable {
     /// Optional snow resting on the rocks: frame 0 for the flower's cell,
     /// frame 1 for the meadow's (static).
     public let snowCover: GardenSpec?
+    /// Optional visitors by name ("crab", "seagull", …), see `Visit`.
+    public let visitors: [String: Visit]?
     /// Radio props by name, played over the flower's cell while a theme that
     /// names one plays (theme.json "prop").
     public let props: [String: Clip]?
@@ -90,7 +118,8 @@ public struct SkinManifest: Codable, Equatable, Sendable {
                 transitions: [String: Clip]? = nil, decor: [String: Clip]? = nil,
                 water: [String: [String: String]]? = nil, props: [String: Clip]? = nil,
                 meadow: GardenSpec? = nil, bottle: Clip? = nil, moonGlint: MoonGlint? = nil,
-                shootingStar: Clip? = nil, weatherEffects: [String: Clip]? = nil, snowCover: GardenSpec? = nil) {
+                shootingStar: Clip? = nil, weatherEffects: [String: Clip]? = nil, snowCover: GardenSpec? = nil,
+                visitors: [String: Visit]? = nil) {
         self.id = id
         self.name = name
         self.author = author
@@ -112,6 +141,7 @@ public struct SkinManifest: Codable, Equatable, Sendable {
         self.shootingStar = shootingStar
         self.weatherEffects = weatherEffects
         self.snowCover = snowCover
+        self.visitors = visitors
     }
 }
 
@@ -175,7 +205,7 @@ public struct SkinPack: Sendable {
             .merging(manifest.transitions ?? [:]) { clip, _ in clip }
             .merging((manifest.decor ?? [:]).map { ("decor \($0.key)", $0.value) }) { clip, _ in clip }
             .merging((manifest.props ?? [:]).map { ("prop \($0.key)", $0.value) }) { clip, _ in clip }
-        for (name, clip) in all where clip.row < 0 || clip.frames < 1 || clip.fps <= 0 || (clip.beats ?? 1) < 1 {
+        for (name, clip) in all where clip.row < 0 || clip.frames < 1 || clip.fps <= 0 || (clip.beats ?? 1) < 1 || (clip.wrap ?? 1) < 1 {
             throw SkinError.invalidClip(name)
         }
         for (name, spec) in [("garden", manifest.garden), ("meadow", manifest.meadow)] {
@@ -183,6 +213,10 @@ public struct SkinPack: Sendable {
         }
         if let bottle = manifest.bottle, bottle.row < 0 || bottle.frames < 1 || bottle.fps <= 0 {
             throw SkinError.invalidClip("bottle")
+        }
+        for (name, visit) in manifest.visitors ?? [:]
+        where visit.row < 0 || visit.frames < 1 || visit.fps <= 0 || visit.path.count != visit.frames || (visit.wrap ?? 1) < 1 {
+            throw SkinError.invalidClip("visitor \(name)")
         }
         for (name, outfit) in manifest.outfits ?? [:] where outfit.offset < 1 {
             throw SkinError.invalidClip("outfit \(name)")
@@ -288,6 +322,9 @@ public struct SkinPack: Sendable {
 
     public func frameRects(for clip: Clip) -> [FrameRect] {
         let size = manifest.frameSize
-        return (0..<clip.frames).map { FrameRect(x: $0 * size, y: clip.row * size, width: size, height: size) }
+        let perRow = clip.wrap ?? clip.frames
+        return (0..<clip.frames).map {
+            FrameRect(x: ($0 % perRow) * size, y: (clip.row + $0 / perRow) * size, width: size, height: size)
+        }
     }
 }
