@@ -23,6 +23,8 @@ final class SpriteRenderer {
     let bottleLayer = CALayer()
     /// Rain or snow falling over each cell of the pool (Pibbo's, flower's, meadow's).
     private let weatherLayers = [CALayer(), CALayer(), CALayer()]
+    /// The seagull's present, lying on the meadow rock.
+    private let giftLayer = CALayer()
     /// Snow resting on the flower's rock and the meadow's.
     private let snowLayers = [CALayer(), CALayer()]
     /// A visitor walking, flying or swimming along the pool (plays once).
@@ -85,6 +87,7 @@ final class SpriteRenderer {
         showProp()
         showWeather()
         showSnowCover()
+        showGift()
         restartCurrentClip()
     }
 
@@ -132,7 +135,9 @@ final class SpriteRenderer {
         gardenLayer.insertSublayer(meadowLayer, at: 0)
         // Snow sits on the rocks under decor and props; falling weather goes on top.
         gardenLayer.insertSublayer(snowLayers[0], at: 1)
+        meadowLayer.addSublayer(giftLayer)
         meadowLayer.addSublayer(snowLayers[1])
+        giftLayer.isHidden = true
         layer.addSublayer(weatherLayers[0])
         gardenLayer.addSublayer(weatherLayers[1])
         meadowLayer.addSublayer(weatherLayers[2])
@@ -140,7 +145,7 @@ final class SpriteRenderer {
         bottleLayer.isHidden = true
         starLayer.isHidden = true
         visitorLayer.isHidden = true
-        for sprite in [layer, gardenLayer, rippleLayer, decorLayer, propLayer, meadowLayer, bottleLayer, starLayer, visitorLayer]
+        for sprite in [layer, gardenLayer, rippleLayer, decorLayer, propLayer, meadowLayer, bottleLayer, starLayer, visitorLayer, giftLayer]
             + weatherLayers + snowLayers {
             sprite.frame = CGRect(x: 0, y: 0, width: pointSize, height: pointSize)
             sprite.magnificationFilter = .nearest
@@ -181,6 +186,21 @@ final class SpriteRenderer {
         guard stage != gardenStage, let rect = pack.gardenFrameRect(stage: stage) else { return }
         gardenStage = stage
         gardenLayer.contents = sheet.cropping(to: CGRect(x: rect.x, y: rect.y, width: rect.width, height: rect.height))
+    }
+
+    /// Whether the seagull's present lies on the meadow rock.
+    var showsGift = false {
+        didSet { if showsGift != oldValue { showGift() } }
+    }
+
+    private func showGift() {
+        guard showsGift, hasMeadow, let gift = pack.manifest.gift else {
+            giftLayer.isHidden = true
+            return
+        }
+        let size = pack.manifest.frameSize
+        giftLayer.contents = sheet.cropping(to: CGRect(x: 0, y: gift.row * size, width: size, height: size))
+        giftLayer.isHidden = false
     }
 
     /// "rain" or "snow" falling over the pool (nil = none).

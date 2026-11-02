@@ -21,3 +21,17 @@ public enum Visitors {
         visitor == "friend" ? "friendpaw" : "look"
     }
 }
+
+/// The seagull's little story (v1.0): after a few visits it brings Pibbo a
+/// present, which then stays on the meadow rock for good. No counter is ever
+/// shown; one day there's simply a feather.
+public enum SeagullGift {
+    /// Ordinary visits before the one that brings the gift.
+    public static let visitsBeforeGift = 4
+
+    /// The visit to play when the seagull comes: "seagullGift" on its fifth
+    /// visit (once), "seagull" otherwise.
+    public static func visit(seagullVisitsSoFar visits: Int, hasGift: Bool) -> String {
+        !hasGift && visits >= visitsBeforeGift ? "seagullGift" : "seagull"
+    }
+}

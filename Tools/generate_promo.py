@@ -46,6 +46,15 @@ def sprite(name, frame=0, scale=1):
     return img.resize((FS * scale, FS * scale), Image.NEAREST)
 
 
+def visit_frame(name, frame, scale=1):
+    """One frame of a visitor's walk-on (visits wrap onto further sheet rows)."""
+    v = MANIFEST["visitors"][name]
+    wrap = v.get("wrap", v["frames"])
+    x, y = (frame % wrap) * FS, (v["row"] + frame // wrap) * FS
+    img = SHEET.crop((x, y, x + FS, y + FS))
+    return img.resize((FS * scale, FS * scale), Image.NEAREST)
+
+
 def flower(stage, scale=1):
     row = MANIFEST["garden"]["row"]
     img = SHEET.crop((stage * FS, row * FS, (stage + 1) * FS, (row + 1) * FS))
@@ -267,7 +276,7 @@ def p08_dive():
 
 def p09_light():
     c = poster("Light as a bubble", ["free & open source", "github.com/Eric031212/pibbos-tidepool"])
-    facts = ["0 permission prompts", "~0% CPU when idle", "~13 MB of memory", "hides in fullscreen + lock"]
+    facts = ["0 permission prompts", "~0% CPU when idle", "~16 MB of memory", "dives during your calls"]
     y = 58
     for fact in facts:
         c.alpha_composite(text("🫧", scale=2), (14, y))
@@ -277,8 +286,34 @@ def p09_light():
     save(c, "09-light.png")
 
 
+def p10_visitors():
+    c = poster("Neighbours drop by", ["a crab, a seagull, a fish,", "and sometimes a friend."])
+    items = [("crab", 9, "crab"), ("seagull", 5, "seagull"), ("fish", 2, "fish"), ("friend", 18, "a friend")]
+    # Visitors are drawn without water (the pool supplies it in the app): borrow
+    # the bottom water rows of Pibbo's own frame.
+    pool = sprite("hidden", 0)
+    pool.paste((0, 0, 0, 0), (0, 0, FS, FS - 3))
+    for k, (name, frame, label) in enumerate(items):
+        cell = pool.copy()
+        cell.alpha_composite(visit_frame(name, frame))
+        labelled(c, cell.resize((FS * 4, FS * 4), Image.NEAREST), label, 40 + (k % 2) * 126, 60 + (k // 2) * 100)
+    save(c, "10-visitors.png")
+
+
+def p11_surprises():
+    c = poster("Little surprises", ["a note in a bottle,", "a wish on a shooting star."])
+    note = bubble(["The sea says hi 🌊"])
+    labelled(c, sprite("note", 0, 4), "a bottle drifts in", 34, 92)
+    c.alpha_composite(note, (34 + 64 - note.width + 24, 70))
+    wish = bubble(["Made a wish ✨"])
+    labelled(c, sprite("wish", 0, 4), "a star falls", 160, 172)
+    c.alpha_composite(wish, (160 + 64 - wish.width + 24, 150))
+    save(c, "11-surprises.png")
+
+
 def main():
-    for make in [p01_cover, p02_corner, p03_hover, p04_busy, p05_weather, p06_flower, p07_music, p08_dive, p09_light]:
+    for make in [p01_cover, p02_corner, p03_hover, p04_busy, p05_weather, p06_flower, p07_music, p08_dive, p09_light,
+                 p10_visitors, p11_surprises]:
         make()
 
 

@@ -808,6 +808,46 @@ def gull_frame(pose, top=6, left=1):
     return g
 
 
+GIFT_FEATHER = [(9, 1, "R"), (9, 2, "X"), (9, 3, "X"), (9, 4, "r"),         # vane, edged in grey
+                (10, 2, "r"), (10, 3, "X"), (10, 4, "X"), (10, 5, "R"), (10, 6, "R")]  # and its quill
+
+
+def gift_frame():
+    """The seagull's present, lying on the meadow rock for good (meadow cell)."""
+    g = blank()
+    for r, c, ch in GIFT_FEATHER:
+        put(g, [(r, c)], ch)
+    return g
+
+
+def carry(g, top, left, pose):
+    """A little feather held in the beak (just right of it)."""
+    if pose in ("fly", "glide"):
+        put(g, [(top + 2, left + 7), (top + 3, left + 7)], "X")
+    else:
+        put(g, [(top + 1, left + 7), (top + 2, left + 7)], "X")
+    return g
+
+
+def visit_seagull_gift():
+    """The seagull's fifth visit: it brings a feather, sets it on the rock, flies off."""
+    seq = [("glide", 0, 6, True), ("fly", 2, 4, True), ("glide", 4, 2, True),
+           ("stand", 6, 1, True), ("stand", 6, 1, True), ("hop", 6, 1, True),
+           ("look", 6, 1, False), ("look", 6, 1, False), ("stand", 6, 1, False), ("hop", 6, 1, False),
+           ("stand", 6, 1, False), ("stand", 6, 1, False), ("fly", 4, 3, False), ("glide", 2, 6, False), ("fly", 0, 9, False)]
+    frames = []
+    for k, (pose, top, left, holding) in enumerate(seq):
+        g = gull_frame(pose, top, left)
+        if holding:
+            carry(g, top - (1 if pose == "hop" else 0), left, pose)
+        elif k >= 6:  # dropped while it looks round: from now on it lies on the rock
+            for r, c, ch in GIFT_FEATHER:
+                if g[r][c] == ".":
+                    put(g, [(r, c)], ch)
+        frames.append(g)
+    return frames, [0] * len(frames), 3
+
+
 def visit_seagull():
     frames = [gull_frame("glide", 0, 6), gull_frame("fly", 2, 4), gull_frame("glide", 4, 2)]  # coming down
     frames += [gull_frame("stand")] * 2 + [gull_frame("hop"), gull_frame("stand"), gull_frame("hop"), gull_frame("stand")]
@@ -858,6 +898,7 @@ VISIT_WRAP = 8  # long visits wrap onto further rows, 8 frames per row (keeps th
 VISITORS = {
     "crab": visit_crab,
     "seagull": visit_seagull,
+    "seagullGift": visit_seagull_gift,
     "fish": visit_fish,
     "friend": visit_friend,
 }
@@ -1284,7 +1325,7 @@ def build_skin():
     visits = {name: fn() for name, fn in VISITORS.items()}
     max_frames = max(max(n for _, (_, n, _) in entries), GARDEN_STAGES, MEADOW_STAGES, VISIT_WRAP)
     visit_rows = {name: -(-len(fn()[0]) // VISIT_WRAP) for name, fn in VISITORS.items()}
-    rows = len(entries) + 1 + len(OUTFITS) * len(entries) + len(DECOR) + len(PROPS) + 4 + len(WEATHER_EFFECTS) + sum(visit_rows.values())
+    rows = len(entries) + 1 + len(OUTFITS) * len(entries) + len(DECOR) + len(PROPS) + 5 + len(WEATHER_EFFECTS) + sum(visit_rows.values())
     sheet = Image.new("RGBA", (SIZE * max_frames, SIZE * rows), (0, 0, 0, 0))
     frames = {}
     for row, (name, (fn, n, _)) in enumerate(entries):
@@ -1349,6 +1390,9 @@ def build_skin():
         frames[f"visitor:{name}"] = [to_image(grid) for grid in grids]
         for i, f in enumerate(frames[f"visitor:{name}"]):
             sheet.paste(f, ((i % VISIT_WRAP) * SIZE, (visitor_rows[name] + i // VISIT_WRAP) * SIZE))
+    gift_row = next_row
+    sheet.paste(to_image(gift_frame()), (0, gift_row * SIZE))
+    frames["gift"] = [to_image(gift_frame())]
     sheet.save(SKIN_DIR / "sprites.png")
 
     manifest = {
@@ -1366,6 +1410,7 @@ def build_skin():
         "shootingStar": {"row": star_row, "frames": SHOOTING_STAR_FRAMES, "fps": 10, "loop": False},
         "moonGlint": {"glint": hex_rgb(PALETTE["W"]), "water": hex_rgb(PALETTE["w"])},
         "snowCover": {"row": snow_row, "stages": 2},
+        "gift": {"row": gift_row, "stages": 1},
         "visitors": {name: {"row": visitor_rows[name], "frames": len(grids), "fps": fps, "wrap": VISIT_WRAP, "path": path}
                      for name, (grids, path, fps) in visits.items()},
         "weatherEffects": {name: {"row": weather_rows[name], "frames": n, "fps": fps}
@@ -1453,6 +1498,8 @@ def visitor_gif(frames, garden):
         for i, sprite in enumerate(frames[f"visitor:{name}"]):
             scene = Image.new("RGBA", (SIZE * 3, SIZE), (247, 242, 232, 255))
             scene.alpha_composite(frames["meadow"][-1], (0, 0))
+            if name == "seagullGift" and i == len(frames[f"visitor:{name}"]) - 1:
+                scene.alpha_composite(frames["gift"][0], (0, 0))  # and there it stays
             scene.alpha_composite(garden[-1], (SIZE, 0))
             scene.alpha_composite(pet[i % len(pet)], (SIZE * 2, 0))
             layer = Image.new("RGBA", scene.size)

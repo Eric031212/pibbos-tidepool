@@ -169,6 +169,10 @@
     "row": 263,
     "stages": 2
   },
+  "gift": {
+    "row": 280,
+    "stages": 1
+  },
   "visitors": {
     "crab": {
       "row": 266,
@@ -224,8 +228,31 @@
         0
       ]
     },
-    "fish": {
+    "seagullGift": {
       "row": 271,
+      "frames": 15,
+      "fps": 3,
+      "wrap": 8,
+      "path": [
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0
+      ]
+    },
+    "fish": {
+      "row": 273,
       "frames": 7,
       "fps": 6,
       "wrap": 8,
@@ -240,7 +267,7 @@
       ]
     },
     "friend": {
-      "row": 272,
+      "row": 274,
       "frames": 42,
       "fps": 3,
       "wrap": 8,

@@ -34,7 +34,7 @@ Assets/MusicMasters/<Theme Name>/  WAV masters of the tracks (local only: git-ig
 Assets/Data/zone.tab               tzdb time-zone coordinates (offline location fallback)
 Tools/generate_sprites.py          draws all pixel art from text grids (requires Pillow)
 Tools/import_track.py              WAV master → app-ready CAF + beat map with estimated bpm (numpy + afconvert)
-Tools/generate_promo.py            social-media posters (1080×1350) from the real sprites and pixel font → Marketing/promo/
+Tools/generate_promo.py            social-media posters (1080×1350, 11 of them since v1.0) from the real sprites and pixel font → Marketing/promo/
 Tools/generate_promo_video.py      30 s vertical promo video (1080×1920, 30 fps, BGM "Floating Pibbo") → Marketing/video/ (needs ffmpeg)
 Tools/generate_placeholder_lofi.py synthesizes a placeholder lofi loop (stdlib + afconvert), for testing without tracks
 Tools/package_dmg.py               universal Release build → dist/PibbosTidepool-<version>.dmg (drag-to-install; Developer ID signing + notarization when SIGN_IDENTITY / NOTARY_PROFILE are set)
@@ -113,6 +113,10 @@ Every 2–4 days a bottle drifts into the channel between the meadow rock and th
 ### Visitors (v1.0, approved 2026-11-02)
 
 Some of Pibbo's own appearances (35 %, demo 70 %) bring a visitor instead of an idle action, chosen by `World.Visitors` (weighted; crab ×3 on dry days, seagull ×3 by day when it isn't raining, fish ×3 unless stormy or snowing, the friend otter ×1 unless stormy; nobody in a storm). Pibbo looks at the shore folk (`look`) and reaches out to hold paws with his friend (`friendpaw`, the paw-hold mirrored). He stays out for the whole visit plus 1.5 s; no music invitation then. Brain outputs `visitor`; the platform plays it once on its own layer (between the garden and Pibbo) and lets it finish even if Brain moves on. Visits never happen during calls or work mode. Crab: walks along the shore toward Pibbo, waves its claws, walks back (5.5 s). Seagull: glides down onto the meadow rock, hops, looks round, flies off (5.3 s). Fish: jumps between the flower and Pibbo (1.2 s). Friend otter (lighter fur): swims in from the left, holds paws, swims away (14 s). `preview-visitors.gif` shows them all; `--visitor <name>` brings one every few seconds.
+
+### The seagull's gift (v1.0)
+
+Seagull visits are counted (`seagullVisits`, saved except in `--demo`). On the fifth (`World.SeagullGift`) the seagull brings a feather in its beak (`seagullGift` visit), sets it on the meadow rock and flies off; from then on the feather (`gift` frame, a sublayer of the meadow) stays for good (`seagullGiftBrought`). One gift, ever; no counter or hint is shown. Brain only knows "seagull"; the platform picks the gift variant.
 
 ### Quiet during calls (v1.0)
 
@@ -359,6 +363,7 @@ Example `manifest.json`:
 - Optional `shootingStar`: a one-shot clip (`"loop": false`) drawn on top over the flower's cell on clear nights.
 - Optional `moonGlint`: `{"glint": "bfe6f5", "water": "6fb7d9"}`, which sheet colours are the water's glints and plain surface; at night the glint's replacement is mixed toward the water's by how dark the moon is.
 - Optional `visitors`: `{"crab": {"row": …, "frames": 22, "fps": 4, "wrap": 8, "path": [2, 4, …]}}`, one-shot visits: `path[i]` is the visitor layer's left edge during frame i, in art pixels from the window's left edge (meadow 0, flower 16, Pibbo 32). Frames and position step together (discrete keyframes), so the walk stays pixel-crisp.
+- Optional `gift`: `{"row": …, "stages": 1}`, the seagull's present: one static frame over the meadow's cell, shown once it has been brought. Needs a `meadow`.
 - Optional `"wrap": n` on a clip or visit: n frames per sheet row, longer clips continue on the rows below. Keeps the sheet narrow: the renderer keeps the whole sheet decoded (plus a recoloured copy at dusk, dawn and night), so a 42-frame row would cost ~20 MB.
 - Optional `weatherEffects`: `{"rain": {…}, "snow": {…}}`, looping clips drawn over every cell of the pool while it rains (or storms) / snows; ripples sit in the water rows so the water light recolours them.
 - Optional `snowCover`: `{"row": …, "stages": 2}`, static snow on the rocks: frame 0 over the flower's cell, frame 1 over the meadow's. Shown while it snows and for 2 h after.
@@ -530,7 +535,7 @@ Code: `Spikes/08-call-signal/` (`run.sh [seconds]` wraps it in its own ad-hoc-si
 2. `swift test` (all pass) → `xcodegen generate` → Release build → check `CFBundleShortVersionString` in the built Info.plist.
 3. Launch the Release build; after Pibbo hides, `top -c d -pid <pid>` should show ~0 % CPU and ~0 idle wakeups.
 4. Commit with a summary message → push `main` → annotated tag `vX.Y.Z` → push the tag → `python3 Tools/package_dmg.py` → `gh release create vX.Y.Z dist/PibbosTidepool-X.Y.Z.dmg` with casual emoji notes (point to the README's Open Anyway steps until a notarized build exists; credit Suno / MET Norway).
-5. Releases so far: v0.1.0 app shell · v0.2.0 actions, flower, pixel UI · v0.3.0 themed radio, ticker, drag · v0.3.1 mouse play · v0.3.2 holiday outfits · v0.3.3 smooth transitions · v0.4.0 second theme "Solo Float", nodding to the beat · v0.4.1 Halloween decor · v0.5.0 water light by time of day · v0.6.0 third theme "Pibbo in the City", theme props · v0.7.0 the meadow, messages in a bottle · v0.8.0 shooting stars, moonlight, wake fix for time of day.
+5. Releases so far: v0.1.0 app shell · v0.2.0 actions, flower, pixel UI · v0.3.0 themed radio, ticker, drag · v0.3.1 mouse play · v0.3.2 holiday outfits · v0.3.3 smooth transitions · v0.4.0 second theme "Solo Float", nodding to the beat · v0.4.1 Halloween decor · v0.5.0 water light by time of day · v0.6.0 third theme "Pibbo in the City", theme props · v0.7.0 the meadow, messages in a bottle · v0.8.0 shooting stars, moonlight, wake fix for time of day · v1.0.0 "Pibbo's Tidepool": visitors, the seagull's gift, weather in the pool, quiet during calls, final bundle ID.
 
 ## 16. Open items
 

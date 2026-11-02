@@ -51,6 +51,11 @@ final class PetController {
     private static let forcedStars = CommandLine.arguments.contains("--stars")
     private var starWasFalling = false
     private var shownVisitor: String?
+    /// The seagull's story; saved, except in `--demo` (a demo doesn't spend the real gift).
+    private var seagullVisits = 0
+    private var hasGift = false
+    private static let seagullVisitsKey = "seagullVisits"
+    private static let hasGiftKey = "seagullGiftBrought"
     /// `--visitor <crab|seagull|fish|friend>`: only that visitor, every few seconds.
     private static let forcedVisitor: String? = {
         let args = CommandLine.arguments
@@ -108,6 +113,11 @@ final class PetController {
         let forcedBottle = CommandLine.arguments.contains("--bottle") ? Date().addingTimeInterval(3) : nil
         brain = Brain(config: brainConfig, now: Date(), nextBottle: forcedBottle ?? (demo ? nil : savedBottle))
 
+        if !demo {
+            seagullVisits = UserDefaults.standard.integer(forKey: Self.seagullVisitsKey)
+            hasGift = UserDefaults.standard.bool(forKey: Self.hasGiftKey)
+        }
+        renderer.showsGift = hasGift
         if UserDefaults.standard.object(forKey: Self.firstLaunchKey) == nil {
             UserDefaults.standard.set(Date(), forKey: Self.firstLaunchKey)
         }
@@ -234,7 +244,7 @@ final class PetController {
         renderer.showMeadow(stage: Garden.meadowStage(daysSinceFirstLaunch: gardenDays(), stageCount: pack.manifest.meadow?.stages ?? 0))
         renderer.showBottle(output.bottle && !output.isSuspended)
         if output.shootingStar && !starWasFalling { renderer.playShootingStar() }
-        if let visitor = output.visitor, visitor != shownVisitor { renderer.playVisitor(visitor) }
+        if let visitor = output.visitor, visitor != shownVisitor { playVisit(visitor) }
         shownVisitor = output.visitor
         starWasFalling = output.shootingStar
         if !demo, UserDefaults.standard.object(forKey: Self.nextBottleKey) as? Date != brain.nextBottle {
@@ -285,6 +295,27 @@ final class PetController {
         let pool = panel.frame
         marqueePanel.show(text, pool: pool, tailX: pool.maxX - renderer.pointSize / 2,
                           bottomY: pool.maxY - CGFloat(Self.scale) * 2)
+    }
+
+    // MARK: - Visitors
+
+    private func playVisit(_ visitor: String) {
+        guard visitor == "seagull" else {
+            renderer.playVisitor(visitor)
+            return
+        }
+        let visit = SeagullGift.visit(seagullVisitsSoFar: seagullVisits, hasGift: hasGift)
+        renderer.playVisitor(visit)
+        seagullVisits += 1
+        if !demo { UserDefaults.standard.set(seagullVisits, forKey: Self.seagullVisitsKey) }
+        guard visit == "seagullGift", let length = pack.manifest.visitors?[visit]?.duration else { return }
+        // Once it has flown off, the feather it set down stays on the rock.
+        DispatchQueue.main.asyncAfter(deadline: .now() + length) { [weak self] in
+            guard let self else { return }
+            self.hasGift = true
+            self.renderer.showsGift = true
+            if !self.demo { UserDefaults.standard.set(true, forKey: Self.hasGiftKey) }
+        }
     }
 
     // MARK: - Playing

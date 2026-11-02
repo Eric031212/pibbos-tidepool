@@ -200,3 +200,13 @@ final class VisitorRulesTests: XCTestCase {
         XCTAssertEqual(Visitors.reaction(to: "crab"), "look")
     }
 }
+
+final class SeagullGiftTests: XCTestCase {
+    func testTheFifthVisitBringsTheGiftOnce() {
+        for visits in 0..<SeagullGift.visitsBeforeGift {
+            XCTAssertEqual(SeagullGift.visit(seagullVisitsSoFar: visits, hasGift: false), "seagull")
+        }
+        XCTAssertEqual(SeagullGift.visit(seagullVisitsSoFar: SeagullGift.visitsBeforeGift, hasGift: false), "seagullGift")
+        XCTAssertEqual(SeagullGift.visit(seagullVisitsSoFar: 40, hasGift: true), "seagull", "only one gift, ever")
+    }
+}
