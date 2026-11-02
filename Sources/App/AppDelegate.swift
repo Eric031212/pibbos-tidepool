@@ -6,6 +6,11 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     private var controller: PetController?
 
     func applicationDidFinishLaunching(_ notification: Notification) {
+        guard SingleTidepool.claim() else {
+            NSApp.terminate(nil)  // Pibbo is already here
+            return
+        }
+        SingleTidepool.migrateLegacyDefaults()
         LaunchAtLogin.registerOnFirstLaunch()
         let bundle = Bundle.main
         do {

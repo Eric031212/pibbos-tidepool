@@ -1,4 +1,4 @@
-# CLAUDE.md — Tidepool
+# CLAUDE.md — Pibbo's Tidepool
 
 > Foundational plan for the project. Claude Code follows this document when implementing.
 > Anything marked **[UNVERIFIED]** must be confirmed with a minimal prototype before it is used in production code.
@@ -7,7 +7,7 @@
 
 ## 1. What Tidepool is
 
-Tidepool is a standalone, pixel-art desktop companion for macOS. Its mascot is **Pibbo**, a sea otter who lives in a tiny tide pool in the corner of your screen. The mood is close to Stardew Valley: chill, quiet, charming.
+Pibbo's Tidepool (display name since v1.0; the app file stays `Tidepool.app` so updates replace it in place) is a standalone, pixel-art desktop companion for macOS. Its mascot is **Pibbo**, a sea otter who lives in a tiny tide pool in the corner of your screen. The mood is close to Stardew Valley: chill, quiet, charming.
 
 - **Not a productivity tool.** No Pomodoro, no to-do lists, no chat. People use other tools to work; Tidepool only provides a sense of company.
 - **Hidden by default.** Most of the time Pibbo is barely visible at the edge of the screen.
@@ -54,6 +54,7 @@ open build/Build/Products/Debug/Tidepool.app --args --time night          # forc
 open build/Build/Products/Debug/Tidepool.app --args --bottle              # a message in a bottle drifts in after 3 s
 open build/Build/Products/Debug/Tidepool.app --args --garden-days 91      # flower + meadow as on day 91
 open build/Build/Products/Debug/Tidepool.app --args --demo --time night --stars --moon 1   # clear full-moon night, a shooting star every 15–25 s
+open build/Build/Products/Debug/Tidepool.app --args --weather rain        # or snow: rain / snow over the pool
 ```
 
 Builds are ad-hoc signed until a Developer ID certificate exists. Login-item registration only happens when the app runs from `/Applications` or `~/Applications`, so development builds never register themselves.
@@ -108,6 +109,10 @@ A flower in a pot on a rock to Pibbo's left. It grows with real days since the f
 
 Every 2–4 days a bottle drifts into the channel between the meadow rock and the flower's rock (it brings its own strip of water, so it shows even while Pibbo hides). Click it and Pibbo comes out, reads the note (`note` action) and a bubble shows one of `Strings.bottleNotes` for ~7 s, even over music. Unopened, it drifts off after 30 min. Never in work mode (a bottle due then waits until work mode ends); arrival is quiet, Pibbo doesn't pop up. `Brain.nextBottle` is saved in UserDefaults so the wait carries over launches. Demo: every 40–70 s, stays 45 s.
 
+### Quiet during calls (v1.0)
+
+While any camera or microphone is in use by any app (spike 8: a call, most likely, including browser calls and screen sharing from another app), Pibbo stays under water like in work mode: no surfacing, bubbles, bottles or shooting stars; hover and play are ignored. A call starts after 2 s of use and ends after 5 s of quiet (so Siri or a quick dictation don't count); afterwards he goes back to hidden without popping up. `Signals/CallMonitor` reads only the devices' "running somewhere" flags (property listeners, no polling); Brain's `.callChanged`. Unlike work mode a click still opens the menu.
+
 ### Work mode look
 
 Pibbo sinks under the water. Only a few small bubbles rise occasionally. Skins provide this as the optional action `submerged`; if missing, fall back to `hidden`.
@@ -127,6 +132,7 @@ Pibbo sinks under the water. Only a few small bubbles rise occasionally. Skins p
 - Holiday outfits
 - The meadow and messages in a bottle (approved 2026-10-23)
 - Moonlight on the water and shooting stars with wishes (approved 2026-10-24)
+- v1.0 (approved 2026-11-02): weather in the pool (rain ripples, snowfall, snow on the rocks), quiet during calls, visitors (crab, seagull, fish, a friend otter), the seagull's gift
 - Launch at login
 
 **Out of scope:**
@@ -167,6 +173,7 @@ launch → peek (~5 s) → chill → no interaction for a while → hidden
 | Click on the water / flower beside Pibbo | A `ripple` where you clicked; Pibbo plays `look` for ~1.5 s |
 | A message in a bottle is due (every 2–4 days) | The bottle floats beside Pibbo for 30 min; click it → Pibbo reads the note (~7 s) |
 | Clear night, every 20–60 min | A shooting star; a click on Pibbo within 6 s makes a wish (`wish` + `Made a wish ✨`) instead of opening the menu |
+| A camera or microphone is in use (2 s) | Pibbo dives and stays down until it has been off for 5 s |
 | Click on Pibbo | Open the menu |
 
 Play (rub, hold, splash) wakes Pibbo, restarts the hide timer, shows over `music` for its duration, and is ignored in work mode. Mouse moves are only tracked while the cursor is over Pibbo, so idle cost stays zero.
@@ -202,7 +209,7 @@ A pixel menu in the bubble style (not a system menu), above Pibbo. Hover highlig
 - **Minimum macOS:** 13 (needed for `SMAppService` launch-at-login)
 - **Project generation:** XcodeGen (`project.yml`). Build everything from the command line with `xcodebuild`; never depend on manual Xcode GUI steps.
 - **App type:** `LSUIElement = true`. No Dock icon, no menu bar icon. All interaction happens by clicking Pibbo.
-- **Bundle ID:** placeholder `com.tidepool.app` (to be finalized)
+- **Bundle ID:** `io.github.eric031212.pibbostidepool` (final, v1.0; was `com.tidepool.app`). `App/SingleTidepool` copies the old preferences once (first launch date, next bottle, coordinate, shore position; not the login-item flag, so the new ID registers itself once more) and keeps one Pibbo on screen: a second copy quits, a running pre-1.0 copy is force-quit (a signal, not an Apple Event)
 
 ### Module layout
 
@@ -239,6 +246,7 @@ Goal: **the app never triggers a system permission prompt.**
 | Approximate location | `https://ipwho.is/` (free, no key, HTTPS, commercial use allowed, 1,000 req/day) when its `timezone.id` matches `TimeZone.current`; otherwise (offline, VPN) the zone's city coordinate from a bundled tzdb `zone.tab` (public domain, 19 KB). **Do not use CoreLocation.** | VERIFIED (spike 5) |
 | Weather | MET Norway `locationforecast/2.0/compact` (free, commercial OK, CC BY 4.0), request every 1–3 hours and never before `Expires`; coordinates rounded to 2 decimals; identifying `User-Agent` required. ~~Open-Meteo~~: free tier is non-commercial only | VERIFIED (spike 5) |
 | Region for holidays | `Locale.current.region` (confirmed: the user's region setting, not the physical location) | — |
+| Call detection (camera / microphone in use by any app) | CoreMediaIO `kCMIODevicePropertyDeviceIsRunningSomewhere` per camera, CoreAudio `kAudioDevicePropertyDeviceIsRunningSomewhere` per input device, property listeners on each plus the device lists. Never opens a device | VERIFIED (spike 8 + developer test 2026-11-02): no prompt; Pibbo dives when the camera turns on and comes back after |
 | Launch at login | `SMAppService.mainApp.register()`, registered automatically on first launch | VERIFIED: no prompt, no approval needed, status `enabled` at once; macOS shows a one-time "Login Item Added" notification (cannot be suppressed); app started automatically after reboot (spike 6) |
 
 **Forbidden:** CoreLocation, AppleScript / Apple Events to control other apps, Accessibility permission, Screen Recording permission, Apple private frameworks (e.g. MediaRemote).
@@ -300,6 +308,7 @@ Implementations: `BuiltInLofiSource`, `AppleMusicWatcher`, `SpotifyWatcher`. `Br
 - **Weather:** map MET Norway `symbol_code` to `clear / cloudy / rain / snow / storm` (mapping in the spike 5 result)
 - **Holidays (v0.3.2):** `World.Holidays`, a bundled table keyed by the region setting; no remote updates. Halloween Oct 25–31, Christmas Dec 20–26, New Year Dec 31–Jan 2 (all regions); Lunar New Year from its eve to the 6th day (CN, TW, HK, MO, SG, MY, KR, VN), computed with the system's Chinese calendar. Checked at launch and at every time-of-day change. `--holiday <halloween|christmas|newYear|lunarNewYear>` forces one for testing.
 - Examples: snow → hot cocoa, steam rising; rain → Pibbo happily catches raindrops; Christmas → Santa hat
+- **Weather in the pool (v1.0):** rain (and storms) fall over every cell with little rings on the water, also over Pibbo's cell while he hides; snow drifts down and settles on the rocks and the pot rim, staying ~2 h after it stops (`weatherEffects`, `snowCover`). No lightning (too disturbing). `--weather <rain|snow|…>` forces the weather
 
 ## 11. Content pack format (shared by skins and music)
 
@@ -344,6 +353,8 @@ Example `manifest.json`:
 - Optional `bottle`: `{"row": …, "frames": 4, "fps": 2}`, the message in a bottle, drawn in the flower's cell under the garden with its own water strip.
 - Optional `shootingStar`: a one-shot clip (`"loop": false`) drawn on top over the flower's cell on clear nights.
 - Optional `moonGlint`: `{"glint": "bfe6f5", "water": "6fb7d9"}`, which sheet colours are the water's glints and plain surface; at night the glint's replacement is mixed toward the water's by how dark the moon is.
+- Optional `weatherEffects`: `{"rain": {…}, "snow": {…}}`, looping clips drawn over every cell of the pool while it rains (or storms) / snows; ripples sit in the water rows so the water light recolours them.
+- Optional `snowCover`: `{"row": …, "stages": 2}`, static snow on the rocks: frame 0 over the flower's cell, frame 1 over the meadow's. Shown while it snows and for 2 h after.
 - Optional `props`: `{"streetlamp": {"row": …, "frames": 2, "fps": 2}}`, looping clips drawn over the garden frame (in columns 11–15, between the flower and Pibbo; holiday decor keeps the left side) while a radio theme that names the prop plays. Needs a `garden`.
 - Optional `decor`: `{"halloween": {"row": …, "frames": 4, "fps": 3}}`, a looping clip drawn over the garden frame (transparent elsewhere) while that holiday is on. Needs a `garden`.
 - Optional `poses` + `transitions` (smooth switches): `poses` maps each clip to a body pose (`under`, `low`, `peek`, `up`, `back`); `transitions` holds in-between clips (played once, then the new clip takes over, scheduled in Core Animation with no timers) keyed `"from>to"`, each side a clip name or `@pose`. Most specific wins: `a>b`, `@poseA>b`, `a>@poseB`, `@poseA>@poseB`; no key means a straight cut. Keep each under ~0.6 s, because Brain's timings start when the clip is shown. Outfits apply to transitions too. `preview-transitions.gif` shows them all.
@@ -387,6 +398,7 @@ Each item is an independent minimal prototype that answers one question. Write t
 | 5 | Location and weather | Pick an IP lookup service; weather requests and weather-code mapping |
 | 6 | Launch at login | Does the first `SMAppService` registration require any user action? |
 | 7 | Steamworks | Viable way to call Steamworks UGC from Swift on macOS (**deferred**: GitHub release first, see Section 13) |
+| 8 | Call signal | Can we tell a camera or microphone is in use by any app, without a prompt? |
 
 ### Spike 1 result: external music notifications (2026-10-12)
 
@@ -478,6 +490,15 @@ Code: `Spikes/06-launch-at-login/`. `run.sh register|unregister|status` installs
 - **Limitations:** tested with an ad-hoc signature in `~/Applications`; re-test with the Developer ID-signed, notarized build in `/Applications` before release.
 - **Conflict with Section 1 ("zero setup", Principle 2 "quiet"):** the notification is unavoidable on the first launch. **Decided:** accept it (it appears once and is transparent to the user); keep registering automatically on first launch, no menu toggle.
 
+### Spike 8 result: call signal (2026-11-02)
+
+Code: `Spikes/08-call-signal/` (`run.sh [seconds]` wraps it in its own ad-hoc-signed LSUIElement app, like spike 2, and logs to `.build/call.log`). Why: detecting meeting apps by the frontmost app fails exactly when it matters, because presenting means switching to another app while the call app stays in the background.
+
+- Reading `kCMIODevicePropertyDeviceIsRunningSomewhere` (every camera, including Desk View and Continuity cameras) and `kAudioDevicePropertyDeviceIsRunningSomewhere` (every input device, including virtual ones such as a meeting app's audio driver) works from a plain app; all values read `off` with nothing in use, and every listener registered (`noErr`).
+- Only flags are read; no device is opened, so no audio or video is ever seen by Tidepool.
+- **Verified by the developer (2026-11-02):** with the camera turned on Pibbo dives, and returns after; no permission prompt appeared.
+- Device names in the log can contain personal names (e.g. a phone's name); never copy them into this file.
+
 ## 15. Working rules for Claude Code
 
 - Prototype before production code. Spikes live in `Spikes/` and are never mixed into the main project.
@@ -492,7 +513,7 @@ Code: `Spikes/06-launch-at-login/`. `run.sh register|unregister|status` installs
 
 - The developer writes in Chinese; reply in Chinese. User-facing app text stays English (Section 6). README and release notes: short, casual, with emoji.
 - New features are proposed first and built only after a yes (Principle 1). Present options with a recommendation; flag anything that conflicts with this file instead of changing the design silently.
-- Hand-off for testing: build, launch the app yourself, then give a short numbered checklist of what to try. `open` on an already-running app ignores `--args`, so relaunch with `pkill -x Tidepool; open … --args …`. `--demo` speeds everything up; `--holiday <name>` previews an outfit; `--time <dawn|day|dusk|night>` forces the time of day; `--bottle` brings a bottle in 3 s; `--garden-days <n>` previews the flower and meadow on day n; `--stars` makes any night clear (shooting stars); `--moon <0…1>` sets the moonlight.
+- Hand-off for testing: build, launch the app yourself, then give a short numbered checklist of what to try. `open` on an already-running app ignores `--args`, so relaunch with `pkill -x Tidepool; open … --args …`. `--demo` speeds everything up; `--holiday <name>` previews an outfit; `--time <dawn|day|dusk|night>` forces the time of day; `--bottle` brings a bottle in 3 s; `--garden-days <n>` previews the flower and meadow on day n; `--stars` makes any night clear (shooting stars); `--moon <0…1>` sets the moonlight; `--weather <rain|snow>` forces the weather.
 - The repo is **public**: never put personal data (city or location, machine host name, email) in files, test fixtures, or commit messages. Commits use the repo-local identity already set in `.git/config`; don't change it.
 - Music: new tracks arrive as WAVs in `Assets/MusicMasters/<Theme Name>/` → `python3 Tools/import_track.py`. It re-encodes every theme and the old CAFs come out byte-different (same audio): `git checkout -- Assets/Music/<old-theme>` afterwards so only the new theme is committed. Art: edit `Tools/generate_sprites.py` and rerun; rerun `Tools/generate_promo.py` / `Tools/generate_promo_video.py` when the promo material should follow.
 
@@ -507,7 +528,7 @@ Code: `Spikes/06-launch-at-login/`. `run.sh register|unregister|status` installs
 ## 16. Open items
 
 - [ ] Trademark / name conflict check for "Tidepool" and "Pibbo" before public release
-- [ ] Final bundle ID
+- [x] Final bundle ID: `io.github.eric031212.pibbostidepool` (v1.0, with data migration)
 - [ ] Exact timing values for state transitions (tune after real use)
 - [ ] Follow-up test for the fullscreen-Space probe (Section 8): rapid Space switching, switching between two fullscreen apps, split-view fullscreen, Finder desktop icons disabled (`CreateDesktop = false`)
 - [x] IP lookup service: ipwho.is (spike 5)
@@ -515,10 +536,10 @@ Code: `Spikes/06-launch-at-login/`. `run.sh register|unregister|status` installs
 - [x] MET Norway attribution (CC BY 4.0): README + `CREDITS.md` (bundled in the app)
 - [x] "Login Item Added" notification on first launch: accepted (spike 6)
 - [x] Open-source license: GPL-3.0; public repo `pibbos-tidepool` on GitHub, first tag v0.1.0
-- [ ] Apple Developer account + Developer ID certificate (human task) → notarized DMG with no Open Anyway step (`Tools/package_dmg.py` is ready for it)
-- [ ] Test the x86_64 slice on an Intel Mac or with Rosetta (the dev Mac has neither)
+- [x] Apple Developer account: not planned (decided 2026-11-02). Next: a Windows build, then Steam (Steam-installed Mac apps aren't quarantined, so no notarization needed there). `Tools/package_dmg.py` still supports signing if that changes
+- [ ] Test the x86_64 slice on an Intel Mac or with Rosetta (the dev Mac has neither): deferred to the Steam release
 - [ ] Re-test launch at login with a Developer ID-signed build in `/Applications` (spike 6 used an ad-hoc-signed app in `~/Applications`)
 - [x] Privacy note in README (IP → ipwho.is, ~1 km coordinate → MET Norway); repeat it on a store page later
 - [x] Built-in lofi tracks: 36 tracks in 3 themes, ~1 h 50 min (planned 1–2 hours)
 - [x] Pibbo sprite art: drawn by code in `Tools/generate_sprites.py` (v0.2.0)
-- [ ] Display name: "Tidepool" or "Pibbo's Tidepool"
+- [x] Display name: "Pibbo's Tidepool" (decided 2026-11-02)

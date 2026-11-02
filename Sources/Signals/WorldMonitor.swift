@@ -36,6 +36,13 @@ final class WorldMonitor {
         return TimeOfDay(rawValue: args[i + 1])
     }()
 
+    /// `--weather <clear|cloudy|rain|snow|storm>` forces the weather.
+    private static let forcedWeather: Weather? = {
+        let args = CommandLine.arguments
+        guard let i = args.firstIndex(of: "--weather"), i + 1 < args.count else { return nil }
+        return Weather(rawValue: args[i + 1])
+    }()
+
     /// `--moon <0…1>` forces how full the moon is.
     private static let forcedMoonlight: Double? = {
         let args = CommandLine.arguments
@@ -213,7 +220,7 @@ final class WorldMonitor {
         let month = Calendar.current.component(.month, from: now)
         return WorldContext(timeOfDay: forcedTimeOfDay ?? SunClock.timeOfDay(at: now, coordinate: coordinate),
                             season: Season.of(month: month, latitude: coordinate.latitude),
-                            weather: weather,
+                            weather: forcedWeather ?? weather,
                             holiday: forcedHoliday ?? Holidays.current(on: now, region: Locale.current.region?.identifier),
                             moonlight: forcedMoonlight ?? MoonPhase.moonlight(at: now))
     }

@@ -707,6 +707,50 @@ def frame_shooting_star(i):
 SHOOTING_STAR_FRAMES = 6
 
 
+# ---------------------------------------------------------------- weather in the pool
+# Overlays drawn over every cell of the pool (Pibbo's, the flower's, the
+# meadow's), transparent elsewhere. The ripples sit in the water rows, so the
+# app's water light recolours them with the rest of the pool.
+
+def frame_rain(i):
+    """Raindrops falling and little rings spreading on the water."""
+    g = blank()
+    drops = [[(1, 3), (5, 11), (9, 7)], [(3, 3), (7, 11), (0, 14), (11, 7)],
+             [(5, 3), (9, 11), (2, 14), (1, 6)], [(7, 3), (11, 11), (4, 14), (3, 6)]][i]
+    for r, c in drops:
+        put(g, [(r, c), (r + 1, c)], "w")
+    rings = [[(13, 6), (13, 8)], [(13, 2), (13, 4), (13, 12), (13, 14)], [(13, 9), (13, 11), (14, 10)], [(13, 1), (13, 3)]][i]
+    put(g, rings, "W")
+    return g
+
+
+def frame_snowfall(i):
+    """Snowflakes drifting down over the pool."""
+    g = blank()
+    flakes = [[(1, 2), (4, 9), (8, 13), (10, 5)], [(2, 3), (5, 8), (9, 14), (11, 4)],
+              [(3, 2), (6, 9), (0, 13), (12, 5)], [(4, 3), (7, 8), (1, 14), (0, 6)]][i]
+    put(g, flakes, "X")
+    return g
+
+
+def snow_cover(cell):
+    """Snow resting on the rocks and the pot rim. cell 0: the flower's rock, 1: the meadow's."""
+    g = blank()
+    if cell == 0:
+        put(g, [(10, 4), (11, 3), (11, 11), (10, 10)], "X")
+        put(g, [(6, c) for c in (5, 6, 7, 9, 10)], "X")  # pot rim (the stem keeps col 8)
+    else:
+        put(g, [(10, c) for c in range(3, 16) if c % 5 != 1], "X")
+        put(g, [(11, 2)], "X")
+    return g
+
+
+WEATHER_EFFECTS = {
+    "rain": (frame_rain, 4, 6),
+    "snow": (frame_snowfall, 4, 2),
+}
+
+
 def frame_bottle(i):
     """A message in a bottle bobbing in the channel left of the flower's rock.
     It brings its own strip of water, so it shows even while the garden hides."""
@@ -1119,7 +1163,7 @@ def build_skin():
     SKIN_DIR.mkdir(parents=True, exist_ok=True)
     entries = list(STATES.items()) + list(ACTIONS.items()) + list(TRANSITIONS.items())
     max_frames = max(max(n for _, (_, n, _) in entries), GARDEN_STAGES, MEADOW_STAGES)
-    rows = len(entries) + 1 + len(OUTFITS) * len(entries) + len(DECOR) + len(PROPS) + 3  # + meadow, bottle, star
+    rows = len(entries) + 1 + len(OUTFITS) * len(entries) + len(DECOR) + len(PROPS) + 4 + len(WEATHER_EFFECTS)  # + meadow, bottle, star, snow cover, weather
     sheet = Image.new("RGBA", (SIZE * max_frames, SIZE * rows), (0, 0, 0, 0))
     frames = {}
     for row, (name, (fn, n, _)) in enumerate(entries):
@@ -1167,6 +1211,15 @@ def build_skin():
     frames["shootingStar"] = [to_image(frame_shooting_star(i)) for i in range(SHOOTING_STAR_FRAMES)]
     for i, f in enumerate(frames["shootingStar"]):
         sheet.paste(f, (i * SIZE, star_row * SIZE))
+    snow_row = star_row + 1
+    for cell in range(2):
+        sheet.paste(to_image(snow_cover(cell)), (cell * SIZE, snow_row * SIZE))
+    weather_rows = {}
+    for k, (name, (fn, n, _)) in enumerate(WEATHER_EFFECTS.items()):
+        weather_rows[name] = snow_row + 1 + k
+        frames[f"weather:{name}"] = [to_image(fn(i)) for i in range(n)]
+        for i, f in enumerate(frames[f"weather:{name}"]):
+            sheet.paste(f, (i * SIZE, weather_rows[name] * SIZE))
     sheet.save(SKIN_DIR / "sprites.png")
 
     manifest = {
@@ -1183,6 +1236,9 @@ def build_skin():
         "bottle": {"row": bottle_row, "frames": 4, "fps": 2},
         "shootingStar": {"row": star_row, "frames": SHOOTING_STAR_FRAMES, "fps": 10, "loop": False},
         "moonGlint": {"glint": hex_rgb(PALETTE["W"]), "water": hex_rgb(PALETTE["w"])},
+        "snowCover": {"row": snow_row, "stages": 2},
+        "weatherEffects": {name: {"row": weather_rows[name], "frames": n, "fps": fps}
+                           for name, (_, n, fps) in WEATHER_EFFECTS.items()},
         "outfits": {name: {"offset": offset} for name, offset in outfit_offsets.items()},
         "poses": {name: pose_of(name) for name in list(STATES) + list(ACTIONS) if name not in NO_POSE},
         "transitions": {},

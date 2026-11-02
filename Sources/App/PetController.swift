@@ -29,6 +29,7 @@ final class PetController {
     private let idleMonitor = IdleMonitor()
     private let sessionMonitor = SessionMonitor()
     private let fullscreenProbe = FullscreenProbe()
+    private let callMonitor = CallMonitor()
     private let worldMonitor: WorldMonitor
     private let lofi: BuiltInLofiSource
     private let musicSources: [MusicSource]
@@ -49,6 +50,8 @@ final class PetController {
     /// `--stars`: treat it as a clear night, so shooting stars fall (with `--demo`, every 15–25 s).
     private static let forcedStars = CommandLine.arguments.contains("--stars")
     private var starWasFalling = false
+    private var lastSnow: Date?
+    private static let snowLingers: TimeInterval = 2 * 3600
     /// x range (view points) where a click opens the bottle: its channel.
     private let bottleHitRange: ClosedRange<CGFloat>
     /// `--garden-days <n>` shows the flower and meadow as on day n.
@@ -113,6 +116,7 @@ final class PetController {
             self?.send(isFullscreen ? .suspended(.fullscreen) : .resumed(.fullscreen))
         }
         worldMonitor.onChange = { [weak self] context in self?.worldChanged(context) }
+        callMonitor.onChange = { [weak self] active in self?.send(.callChanged(active)) }
 
         for source in musicSources {
             musicTasks.append(Task { @MainActor [weak self] in
@@ -141,6 +145,7 @@ final class PetController {
         sessionMonitor.start()
         if SessionMonitor.isLockedNow { send(.suspended(.locked)) }
         fullscreenProbe.start()
+        callMonitor.start()
         worldMonitor.start()
         if !brain.output.isSuspended { idleMonitor.start() }
     }
@@ -168,6 +173,14 @@ final class PetController {
         renderer.outfit = context.holiday?.rawValue
         renderer.lighting = context.timeOfDay.rawValue
         renderer.moonlight = context.moonlight
+        switch context.weather {
+        case .rain, .storm: renderer.weatherEffect = "rain"
+        case .snow: renderer.weatherEffect = "snow"
+        default: renderer.weatherEffect = nil
+        }
+        // Snow stays on the rocks for a while after it stops falling.
+        if context.weather == .snow { lastSnow = Date() }
+        renderer.snowCovered = lastSnow.map { Date().timeIntervalSince($0) < Self.snowLingers } ?? false
         send(.clearNightChanged(Self.forcedStars || context.isClearNight))
         let provided = Set(pack.availableActions)
         let actions = ActionRules.actions(for: context).filter(provided.contains)

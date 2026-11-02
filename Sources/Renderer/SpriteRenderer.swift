@@ -21,6 +21,10 @@ final class SpriteRenderer {
     /// rocks cover it, the channel between them shows it, and its own strip
     /// of water carries it while the garden hides.
     let bottleLayer = CALayer()
+    /// Rain or snow falling over each cell of the pool (Pibbo's, flower's, meadow's).
+    private let weatherLayers = [CALayer(), CALayer(), CALayer()]
+    /// Snow resting on the flower's rock and the meadow's.
+    private let snowLayers = [CALayer(), CALayer()]
     /// A shooting star streaking over the pool (plays once, on top of everything).
     let starLayer = CALayer()
     /// Splash effect drawn over the water where the user clicked.
@@ -77,6 +81,8 @@ final class SpriteRenderer {
         }
         showDecor()
         showProp()
+        showWeather()
+        showSnowCover()
         restartCurrentClip()
     }
 
@@ -122,9 +128,16 @@ final class SpriteRenderer {
         }
         meadowLayer.isHidden = !pack.hasMeadow
         gardenLayer.insertSublayer(meadowLayer, at: 0)
+        // Snow sits on the rocks under decor and props; falling weather goes on top.
+        gardenLayer.insertSublayer(snowLayers[0], at: 1)
+        meadowLayer.addSublayer(snowLayers[1])
+        layer.addSublayer(weatherLayers[0])
+        gardenLayer.addSublayer(weatherLayers[1])
+        meadowLayer.addSublayer(weatherLayers[2])
+        (weatherLayers + snowLayers).forEach { $0.isHidden = true }
         bottleLayer.isHidden = true
         starLayer.isHidden = true
-        for sprite in [layer, gardenLayer, rippleLayer, decorLayer, propLayer, meadowLayer, bottleLayer, starLayer] {
+        for sprite in [layer, gardenLayer, rippleLayer, decorLayer, propLayer, meadowLayer, bottleLayer, starLayer] + weatherLayers + snowLayers {
             sprite.frame = CGRect(x: 0, y: 0, width: pointSize, height: pointSize)
             sprite.magnificationFilter = .nearest
             sprite.actions = noFades
@@ -164,6 +177,32 @@ final class SpriteRenderer {
         guard stage != gardenStage, let rect = pack.gardenFrameRect(stage: stage) else { return }
         gardenStage = stage
         gardenLayer.contents = sheet.cropping(to: CGRect(x: rect.x, y: rect.y, width: rect.width, height: rect.height))
+    }
+
+    /// "rain" or "snow" falling over the pool (nil = none).
+    var weatherEffect: String? {
+        didSet { if weatherEffect != oldValue { showWeather() } }
+    }
+
+    /// Snow resting on the rocks.
+    var snowCovered = false {
+        didSet { if snowCovered != oldValue { showSnowCover() } }
+    }
+
+    private func showWeather() {
+        let clip = weatherEffect.flatMap { pack.manifest.weatherEffects?[$0] }
+        for (cell, effect) in weatherLayers.enumerated() {
+            let shown = cell == 0 || (cell == 1 && hasGarden) || (cell == 2 && hasMeadow)
+            loop(shown ? clip : nil, named: "weather#\(weatherEffect ?? "")", on: effect)
+        }
+    }
+
+    private func showSnowCover() {
+        for (cell, cover) in snowLayers.enumerated() {
+            let rect = snowCovered && (cell == 0 || hasMeadow) ? pack.snowCoverFrameRect(cell: cell) : nil
+            cover.contents = rect.flatMap { sheet.cropping(to: CGRect(x: $0.x, y: $0.y, width: $0.width, height: $0.height)) }
+            cover.isHidden = rect == nil
+        }
     }
 
     /// Name of the radio prop to show (nil = none). See `SkinPack.prop(named:)`.

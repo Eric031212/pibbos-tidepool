@@ -160,6 +160,22 @@
     "glint": "bfe6f5",
     "water": "6fb7d9"
   },
+  "snowCover": {
+    "row": 258,
+    "stages": 2
+  },
+  "weatherEffects": {
+    "rain": {
+      "row": 259,
+      "frames": 4,
+      "fps": 6
+    },
+    "snow": {
+      "row": 260,
+      "frames": 4,
+      "fps": 2
+    }
+  },
   "outfits": {
     "halloween": {
       "offset": 51

@@ -35,6 +35,11 @@ public struct Brain {
     private var lastInteraction: Date
     private var hovering = false
     private var workMode = false
+    /// A camera or microphone is in use (a call, most likely): Pibbo stays
+    /// under water like in work mode, without the user asking.
+    private var inCall = false
+    /// Work mode or a call: no surfacing, no bubbles, no visitors.
+    private var isQuiet: Bool { workMode || inCall }
     private var suspendReasons: Set<SuspendReason> = []
     private var playingSources: Set<String> = []
     private var pendingStops: [String: Date] = [:]
@@ -97,12 +102,12 @@ public struct Brain {
         if let unplugUntil { candidates.append(unplugUntil) }
         if let reaction { candidates.append(reaction.until) }
         if let nowPlayingUntil, nowPlayingUntil != .distantFuture { candidates.append(nowPlayingUntil) }
-        if let bottleUntil { candidates.append(bottleUntil) } else if !workMode { candidates.append(nextBottle) }
+        if let bottleUntil { candidates.append(bottleUntil) } else if !isQuiet { candidates.append(nextBottle) }
         if let wishUntil { candidates.append(wishUntil) }
         if let nextStar, !workMode { candidates.append(nextStar) }
         switch presence {
         case .hidden:
-            if let nextAppearance, !workMode { candidates.append(nextAppearance) }
+            if let nextAppearance, !isQuiet { candidates.append(nextAppearance) }
         case .peek(let until), .appearance(_, let until):
             candidates.append(until)
         case .chill(let hideAt):
@@ -117,7 +122,7 @@ public struct Brain {
 
         switch event {
         case .hoverBegan:
-            guard !workMode else { break }
+            guard !isQuiet else { break }
             hovering = true
             if isBuiltInPlaying { nowPlayingUntil = .distantFuture }
             isUserAway = false
@@ -135,6 +140,19 @@ public struct Brain {
             lastInteraction = now
             if presence.isChill {
                 setPresence(.chill(hideAt: now.addingTimeInterval(config.hideAfterNoInteraction)), at: now)
+            }
+
+        case .callChanged(let active):
+            guard active != inCall else { break }
+            inCall = active
+            if active {
+                hovering = false
+                holdingPaw = false
+                reaction = nil
+                bubble = nil
+                setPresence(.hidden, at: now)
+            } else {
+                becomeHidden(at: now)  // resurface quietly: back to hidden, no popping up
             }
 
         case .clicked:
@@ -181,13 +199,13 @@ public struct Brain {
             nowPlayingUntil = hovering ? .distantFuture : now.addingTimeInterval(config.nowPlayingDuration)
 
         case .rubbed:
-            guard !workMode else { break }
+            guard !isQuiet else { break }
             interact(at: now)
             holdingPaw = false
             reaction = ("backfloat", now.addingTimeInterval(config.backfloatDuration))
 
         case .holdBegan:
-            guard !workMode else { break }
+            guard !isQuiet else { break }
             interact(at: now)
             holdingPaw = true
 
@@ -196,7 +214,7 @@ public struct Brain {
 
         case .splashed:
             // Only reachable while the flower (and so Pibbo) is showing.
-            guard !workMode else { break }
+            guard !isQuiet else { break }
             interact(at: now)
             reaction = ("look", now.addingTimeInterval(config.lookDuration))
 
@@ -228,7 +246,7 @@ public struct Brain {
             builtInMusicAvailable = available
 
         case .bottleClicked:
-            guard bottleUntil != nil, !workMode else { break }
+            guard bottleUntil != nil, !isQuiet else { break }
             bottleUntil = nil
             nextBottle = now.addingTimeInterval(random(config.bottleInterval))
             interact(at: now)
@@ -245,7 +263,7 @@ public struct Brain {
             }
 
         case .wished:
-            guard wishUntil != nil, !workMode else { break }
+            guard wishUntil != nil, !isQuiet else { break }
             wishUntil = nil
             interact(at: now)
             holdingPaw = false
@@ -276,7 +294,7 @@ public struct Brain {
     }
 
     private var canAppearOnHisOwn: Bool {
-        !workMode && suspendReasons.isEmpty && playingSources.isEmpty && !isUserAway
+        !isQuiet && suspendReasons.isEmpty && playingSources.isEmpty && !isUserAway
     }
 
     /// Changes presence, starting or clearing the small-action cycle that
@@ -319,13 +337,13 @@ public struct Brain {
             bottleUntil = nil
             nextBottle = until.addingTimeInterval(random(config.bottleInterval))
         }
-        if bottleUntil == nil, nextBottle <= now, !workMode {
+        if bottleUntil == nil, nextBottle <= now, !isQuiet {
             bottleUntil = now.addingTimeInterval(config.bottleStay)
         }
         if let until = wishUntil, until <= now { wishUntil = nil }
         if let due = nextStar, due <= now, !workMode {
             // Nobody to see it while away: let that one go by unseen.
-            if !isUserAway { wishUntil = now.addingTimeInterval(config.wishWindow) }
+            if !isUserAway && !inCall { wishUntil = now.addingTimeInterval(config.wishWindow) }
             nextStar = isClearNight ? now.addingTimeInterval(random(config.shootingStarInterval)) : nil
         }
 
@@ -346,7 +364,7 @@ public struct Brain {
             case .appearance(_, let until) where until <= now:
                 becomeHidden(at: until)
             case .hidden:
-                guard let due = nextAppearance, due <= now, !workMode else { return }
+                guard let due = nextAppearance, due <= now, !isQuiet else { return }
                 let isStale = now.timeIntervalSince(due) > config.actionDuration.upperBound
                 if canAppearOnHisOwn && !isStale {
                     appear(at: now)
@@ -387,7 +405,7 @@ public struct Brain {
     }
 
     private func shouldInviteToMusic(at now: Date) -> Bool {
-        guard builtInMusicAvailable, playingSources.isEmpty, !workMode else { return false }
+        guard builtInMusicAvailable, playingSources.isEmpty, !isQuiet else { return false }
         if let lastInvitation, now.timeIntervalSince(lastInvitation) < config.musicInvitationCooldown { return false }
         return random(0...1) < config.musicInvitationChance
     }
@@ -401,7 +419,7 @@ public struct Brain {
     private mutating func refreshOutput() {
         let visual: PetVisual
         let allFading = !playingSources.isEmpty && playingSources.isSubset(of: fadingSources)
-        if workMode {
+        if isQuiet {
             visual = .submerged
         } else if allFading || unplugUntil != nil {
             visual = .action("unplug")
@@ -422,7 +440,7 @@ public struct Brain {
             }
         }
         var shown: Bubble?
-        if suspendReasons.isEmpty && !workMode {
+        if suspendReasons.isEmpty && !isQuiet {
             if let bubble, bubble.kind.showsOverMusic {
                 shown = bubble.kind
             } else if playingSources.isEmpty, let bubble {
@@ -432,7 +450,7 @@ public struct Brain {
             }
         }
         output = BrainOutput(visual: visual, isSuspended: !suspendReasons.isEmpty, isWorkMode: workMode, bubble: shown,
-                             bottle: bottleUntil != nil && suspendReasons.isEmpty && !workMode,
-                             shootingStar: wishUntil != nil && suspendReasons.isEmpty && !workMode)
+                             bottle: bottleUntil != nil && suspendReasons.isEmpty && !isQuiet,
+                             shootingStar: wishUntil != nil && suspendReasons.isEmpty && !isQuiet)
     }
 }

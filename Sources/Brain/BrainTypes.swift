@@ -68,6 +68,9 @@ public enum BrainEvent: Equatable, Sendable {
     case splashed
     /// A click on the message in a bottle: Pibbo comes out and reads the note.
     case bottleClicked
+    /// A camera or microphone started / stopped being used by any app: Pibbo
+    /// dives during calls so he never shows up on a shared screen.
+    case callChanged(Bool)
     /// Whether it is a clear night (shooting stars only fall then).
     case clearNightChanged(Bool)
     /// A click on Pibbo right after a shooting star: he makes a wish (instead

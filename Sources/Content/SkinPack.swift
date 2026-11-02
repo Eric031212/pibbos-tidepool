@@ -74,6 +74,12 @@ public struct SkinManifest: Codable, Equatable, Sendable {
     public let moonGlint: MoonGlint?
     /// Optional one-shot shooting star over the pool on clear nights.
     public let shootingStar: Clip?
+    /// Optional weather over the whole pool, keyed "rain" / "snow": looping
+    /// clips drawn over every cell (Pibbo's, the flower's, the meadow's).
+    public let weatherEffects: [String: Clip]?
+    /// Optional snow resting on the rocks: frame 0 for the flower's cell,
+    /// frame 1 for the meadow's (static).
+    public let snowCover: GardenSpec?
     /// Radio props by name, played over the flower's cell while a theme that
     /// names one plays (theme.json "prop").
     public let props: [String: Clip]?
@@ -84,7 +90,7 @@ public struct SkinManifest: Codable, Equatable, Sendable {
                 transitions: [String: Clip]? = nil, decor: [String: Clip]? = nil,
                 water: [String: [String: String]]? = nil, props: [String: Clip]? = nil,
                 meadow: GardenSpec? = nil, bottle: Clip? = nil, moonGlint: MoonGlint? = nil,
-                shootingStar: Clip? = nil) {
+                shootingStar: Clip? = nil, weatherEffects: [String: Clip]? = nil, snowCover: GardenSpec? = nil) {
         self.id = id
         self.name = name
         self.author = author
@@ -104,6 +110,8 @@ public struct SkinManifest: Codable, Equatable, Sendable {
         self.bottle = bottle
         self.moonGlint = moonGlint
         self.shootingStar = shootingStar
+        self.weatherEffects = weatherEffects
+        self.snowCover = snowCover
     }
 }
 
@@ -250,6 +258,13 @@ public struct SkinPack: Sendable {
     /// Optional actions this skin provides for random/idle use.
     public var availableActions: [String] {
         (manifest.actions ?? [:]).keys.filter { !SkinPack.systemActions.contains($0) }.sorted()
+    }
+
+    /// Snow on the rocks: frame for the flower's cell (0) or the meadow's (1).
+    public func snowCoverFrameRect(cell: Int) -> FrameRect? {
+        guard let cover = manifest.snowCover, cell < cover.stages else { return nil }
+        let size = manifest.frameSize
+        return FrameRect(x: cell * size, y: cover.row * size, width: size, height: size)
     }
 
     /// Whether the skin has a meadow (it sits left of the flower, so it needs one).

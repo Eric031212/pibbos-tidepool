@@ -49,8 +49,8 @@ targets:
     info:
       path: Sources/App/Info.plist
       properties:
-        CFBundleName: Tidepool
-        CFBundleDisplayName: Tidepool
+        CFBundleName: Pibbo's Tidepool
+        CFBundleDisplayName: Pibbo's Tidepool
         CFBundleIconFile: AppIcon
         CFBundleShortVersionString: $(MARKETING_VERSION)
         CFBundleVersion: $(CURRENT_PROJECT_VERSION)
@@ -59,7 +59,7 @@ targets:
         NSHumanReadableCopyright: ""
     settings:
       base:
-        PRODUCT_BUNDLE_IDENTIFIER: com.tidepool.app  # placeholder, Section 16
+        PRODUCT_BUNDLE_IDENTIFIER: io.github.eric031212.pibbostidepool  # final since v1.0 (was com.tidepool.app)
         PRODUCT_NAME: Tidepool
         ENABLE_HARDENED_RUNTIME: YES
         # Ad-hoc signing until a Developer ID certificate exists (human task).
