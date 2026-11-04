@@ -6,8 +6,8 @@ pixel font and bubble frame, then scaled 4x with nearest-neighbour to
 1080x1350 (4:5, fits Instagram / Xiaohongshu / X), so it stays crisp and
 on-brand. Run Tools/generate_sprites.py first if the art changed.
 
-Outputs: Marketing/promo/01-*.png ... 11-*.png, and for the GitHub README
-Marketing/github/banner.png (1280x320) and hero.gif (one little moment)
+Outputs: Marketing/promo/01-*.png ... 11-*.png, and Marketing/github/banner.png
+(1280x320, the top of the GitHub README)
 
 Usage:
     python3 Tools/generate_promo.py
@@ -349,41 +349,11 @@ def banner():
     print(f"wrote {(out / 'banner.png').relative_to(ROOT)}")
 
 
-def clip_frames(clip):
-    return [SHEET.crop((i * FS, clip["row"] * FS, (i + 1) * FS, (clip["row"] + 1) * FS)) for i in range(clip["frames"])]
-
-
-def hero_gif():
-    """The README's little loop: Pibbo surfaces, cracks a shell, sinks back.
-    Just one moment, so the rest stays to be found."""
-    st, ac, tr = MANIFEST["states"], MANIFEST["actions"], MANIFEST["transitions"]
-    plan = [(st["hidden"], 4, False), (tr["@low>@up"], 1, False), (st["chill"], 2, True),
-            (ac["crack"], 3, True), (st["chill"], 2, True), (tr["@up>@low"], 1, False), (st["hidden"], 3, False)]
-    s, frames, durations = 6, [], []
-    for clip, loops, out in plan:
-        for _ in range(loops):
-            for img in clip_frames(clip):
-                scene = Image.new("RGBA", (FS * 3, FS), (0, 0, 0, 0))
-                if out:  # the garden shows only while he's out, like in the app
-                    scene.alpha_composite(meadow(6), (0, 0))
-                    scene.alpha_composite(flower(5), (FS, 0))
-                scene.alpha_composite(img, (FS * 2, 0))
-                bg = Image.new("RGBA", scene.size, CREAM + (255,))  # the banner's cream: a little card in light and dark mode
-                bg.alpha_composite(scene)
-                frames.append(bg.resize((FS * 3 * s, FS * s), Image.NEAREST).convert("RGB"))
-                durations.append(int(1000 / clip["fps"]))
-    out = ROOT / "Marketing/github"
-    out.mkdir(parents=True, exist_ok=True)
-    frames[0].save(out / "hero.gif", save_all=True, append_images=frames[1:], duration=durations, loop=0)
-    print(f"wrote {(out / 'hero.gif').relative_to(ROOT)}")
-
-
 def main():
     for make in [p01_cover, p02_corner, p03_hover, p04_busy, p05_weather, p06_flower, p07_music, p08_dive, p09_light,
                  p10_visitors, p11_surprises]:
         make()
     banner()
-    hero_gif()
 
 
 if __name__ == "__main__":
