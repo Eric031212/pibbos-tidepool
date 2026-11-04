@@ -7,6 +7,12 @@ No to-dos, no timers, no chat. Just a little company while you do your thing.
 
 ![visitors](Assets/Skins/pibbo/preview-visitors.gif)
 
+## ✨ New in 1.1
+
+- 🎄 **winter holidays**: twinkling lights around his flower pot and a little tree with a star for Christmas, bunting for New Year (with tiny fireworks at night 🎆), red lanterns for Lunar New Year 🏮
+- 🌈 **a rainbow after the rain**: when the rain stops, a little rainbow arches over the pool for a while and Pibbo comes up to look
+- 💭 **dreams**: while he naps, little thought bubbles show what he dreams of: the crab that came by, the bottle he read, a star he wished on…
+
 ## ✨ New in 1.0
 
 - 🦀🐦🐟🦦 **neighbours drop by**: a crab walks the shore and waves, a seagull lands on the rock, a fish jumps, and once in a while a friend otter swims over to hold paws
@@ -36,7 +42,8 @@ No to-dos, no timers, no chat. Just a little company while you do your thing.
 - 🌕 moonlight on the water follows the real moon: sparkly at full moon, dark at new moon
 - 🌠 on clear nights a shooting star sometimes streaks by. Click Pibbo quickly and he makes a wish
 - ☀️🌧❄️ reacts to your weather, the season and the time of day: sunglasses in the sun, catching raindrops, hot cocoa in the snow, stargazing at night
-- 🎃🎅🎉🧧 dresses up for the holidays: pumpkin hat for Halloween (with a jack-o'-lantern and a little bat 🦇), Santa hat for Christmas, party hat for New Year, a red flower knot for Lunar New Year
+- 🎃🎅🎉🧧 dresses up for the holidays: pumpkin hat for Halloween (with a jack-o'-lantern and a little bat 🦇), Santa hat for Christmas (lights and a little tree 🎄), party hat for New Year (bunting and fireworks 🎆), a red flower knot for Lunar New Year (red lanterns 🏮)
+- 🌈 a rainbow when the rain stops
 
 **Music**
 - 📻 every now and then asks `Music Time? 🎧` and plays his own lofi radio: a random theme, shuffled, no song picking needed. A little pixel ticker shows what's playing ♪
@@ -48,7 +55,7 @@ No to-dos, no timers, no chat. Just a little company while you do your thing.
 **Quiet and light**
 - 🫧 `Dive time 🫧` sends him underwater until you click him again
 - 🤫 dives by himself during calls (camera or mic on)
-- 😴 naps when you step away
+- 😴 naps when you step away, and dreams 💭
 - 🙈 disappears in fullscreen, when you lock the screen, and while your Mac sleeps
 - 🔒 zero permission prompts, ever
 - 🪶 ~0% CPU and ~16 MB of memory
@@ -57,7 +64,7 @@ Everything you see, from the otter and his neighbours to the little speech bubbl
 
 ## Status
 
-**v1.0.0** 🎉 A Windows version and Steam are next.
+**v1.1.0** 🎄 Made for fun, one small update at a time.
 
 ## Download
 
@@ -87,6 +94,7 @@ Click Pibbo → `Swim away 👋` to quit.
 
 Impatient? `open Tidepool.app --args --demo` speeds everything up so you can see it all in a few minutes. ⏩
 Want a neighbour right now? `--visitor crab` (or `seagull`, `fish`, `friend`). 🦀
+Peek at the holidays with `--holiday christmas` (or `newYear`, `lunarNewYear`, `halloween`), or see a rainbow with `--rainbow`. 🌈
 
 Run the tests with `swift test`. Make the download DMG with `python3 Tools/package_dmg.py` → `dist/`.
 

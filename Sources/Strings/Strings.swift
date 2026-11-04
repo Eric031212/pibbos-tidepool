@@ -41,6 +41,16 @@ public enum Strings {
         "Hello from the deep 🫧",
     ]
 
+    /// Dream bubbles: what Pibbo dreams of, by memory token. Icons only (a
+    /// dream has no words), each after a thought bubble.
+    public static let dreams: [String: String] = [
+        "crab": "💭 🦀", "seagull": "💭 🐦", "fish": "💭 🐟", "friend": "💭 🦦",
+        "bottle": "💭 🍾", "star": "💭 ✨", "music": "💭 🎧",
+        "shell": "💭 🐚", "flower": "💭 🌷", "bubbles": "💭 🫧",
+    ]
+    /// What he dreams of before he has seen anything.
+    public static let everydayDreams = ["shell", "flower", "bubbles"]
+
     /// The note for Brain's `pick` (0..<1).
     public static func bottleNote(pick: Double) -> String {
         let index = Int(pick * Double(bottleNotes.count))
@@ -51,7 +61,7 @@ public enum Strings {
     public static let allPixelText: [String] = [
         Menu.music, Menu.stopMusic, Menu.workMode, Menu.quit,
         Bubble.musicInvitation, Bubble.goodbye, Bubble.napTime, Bubble.brb, Bubble.snowCocoa, Bubble.wish,
-    ] + bottleNotes
+    ] + bottleNotes + dreams.values.sorted()
 
     public enum Errors {
         /// Shown in the log only (the app has no error UI).

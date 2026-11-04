@@ -114,6 +114,9 @@ public struct SkinManifest: Codable, Equatable, Sendable {
     /// Optional present the seagull leaves on the meadow rock (one static
     /// frame over the meadow's cell), shown for good once it has been brought.
     public let gift: GardenSpec?
+    /// Optional rainbow after rain: three static frames, for the meadow's,
+    /// the flower's and Pibbo's cells, together one arc over the pool.
+    public let rainbow: GardenSpec?
     /// Radio props by name, played over the flower's cell while a theme that
     /// names one plays (theme.json "prop").
     public let props: [String: Clip]?
@@ -125,7 +128,7 @@ public struct SkinManifest: Codable, Equatable, Sendable {
                 water: [String: [String: String]]? = nil, props: [String: Clip]? = nil,
                 meadow: GardenSpec? = nil, bottle: Clip? = nil, moonGlint: MoonGlint? = nil,
                 shootingStar: Clip? = nil, weatherEffects: [String: Clip]? = nil, snowCover: GardenSpec? = nil,
-                visitors: [String: Visit]? = nil, gift: GardenSpec? = nil) {
+                visitors: [String: Visit]? = nil, gift: GardenSpec? = nil, rainbow: GardenSpec? = nil) {
         self.id = id
         self.name = name
         self.author = author
@@ -150,6 +153,7 @@ public struct SkinManifest: Codable, Equatable, Sendable {
         self.snowCover = snowCover
         self.visitors = visitors
         self.gift = gift
+        self.rainbow = rainbow
     }
 }
 

@@ -64,6 +64,13 @@ final class PetController {
     }()
     private var lastSnow: Date?
     private static let snowLingers: TimeInterval = 2 * 3600
+    private var lastWeather: Weather?
+    private var rainbowUntil: Date?
+    private static let rainbowLasts: TimeInterval = 10 * 60
+    /// `--rainbow`: a rainbow right after launch.
+    private static let forcedRainbow = CommandLine.arguments.contains("--rainbow")
+    /// Things Pibbo saw lately, newest last: what he dreams of.
+    private var memories: [String] = []
     /// x range (view points) where a click opens the bottle: its channel.
     private let bottleHitRange: ClosedRange<CGFloat>
     /// `--garden-days <n>` shows the flower and meadow as on day n.
@@ -102,6 +109,12 @@ final class PetController {
         lofi = BuiltInLofiSource(directory: resources.music)
         musicSources = [AppleMusicWatcher(), lofi]
         var config = demo ? BrainConfig.demo : BrainConfig()
+        if CommandLine.arguments.contains("--dreams") {
+            // `--dreams`: falls asleep at the next idle check (~30 s) and dreams every few seconds.
+            config.idleBeforeSleep = 5
+            config.idleBeforeSleepAtNight = 5
+            config.dreamInterval = 6...8
+        }
         if Self.forcedVisitor != nil {
             // `--visitor <name>`: that visitor, on every appearance, every few seconds.
             config.visitorChance = 1
@@ -167,6 +180,7 @@ final class PetController {
         panel.moveToShore()
         apply()
 
+        if Self.forcedRainbow { showRainbow(true) }
         sessionMonitor.start()
         if SessionMonitor.isLockedNow { send(.suspended(.locked)) }
         fullscreenProbe.start()
@@ -188,6 +202,7 @@ final class PetController {
             renderer.prop = lofi.prop
         }
         send(.musicChanged(source: source.id, playing: event != .paused))
+        if event != .paused { remember("music") }
         if source === lofi, event == .trackChanged {
             send(.builtInTrackStarted)
             if shownBubble == .nowPlaying { showNowPlaying() }  // new title
@@ -203,6 +218,14 @@ final class PetController {
         case .snow: renderer.weatherEffect = "snow"
         default: renderer.weatherEffect = nil
         }
+        // Rain gives way to sun or clouds by day: a rainbow for a little while.
+        let wet: Set<Weather?> = [.rain, .storm]
+        if wet.contains(context.weather) {
+            showRainbow(false)
+        } else if wet.contains(lastWeather), context.weather != nil, context.timeOfDay != .night {
+            showRainbow(true)
+        }
+        lastWeather = context.weather
         // Snow stays on the rocks for a while after it stops falling.
         if context.weather == .snow { lastSnow = Date() }
         renderer.snowCovered = lastSnow.map { Date().timeIntervalSince($0) < Self.snowLingers } ?? false
@@ -279,9 +302,13 @@ final class PetController {
                              anchorX: anchor.x, bottomY: anchor.y)
         case .nowPlaying:
             showNowPlaying()
-        case .note, .wish:
+        case .note, .wish, .dream:
             let text: String
-            if case .note(let pick) = bubble { text = Strings.bottleNote(pick: pick) } else { text = Strings.Bubble.wish }
+            switch bubble {
+            case .note(let pick): text = Strings.bottleNote(pick: pick)
+            case .dream(let pick): text = dreamText(pick: pick) ?? Strings.dreams["shell"]!
+            default: text = Strings.Bubble.wish
+            }
             guard let image = bubbleRenderer.image(for: text) else { return }
             let anchor = bubbleAnchor()
             bubblePanel.show(image, tailInsetFromRight: bubbleRenderer.tailInsetFromRight,
@@ -297,9 +324,40 @@ final class PetController {
                           bottomY: pool.maxY - CGFloat(Self.scale) * 2)
     }
 
+    // MARK: - Rainbow and dreams
+
+    private func showRainbow(_ visible: Bool) {
+        renderer.rainbowVisible = visible
+        guard visible else {
+            rainbowUntil = nil
+            return
+        }
+        let until = Date().addingTimeInterval(Self.rainbowLasts)
+        rainbowUntil = until
+        send(.rainbowAppeared)
+        // One timer, only after rain: the rainbow fades after a while.
+        DispatchQueue.main.asyncAfter(deadline: .now() + Self.rainbowLasts) { [weak self] in
+            guard let self, self.rainbowUntil == until else { return }
+            self.showRainbow(false)
+        }
+    }
+
+    /// Something worth dreaming of tonight.
+    private func remember(_ memory: String) {
+        memories.removeAll { $0 == memory }
+        memories = Array((memories + [memory]).suffix(6))
+    }
+
+    private func dreamText(pick: Double) -> String? {
+        let pool = memories.isEmpty ? Strings.everydayDreams : memories
+        let memory = pool[min(Int(pick * Double(pool.count)), pool.count - 1)]
+        return Strings.dreams[memory]
+    }
+
     // MARK: - Visitors
 
     private func playVisit(_ visitor: String) {
+        remember(visitor)
         guard visitor == "seagull" else {
             renderer.playVisitor(visitor)
             return
@@ -324,6 +382,7 @@ final class PetController {
         guard !brain.output.isWorkMode else { return }
         if brain.output.bottle, bottleHitRange.contains(x) {
             send(.bottleClicked)  // Pibbo fishes it out and reads the note
+            remember("bottle")
             return
         }
         renderer.playRipple(atX: x, within: panel.frame.width)
@@ -390,6 +449,7 @@ final class PetController {
         }
         if brain.output.shootingStar {
             send(.wished)  // right after a shooting star, a click is a wish
+            remember("star")
             return
         }
         send(.clicked)

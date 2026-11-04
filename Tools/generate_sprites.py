@@ -299,6 +299,15 @@ def frame_friendpaw(i):
     return [row[::-1] for row in g[:13]] + g[13:]  # mirror the otter, keep the water as is
 
 
+def frame_admire(i):
+    """After the rain: looks up at the rainbow, a little 'oh'."""
+    g = base()
+    eyes(g, "up")
+    if i >= 2:
+        mouth(g, 1)
+    return water(g, i // 2)
+
+
 def frame_look(i):
     """A splash nearby: turns to look at it."""
     g = base()
@@ -904,6 +913,27 @@ VISITORS = {
 }
 
 
+# The rainbow after rain: one arc over the whole pool (meadow, flower, Pibbo),
+# split into three cells. Half see-through, so the flower shows behind it.
+RAINBOW_BANDS = [(222, 96, 92), (240, 168, 84), (244, 218, 112), (130, 196, 120), (112, 160, 214)]
+RAINBOW_ALPHA = 170
+
+
+def rainbow_cells():
+    width = SIZE * 3
+    img = Image.new("RGBA", (width, SIZE), (0, 0, 0, 0))
+    px = img.load()
+    cx, cy = width / 2 - 0.5, SIZE - 0.5
+    for x in range(width):
+        for y in range(SIZE - 1):  # stops just above the water's lowest row
+            # elliptical distance: 1.0 on the outer edge of the arc
+            d = (((x - cx) / (width / 2 - 1)) ** 2 + ((y - cy) / (SIZE - 1.5)) ** 2) ** 0.5
+            band = int((1 - d) * 18)  # each band ~1 pixel wide at the top
+            if 0 <= band < len(RAINBOW_BANDS):
+                px[x, y] = RAINBOW_BANDS[band] + (RAINBOW_ALPHA,)
+    return [img.crop((k * SIZE, 0, (k + 1) * SIZE, SIZE)) for k in range(3)]
+
+
 WEATHER_EFFECTS = {
     "rain": (frame_rain, 4, 6),
     "snow": (frame_snowfall, 4, 2),
@@ -1124,6 +1154,7 @@ ACTIONS = {
     "holdpaw": (frame_holdpaw, 4, 2),      # cursor resting on him
     "look": (frame_look, 2, 2),            # a splash nearby
     "friendpaw": (frame_friendpaw, 4, 2),  # holding paws with the friend otter
+    "admire": (frame_admire, 4, 2),        # looking up at a rainbow
     "ripple": (frame_ripple, 4, 7),        # splash effect, drawn over the water
     "note": (frame_note, 4, 2),            # reading a message in a bottle
     "wish": (frame_wish, 4, 3),            # wishing on a shooting star
@@ -1262,6 +1293,20 @@ ICONS = {
            "xuux..x..", "xuux.xux.", ".xx...x..", "........."],
     "✨": ["....m....", "....m....", "..mmmmm..", "....m....", "....m..m.", ".m.....mm",
           "mmm.....m", ".m.......", "........."],
+    "💭": [".........", "..ooooo..", ".oXXXXXo.", "oXXXXXXXo", ".oXXXXXo.", "..ooooo..",
+           "...oo....", "....o....", "........."],
+    "🦀": [".........", "C.......C", "CC.....CC", ".C.e.e.C.", "..CCCCC..", ".CCCCCCC.",
+           "..CCCCC..", ".Q.Q.Q.Q.", "........."],
+    "🐦": [".........", "....RR...", "...RXXR..", "...RXeRm.", ".RRXXXR..", "RXXXXXR..",
+           ".RXXXR...", "...m.m...", "........."],
+    "🐟": [".........", ".........", "...LLL..L", "..LLLLLLL", ".LeLLLLL.", "..LLLLLLL",
+           "...LLL..L", ".........", "........."],
+    "🦦": [".........", "..ooooo..", ".obbbbbo.", ".oebbbeo.", ".obllllo.", ".oblnlbo.",
+           "..obbbo..", "...ooo...", "........."],
+    "🍾": ["....D....", "....G....", "...GuG...", "...GXG...", "...GXG...", "...GuG...",
+           "...GGG...", ".........", "........."],
+    "🌷": [".........", "...f.f...", "..fFfFf..", "..fFFFf..", "...fFf...", "....K....",
+           "..k.K.k..", "...kKk...", "....K...."],
     "🌊": [".........", "...oooo..", "..oxxxxo.", ".oxxoooxo", ".oxo...o.",
            "oxxxo....", "xxxxxxxxx", "xuxxuxxux", "xxxxxxxxx"],
     "❄": ["....x....", ".x..x..x.", "..x.x.x..", "...xxx...", "xxxxxxxxx",
@@ -1403,7 +1448,7 @@ def build_skin():
     visits = {name: fn() for name, fn in VISITORS.items()}
     max_frames = max(max(n for _, (_, n, _) in entries), GARDEN_STAGES, MEADOW_STAGES, VISIT_WRAP)
     visit_rows = {name: -(-len(fn()[0]) // VISIT_WRAP) for name, fn in VISITORS.items()}
-    rows = len(entries) + 1 + len(OUTFITS) * len(entries) + DECOR_ROWS + len(PROPS) + 5 + len(WEATHER_EFFECTS) + sum(visit_rows.values())
+    rows = len(entries) + 1 + len(OUTFITS) * len(entries) + DECOR_ROWS + len(PROPS) + 6 + len(WEATHER_EFFECTS) + sum(visit_rows.values())
     sheet = Image.new("RGBA", (SIZE * max_frames, SIZE * rows), (0, 0, 0, 0))
     frames = {}
     for row, (name, (fn, n, _)) in enumerate(entries):
@@ -1474,6 +1519,10 @@ def build_skin():
     gift_row = next_row
     sheet.paste(to_image(gift_frame()), (0, gift_row * SIZE))
     frames["gift"] = [to_image(gift_frame())]
+    rainbow_row = gift_row + 1
+    frames["rainbow"] = rainbow_cells()
+    for k, cell in enumerate(frames["rainbow"]):
+        sheet.paste(cell, (k * SIZE, rainbow_row * SIZE))
     sheet.save(SKIN_DIR / "sprites.png")
 
     manifest = {
@@ -1492,6 +1541,7 @@ def build_skin():
         "moonGlint": {"glint": hex_rgb(PALETTE["W"]), "water": hex_rgb(PALETTE["w"])},
         "snowCover": {"row": snow_row, "stages": 2},
         "gift": {"row": gift_row, "stages": 1},
+        "rainbow": {"row": rainbow_row, "stages": 3},
         "visitors": {name: {"row": visitor_rows[name], "frames": len(grids), "fps": fps, "wrap": VISIT_WRAP, "path": path}
                      for name, (grids, path, fps) in visits.items()},
         "weatherEffects": {name: {"row": weather_rows[name], "frames": n, "fps": fps}

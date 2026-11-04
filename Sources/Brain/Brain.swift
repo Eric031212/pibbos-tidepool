@@ -79,6 +79,9 @@ public struct Brain {
     /// Who is visiting during the current appearance.
     private var visitor: String?
 
+    /// Next dream bubble while Pibbo sleeps (nil while awake).
+    private var nextDream: Date?
+
     private var isClearNight = false
     /// Next shooting star (only scheduled on clear nights).
     private var nextStar: Date?
@@ -109,6 +112,7 @@ public struct Brain {
         if let nowPlayingUntil, nowPlayingUntil != .distantFuture { candidates.append(nowPlayingUntil) }
         if let bottleUntil { candidates.append(bottleUntil) } else if !isQuiet { candidates.append(nextBottle) }
         if let wishUntil { candidates.append(wishUntil) }
+        if let nextDream, isUserAway, !isQuiet { candidates.append(nextDream) }
         if let nextStar, !workMode { candidates.append(nextStar) }
         switch presence {
         case .hidden:
@@ -147,6 +151,10 @@ public struct Brain {
                 setPresence(.chill(hideAt: now.addingTimeInterval(config.hideAfterNoInteraction)), at: now)
             }
 
+        case .rainbowAppeared:
+            guard case .hidden = presence, canAppearOnHisOwn else { break }
+            setPresence(.appearance(action: "admire", until: now.addingTimeInterval(config.admireDuration)), at: now)
+
         case .visitorsChanged(let names, let durations):
             visitors = names.filter { durations[$0] != nil }
             visitDurations = durations
@@ -182,6 +190,10 @@ public struct Brain {
             let threshold = timeOfDay == .night ? config.idleBeforeSleepAtNight : config.idleBeforeSleep
             let wasAway = isUserAway
             isUserAway = seconds >= threshold
+            if isUserAway && !wasAway {
+                nextDream = now.addingTimeInterval(random(config.dreamInterval))
+            }
+            if !isUserAway { nextDream = nil }
             if wasAway && !isUserAway {
                 // Wake up quietly: back to hidden rather than popping up.
                 becomeHidden(at: now)
@@ -351,6 +363,12 @@ public struct Brain {
             bottleUntil = now.addingTimeInterval(config.bottleStay)
         }
         if let until = wishUntil, until <= now { wishUntil = nil }
+        if let due = nextDream, due <= now, isUserAway, !isQuiet {
+            if playingSources.isEmpty, bubble == nil {
+                bubble = (.dream(pick: random(0...0.999_999)), now.addingTimeInterval(config.dreamDuration))
+            }
+            nextDream = now.addingTimeInterval(random(config.dreamInterval))
+        }
         if let due = nextStar, due <= now, !workMode {
             // Nobody to see it while away: let that one go by unseen.
             if !isUserAway && !inCall { wishUntil = now.addingTimeInterval(config.wishWindow) }

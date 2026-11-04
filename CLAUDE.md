@@ -56,6 +56,8 @@ open build/Build/Products/Debug/Tidepool.app --args --garden-days 91      # flow
 open build/Build/Products/Debug/Tidepool.app --args --demo --time night --stars --moon 1   # clear full-moon night, a shooting star every 15–25 s
 open build/Build/Products/Debug/Tidepool.app --args --weather rain        # or snow: rain / snow over the pool
 open build/Build/Products/Debug/Tidepool.app --args --visitor friend      # crab / seagull / fish / friend, every few seconds
+open build/Build/Products/Debug/Tidepool.app --args --rainbow             # a rainbow right away
+open build/Build/Products/Debug/Tidepool.app --args --dreams              # asleep after ~30 s idle, a dream every few seconds
 ```
 
 Builds are ad-hoc signed until a Developer ID certificate exists. Login-item registration only happens when the app runs from `/Applications` or `~/Applications`, so development builds never register themselves.
@@ -118,6 +120,14 @@ Some of Pibbo's own appearances (35 %, demo 70 %) bring a visitor instead of an 
 
 Seagull visits are counted (`seagullVisits`, saved except in `--demo`). On the fifth (`World.SeagullGift`) the seagull brings a feather in its beak (`seagullGift` visit), sets it on the meadow rock and flies off; from then on the feather (`gift` frame, a sublayer of the meadow) stays for good (`seagullGiftBrought`). One gift, ever; no counter or hint is shown. Brain only knows "seagull"; the platform picks the gift variant.
 
+### Rainbow after rain (v1.1)
+
+When the weather turns from rain or storm to clear or cloudy, outside the night, a rainbow arches over the whole pool for 10 minutes (half see-through, so the flower shows behind it; three static `rainbow` frames, sublayers of the garden so it shows with the flower; Pibbo's own sprite is drawn over his part). Rain coming back takes it away. Brain's `.rainbowAppeared` brings Pibbo up to look (`admire`, eyes up, 8 s) when he could appear on his own anyway (hidden, not quiet, no music, user not away). The 10-minute fade is the only timer, and only after rain. `--rainbow` shows one at launch.
+
+### Dream bubbles (v1.1)
+
+While Pibbo sleeps (user away), every 4–8 min a thought bubble shows for 5 s with what he dreams of: something he saw lately (the controller's `memories`, last 6: visitors, a bottle he read, a star he wished on, music), or shells, his flower or bubbles before he has seen anything. Icons only, no words (`Strings.dreams`, an exception to Section 6's "short phrase + emoji": a dream has no words). Never during work mode or calls, never over music; waking up ends them. Brain's `Bubble.dream(pick:)`; demo every 10–15 s; `--dreams` makes him fall asleep at the next idle check.
+
 ### Quiet during calls (v1.0)
 
 While any camera or microphone is in use by any app (spike 8: a call, most likely, including browser calls and screen sharing from another app), Pibbo stays under water like in work mode: no surfacing, bubbles, bottles or shooting stars; hover and play are ignored. A call starts after 2 s of use and ends after 5 s of quiet (so Siri or a quick dictation don't count); afterwards he goes back to hidden without popping up. `Signals/CallMonitor` reads only the devices' "running somewhere" flags (property listeners, no polling); Brain's `.callChanged`. Unlike work mode a click still opens the menu.
@@ -141,6 +151,7 @@ Pibbo sinks under the water. Only a few small bubbles rise occasionally. Skins p
 - Holiday outfits
 - The meadow and messages in a bottle (approved 2026-10-23)
 - Moonlight on the water and shooting stars with wishes (approved 2026-10-24)
+- v1.1 (approved 2026-11-03): winter holiday decor, rainbow after rain, dream bubbles
 - v1.0 (approved 2026-11-02): weather in the pool (rain ripples, snowfall, snow on the rocks), quiet during calls, visitors (crab, seagull, fish, a friend otter), the seagull's gift
 - Launch at login
 
@@ -363,6 +374,7 @@ Example `manifest.json`:
 - Optional `shootingStar`: a one-shot clip (`"loop": false`) drawn on top over the flower's cell on clear nights.
 - Optional `moonGlint`: `{"glint": "bfe6f5", "water": "6fb7d9"}`, which sheet colours are the water's glints and plain surface; at night the glint's replacement is mixed toward the water's by how dark the moon is.
 - Optional `visitors`: `{"crab": {"row": …, "frames": 22, "fps": 4, "wrap": 8, "path": [2, 4, …]}}`, one-shot visits: `path[i]` is the visitor layer's left edge during frame i, in art pixels from the window's left edge (meadow 0, flower 16, Pibbo 32). Frames and position step together (discrete keyframes), so the walk stays pixel-crisp.
+- Optional `rainbow`: `{"row": …, "stages": 3}`, the rainbow after rain: frames for the meadow's, the flower's and Pibbo's cells (half see-through), together one arc. Needs a `garden`.
 - Optional `gift`: `{"row": …, "stages": 1}`, the seagull's present: one static frame over the meadow's cell, shown once it has been brought. Needs a `meadow`.
 - Optional `"wrap": n` on a clip or visit: n frames per sheet row, longer clips continue on the rows below. Keeps the sheet narrow: the renderer keeps the whole sheet decoded (plus a recoloured copy at dusk, dawn and night), so a 42-frame row would cost ~20 MB.
 - Optional `weatherEffects`: `{"rain": {…}, "snow": {…}}`, looping clips drawn over every cell of the pool while it rains (or storms) / snows; ripples sit in the water rows so the water light recolours them.
@@ -395,6 +407,7 @@ Example `manifest.json`:
 
 - **First release (decided 2026-10-12):** open source on GitHub, used by the developer and friends for a while. The Steam build and spike 7 are deferred until then.
 - **GitHub build:** a DMG on each GitHub release (since v0.4.0), made by `Tools/package_dmg.py`: universal (arm64 + x86_64), app + `Applications` link + `First launch.txt`. Ad-hoc signed for now, so a downloaded copy is blocked on first launch (`spctl` says rejected) until the user clicks Open Anyway in System Settings → Privacy & Security; README explains it. Once a Developer ID exists, set `SIGN_IDENTITY` and `NOTARY_PROFILE` and the same tool signs, notarizes and staples. Consider Sparkle for updates later
+- **Steam / Windows: on hold (decided 2026-11-03).** The developer keeps updating the Mac app for fun; the notes below stay for if it resumes.
 - **Steam build:** integrate the Steamworks SDK (C++, bridged into Swift) and use the UGC API for the Workshop. Note: requires the Steam client to be running.
 - Both builds share one codebase; a build flag enables the `Steam/` module
 
@@ -526,7 +539,7 @@ Code: `Spikes/08-call-signal/` (`run.sh [seconds]` wraps it in its own ad-hoc-si
 
 - The developer writes in Chinese; reply in Chinese. User-facing app text stays English (Section 6). README and release notes: short, casual, with emoji.
 - New features are proposed first and built only after a yes (Principle 1). Present options with a recommendation; flag anything that conflicts with this file instead of changing the design silently.
-- Hand-off for testing: build, launch the app yourself, then give a short numbered checklist of what to try. `open` on an already-running app ignores `--args`, so relaunch with `pkill -x Tidepool; open … --args …`. `--demo` speeds everything up; `--holiday <name>` previews an outfit; `--time <dawn|day|dusk|night>` forces the time of day; `--bottle` brings a bottle in 3 s; `--garden-days <n>` previews the flower and meadow on day n; `--stars` makes any night clear (shooting stars); `--moon <0…1>` sets the moonlight; `--weather <rain|snow>` forces the weather; `--visitor <crab|seagull|fish|friend>` brings that visitor every few seconds.
+- Hand-off for testing: build, launch the app yourself, then give a short numbered checklist of what to try. `open` on an already-running app ignores `--args`, so relaunch with `pkill -x Tidepool; open … --args …`. `--demo` speeds everything up; `--holiday <name>` previews an outfit; `--time <dawn|day|dusk|night>` forces the time of day; `--bottle` brings a bottle in 3 s; `--garden-days <n>` previews the flower and meadow on day n; `--stars` makes any night clear (shooting stars); `--moon <0…1>` sets the moonlight; `--weather <rain|snow>` forces the weather; `--visitor <crab|seagull|fish|friend>` brings that visitor every few seconds; `--rainbow` shows a rainbow at launch; `--dreams` makes him fall asleep quickly and dream often.
 - The repo is **public**: never put personal data (city or location, machine host name, email) in files, test fixtures, or commit messages. Commits use the repo-local identity already set in `.git/config`; don't change it.
 - Music: new tracks arrive as WAVs in `Assets/MusicMasters/<Theme Name>/` → `python3 Tools/import_track.py`. It re-encodes every theme and the old CAFs come out byte-different (same audio): `git checkout -- Assets/Music/<old-theme>` afterwards so only the new theme is committed. Art: edit `Tools/generate_sprites.py` and rerun; rerun `Tools/generate_promo.py` / `Tools/generate_promo_video.py` when the promo material should follow.
 
@@ -542,7 +555,7 @@ Code: `Spikes/08-call-signal/` (`run.sh [seconds]` wraps it in its own ad-hoc-si
 2. `swift test` (all pass) → `xcodegen generate` → Release build → check `CFBundleShortVersionString` in the built Info.plist.
 3. Launch the Release build; after Pibbo hides, `top -c d -pid <pid>` should show ~0 % CPU and ~0 idle wakeups.
 4. Commit with a summary message → push `main` → annotated tag `vX.Y.Z` → push the tag → `python3 Tools/package_dmg.py` → `gh release create vX.Y.Z dist/PibbosTidepool-X.Y.Z.dmg` with casual emoji notes (point to the README's Open Anyway steps until a notarized build exists; credit Suno / MET Norway).
-5. Releases so far: v0.1.0 app shell · v0.2.0 actions, flower, pixel UI · v0.3.0 themed radio, ticker, drag · v0.3.1 mouse play · v0.3.2 holiday outfits · v0.3.3 smooth transitions · v0.4.0 second theme "Solo Float", nodding to the beat · v0.4.1 Halloween decor · v0.5.0 water light by time of day · v0.6.0 third theme "Pibbo in the City", theme props · v0.7.0 the meadow, messages in a bottle · v0.8.0 shooting stars, moonlight, wake fix for time of day · v1.0.0 "Pibbo's Tidepool": visitors, the seagull's gift, weather in the pool, quiet during calls, final bundle ID.
+5. Releases so far: v0.1.0 app shell · v0.2.0 actions, flower, pixel UI · v0.3.0 themed radio, ticker, drag · v0.3.1 mouse play · v0.3.2 holiday outfits · v0.3.3 smooth transitions · v0.4.0 second theme "Solo Float", nodding to the beat · v0.4.1 Halloween decor · v0.5.0 water light by time of day · v0.6.0 third theme "Pibbo in the City", theme props · v0.7.0 the meadow, messages in a bottle · v0.8.0 shooting stars, moonlight, wake fix for time of day · v1.0.0 "Pibbo's Tidepool": visitors, the seagull's gift, weather in the pool, quiet during calls, final bundle ID · v1.1.0 winter holiday decor, rainbow after rain, dream bubbles.
 
 ## 16. Open items
 

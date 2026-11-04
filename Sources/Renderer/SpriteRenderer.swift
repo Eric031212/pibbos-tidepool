@@ -25,6 +25,9 @@ final class SpriteRenderer {
     let bottleLayer = CALayer()
     /// Rain or snow falling over each cell of the pool (Pibbo's, flower's, meadow's).
     private let weatherLayers = [CALayer(), CALayer(), CALayer()]
+    /// The rainbow's three pieces: over the meadow, the flower and Pibbo. All
+    /// sublayers of the garden, so the rainbow shows and hides with it.
+    private let rainbowLayers = [CALayer(), CALayer(), CALayer()]
     /// The seagull's present, lying on the meadow rock.
     private let giftLayer = CALayer()
     /// Snow resting on the flower's rock and the meadow's.
@@ -90,6 +93,7 @@ final class SpriteRenderer {
         showWeather()
         showSnowCover()
         showGift()
+        showRainbow()
         restartCurrentClip()
     }
 
@@ -139,6 +143,10 @@ final class SpriteRenderer {
         gardenLayer.insertSublayer(snowLayers[0], at: 1)
         meadowLayer.addSublayer(giftLayer)
         meadowLayer.addSublayer(meadowDecorLayer)
+        meadowLayer.addSublayer(rainbowLayers[0])
+        gardenLayer.addSublayer(rainbowLayers[1])
+        gardenLayer.addSublayer(rainbowLayers[2])
+        rainbowLayers.forEach { $0.isHidden = true }
         meadowDecorLayer.isHidden = true
         meadowLayer.addSublayer(snowLayers[1])
         giftLayer.isHidden = true
@@ -151,12 +159,13 @@ final class SpriteRenderer {
         visitorLayer.isHidden = true
         for sprite in [layer, gardenLayer, rippleLayer, decorLayer, meadowDecorLayer, propLayer, meadowLayer, bottleLayer, starLayer,
                        visitorLayer, giftLayer]
-            + weatherLayers + snowLayers {
+            + weatherLayers + snowLayers + rainbowLayers {
             sprite.frame = CGRect(x: 0, y: 0, width: pointSize, height: pointSize)
             sprite.magnificationFilter = .nearest
             sprite.actions = noFades
         }
         meadowLayer.frame.origin.x = -pointSize
+        rainbowLayers[2].frame.origin.x = pointSize  // over Pibbo's cell (he is drawn on top)
     }
 
     private var gardenStage: Int?
@@ -191,6 +200,23 @@ final class SpriteRenderer {
         guard stage != gardenStage, let rect = pack.gardenFrameRect(stage: stage) else { return }
         gardenStage = stage
         gardenLayer.contents = sheet.cropping(to: CGRect(x: rect.x, y: rect.y, width: rect.width, height: rect.height))
+    }
+
+    /// Whether a rainbow arches over the pool.
+    var rainbowVisible = false {
+        didSet { if rainbowVisible != oldValue { showRainbow() } }
+    }
+
+    private func showRainbow() {
+        let size = pack.manifest.frameSize
+        for (cell, piece) in rainbowLayers.enumerated() {
+            guard rainbowVisible, let rainbow = pack.manifest.rainbow, cell < rainbow.stages, cell > 0 || hasMeadow else {
+                piece.isHidden = true
+                continue
+            }
+            piece.contents = sheet.cropping(to: CGRect(x: cell * size, y: rainbow.row * size, width: size, height: size))
+            piece.isHidden = false
+        }
     }
 
     /// Whether the seagull's present lies on the meadow rock.

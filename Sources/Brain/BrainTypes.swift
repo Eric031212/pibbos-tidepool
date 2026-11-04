@@ -27,12 +27,15 @@ public enum Bubble: Equatable, Sendable {
     case note(pick: Double)
     /// `Made a wish ✨` after wishing on a shooting star.
     case wish
+    /// A dream while Pibbo sleeps: `pick` in 0..<1 chooses which of the things
+    /// he has seen lately he dreams of (Brain doesn't know them).
+    case dream(pick: Double)
 
     /// Bubbles that answer something the user just did show even over music.
     var showsOverMusic: Bool {
         switch self {
         case .note, .wish: return true
-        case .musicInvitation, .nowPlaying: return false
+        case .musicInvitation, .nowPlaying, .dream: return false
         }
     }
 }
@@ -68,6 +71,8 @@ public enum BrainEvent: Equatable, Sendable {
     case splashed
     /// A click on the message in a bottle: Pibbo comes out and reads the note.
     case bottleClicked
+    /// The rain just stopped and a rainbow is out: Pibbo comes up to look.
+    case rainbowAppeared
     /// Who may visit now (weighted, like `availableActionsChanged`) and how long
     /// each visit takes on screen.
     case visitorsChanged([String], durations: [String: TimeInterval])
@@ -157,6 +162,12 @@ public struct BrainConfig: Sendable {
     public var visitorChance: Double = 0.35
     /// Pibbo stays out a moment after his visitor has gone.
     public var visitorLinger: TimeInterval = 1.5
+    /// Looking up at a rainbow.
+    public var admireDuration: TimeInterval = 8
+    /// While he sleeps, a dream bubble now and then...
+    public var dreamInterval: ClosedRange<TimeInterval> = (4 * 60)...(8 * 60)
+    /// ...for this long.
+    public var dreamDuration: TimeInterval = 5
 
     public init() {}
 
@@ -176,6 +187,7 @@ public struct BrainConfig: Sendable {
         config.bottleStay = 45
         config.shootingStarInterval = 15...25
         config.visitorChance = 0.7
+        config.dreamInterval = 10...15
         return config
     }
 }
