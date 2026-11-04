@@ -19,7 +19,7 @@ Pibbo's Tidepool (display name since v1.0; the app file stays `Tidepool.app` so 
 
 ```
 CLAUDE.md                          this plan
-README.md, LICENSE                 public intro (casual, emoji) and GPL-3.0
+README.md, LICENSE                 public page (generated, see Tools/generate_github_page.py) and GPL-3.0
 docs/design-notes.md               background: market research and why decisions were made
 CREDITS.md                         third-party data and attribution (MET Norway, tzdb), bundled into the app
 Package.swift                      TidepoolCore: Brain, Content, Strings, World (Foundation only) + tests
@@ -37,6 +37,7 @@ Tools/import_track.py              WAV master → app-ready CAF + beat map with 
 Tools/generate_promo.py            social-media posters (1080×1350, 11 of them since v1.0) from the real sprites and pixel font → Marketing/promo/
 Tools/generate_promo_video.py      30 s vertical promo video (1080×1920, 30 fps, BGM "Floating Pibbo") → Marketing/video/ (needs ffmpeg)
 Tools/generate_placeholder_lofi.py synthesizes a placeholder lofi loop (stdlib + afconvert), for testing without tracks
+Tools/generate_github_page.py      the GitHub page: README.md + pixel signs, reveals and buttons → Marketing/github/page/ (a "field guide": hints that open to show Pibbo doing the thing). Edit this script, never README.md by hand
 Tools/package_dmg.py               universal Release build → dist/PibbosTidepool-<version>.dmg (drag-to-install; Developer ID signing + notarization when SIGN_IDENTITY / NOTARY_PROFILE are set)
 Assets/AppIcon/                    AppIcon.icns + AppIcon.png, drawn by Tools/generate_sprites.py
 ```
@@ -537,7 +538,7 @@ Code: `Spikes/08-call-signal/` (`run.sh [seconds]` wraps it in its own ad-hoc-si
 
 ### Working with the developer (learned through v0.3.2)
 
-- The developer writes in Chinese; reply in Chinese. User-facing app text stays English (Section 6). README and release notes: short, casual, with emoji.
+- The developer writes in Chinese; reply in Chinese. User-facing app text stays English (Section 6). README and release notes: short, casual, with emoji. The README is a pixel-styled field guide made by `Tools/generate_github_page.py` (2026-11-03): explore-by-hints, not a feature list; add a hint there when a feature ships. GitHub wraps README images in links, so clickable `<summary>` lines must stay text
 - New features are proposed first and built only after a yes (Principle 1). Present options with a recommendation; flag anything that conflicts with this file instead of changing the design silently.
 - Hand-off for testing: build, launch the app yourself, then give a short numbered checklist of what to try. `open` on an already-running app ignores `--args`, so relaunch with `pkill -x Tidepool; open … --args …`. `--demo` speeds everything up; `--holiday <name>` previews an outfit; `--time <dawn|day|dusk|night>` forces the time of day; `--bottle` brings a bottle in 3 s; `--garden-days <n>` previews the flower and meadow on day n; `--stars` makes any night clear (shooting stars); `--moon <0…1>` sets the moonlight; `--weather <rain|snow>` forces the weather; `--visitor <crab|seagull|fish|friend>` brings that visitor every few seconds; `--rainbow` shows a rainbow at launch; `--dreams` makes him fall asleep quickly and dream often.
 - The repo is **public**: never put personal data (city or location, machine host name, email) in files, test fixtures, or commit messages. Commits use the repo-local identity already set in `.git/config`; don't change it.
@@ -551,7 +552,7 @@ Code: `Spikes/08-call-signal/` (`run.sh [seconds]` wraps it in its own ad-hoc-si
 
 ### Release checklist (only when the developer says to release)
 
-1. Bump `MARKETING_VERSION` and `CURRENT_PROJECT_VERSION` in `project.yml`; update README (features, status line) and this file.
+1. Bump `MARKETING_VERSION` and `CURRENT_PROJECT_VERSION` in `project.yml`; rerun `Tools/generate_github_page.py` (add hints for new features) and update this file.
 2. `swift test` (all pass) → `xcodegen generate` → Release build → check `CFBundleShortVersionString` in the built Info.plist.
 3. Launch the Release build; after Pibbo hides, `top -c d -pid <pid>` should show ~0 % CPU and ~0 idle wakeups.
 4. Commit with a summary message → push `main` → annotated tag `vX.Y.Z` → push the tag → `python3 Tools/package_dmg.py` → `gh release create vX.Y.Z dist/PibbosTidepool-X.Y.Z.dmg` with casual emoji notes (point to the README's Open Anyway steps until a notarized build exists; credit Suno / MET Norway).
