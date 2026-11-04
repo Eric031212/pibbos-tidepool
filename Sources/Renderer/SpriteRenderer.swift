@@ -12,6 +12,8 @@ final class SpriteRenderer {
     /// Holiday extras over the flower; a sublayer of `gardenLayer`, so they
     /// show and hide with the flower.
     private let decorLayer = CALayer()
+    /// Holiday extras over the meadow (a sublayer of the meadow layer).
+    private let meadowDecorLayer = CALayer()
     /// The playing radio theme's prop, beside the flower (also a sublayer of it).
     private let propLayer = CALayer()
     /// The meadow on the long rock left of the flower; a sublayer of
@@ -136,6 +138,8 @@ final class SpriteRenderer {
         // Snow sits on the rocks under decor and props; falling weather goes on top.
         gardenLayer.insertSublayer(snowLayers[0], at: 1)
         meadowLayer.addSublayer(giftLayer)
+        meadowLayer.addSublayer(meadowDecorLayer)
+        meadowDecorLayer.isHidden = true
         meadowLayer.addSublayer(snowLayers[1])
         giftLayer.isHidden = true
         layer.addSublayer(weatherLayers[0])
@@ -145,7 +149,8 @@ final class SpriteRenderer {
         bottleLayer.isHidden = true
         starLayer.isHidden = true
         visitorLayer.isHidden = true
-        for sprite in [layer, gardenLayer, rippleLayer, decorLayer, propLayer, meadowLayer, bottleLayer, starLayer, visitorLayer, giftLayer]
+        for sprite in [layer, gardenLayer, rippleLayer, decorLayer, meadowDecorLayer, propLayer, meadowLayer, bottleLayer, starLayer,
+                       visitorLayer, giftLayer]
             + weatherLayers + snowLayers {
             sprite.frame = CGRect(x: 0, y: 0, width: pointSize, height: pointSize)
             sprite.magnificationFilter = .nearest
@@ -236,7 +241,10 @@ final class SpriteRenderer {
 
     /// Plays the current holiday's extras over the flower, or hides them.
     private func showDecor() {
-        loop(pack.decor(for: outfit), named: "decor#\(outfit ?? "")", on: decorLayer)
+        let night = lighting == "night"
+        let key = "\(outfit ?? "")\(night ? "@night" : "")"
+        loop(pack.decor(for: outfit, night: night), named: "decor#\(key)", on: decorLayer)
+        loop(pack.meadowDecor(for: outfit, night: night), named: "meadowDecor#\(key)", on: meadowDecorLayer)
     }
 
     private func showProp() {

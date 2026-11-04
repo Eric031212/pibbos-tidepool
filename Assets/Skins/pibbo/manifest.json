@@ -147,16 +147,16 @@
     "stages": 6
   },
   "meadow": {
-    "row": 260,
+    "row": 266,
     "stages": 7
   },
   "bottle": {
-    "row": 261,
+    "row": 267,
     "frames": 4,
     "fps": 2
   },
   "shootingStar": {
-    "row": 262,
+    "row": 268,
     "frames": 6,
     "fps": 10,
     "loop": false
@@ -166,16 +166,16 @@
     "water": "6fb7d9"
   },
   "snowCover": {
-    "row": 263,
+    "row": 269,
     "stages": 2
   },
   "gift": {
-    "row": 280,
+    "row": 286,
     "stages": 1
   },
   "visitors": {
     "crab": {
-      "row": 266,
+      "row": 272,
       "frames": 22,
       "fps": 4,
       "wrap": 8,
@@ -205,7 +205,7 @@
       ]
     },
     "seagull": {
-      "row": 269,
+      "row": 275,
       "frames": 16,
       "fps": 3,
       "wrap": 8,
@@ -229,7 +229,7 @@
       ]
     },
     "seagullGift": {
-      "row": 271,
+      "row": 277,
       "frames": 15,
       "fps": 3,
       "wrap": 8,
@@ -252,7 +252,7 @@
       ]
     },
     "fish": {
-      "row": 273,
+      "row": 279,
       "frames": 7,
       "fps": 6,
       "wrap": 8,
@@ -267,7 +267,7 @@
       ]
     },
     "friend": {
-      "row": 274,
+      "row": 280,
       "frames": 42,
       "fps": 3,
       "wrap": 8,
@@ -319,12 +319,12 @@
   },
   "weatherEffects": {
     "rain": {
-      "row": 264,
+      "row": 270,
       "frames": 4,
       "fps": 6
     },
     "snow": {
-      "row": 265,
+      "row": 271,
       "frames": 4,
       "fps": 2
     }
@@ -541,17 +541,17 @@
   },
   "props": {
     "streetlamp": {
-      "row": 257,
+      "row": 263,
       "frames": 2,
       "fps": 2
     },
     "teacup": {
-      "row": 258,
+      "row": 264,
       "frames": 2,
       "fps": 2
     },
     "paperboat": {
-      "row": 259,
+      "row": 265,
       "frames": 4,
       "fps": 2
     }
@@ -561,6 +561,38 @@
       "row": 256,
       "frames": 4,
       "fps": 3
+    },
+    "christmas": {
+      "row": 257,
+      "frames": 4,
+      "fps": 2
+    },
+    "newYear@night": {
+      "row": 258,
+      "frames": 8,
+      "fps": 4
+    }
+  },
+  "meadowDecor": {
+    "christmas": {
+      "row": 259,
+      "frames": 2,
+      "fps": 2
+    },
+    "newYear": {
+      "row": 260,
+      "frames": 2,
+      "fps": 2
+    },
+    "newYear@night": {
+      "row": 261,
+      "frames": 2,
+      "fps": 2
+    },
+    "lunarNewYear": {
+      "row": 262,
+      "frames": 2,
+      "fps": 2
     }
   }
 }

@@ -958,9 +958,87 @@ def frame_decor_halloween(i):
     return g
 
 
+def frame_decor_christmas_pot(i):
+    """Christmas: a string of tiny lights around the flower pot, twinkling."""
+    g = blank()
+    spots = [(8, 5), (9, 6), (8, 7), (9, 8), (8, 9), (9, 10)]
+    colors = ["M", "m", "h", "k"]
+    for k, spot in enumerate(spots):
+        put(g, [spot], colors[(k + i) % len(colors)])
+    return g
+
+
+def frame_decor_christmas_tree(i):
+    """Christmas: a little tree with a star on the meadow rock, lights blinking."""
+    g = blank()
+    stamp(g, 2, 11, ["..m..", "..K..", ".KKK.", ".KKK.", "KKKKK", ".KKK.", "KKKKK", "KKKKK", "..D.."])
+    lights = [[(4, 13), (6, 12), (8, 14), (9, 12)], [(5, 12), (6, 14), (8, 11), (9, 14)]][i % 2]
+    for k, spot in enumerate(lights):
+        put(g, [spot], ["M", "m", "h", "y"][k])
+    if i % 2:
+        put(g, [(1, 13), (2, 12), (2, 14)], "y")  # the star twinkles
+    return g
+
+
+def bunting(g, i):
+    """A string of little flags sagging across the meadow rock."""
+    line = [(2, 0), (2, 1), (3, 2), (3, 3), (4, 4), (4, 5), (4, 6), (5, 7), (5, 8), (4, 9), (4, 10), (4, 11), (3, 12), (3, 13), (2, 14), (2, 15)]
+    put(g, line, "R")
+    colors = ["M", "m", "h", "f"]
+    for k, (r, c) in enumerate(line[1::3]):
+        color = colors[(k + i) % len(colors)]
+        put(g, [(r + 1, c), (r + 1, c + 1), (r + 2, c + (i % 2))], color)  # flags flutter
+    return g
+
+
+def frame_decor_newyear_bunting(i):
+    return bunting(blank(), i)
+
+
+def frame_decor_newyear_fireworks(i):
+    """New Year's nights: little fireworks bursting above the flower."""
+    g = blank()
+    bursts = [  # (row, col, radius, colour) per frame; radius 0 = a rocket going up
+        [(6, 3, 0, "y")], [(3, 3, 0, "y")], [(2, 3, 1, "M")], [(2, 3, 2, "f")],
+        [(2, 3, 3, "Y"), (6, 13, 0, "y")], [(3, 13, 0, "y")], [(2, 13, 1, "h")], [(2, 13, 2, "u")],
+    ][i]
+    for r, c, radius, color in bursts:
+        if radius == 0:
+            put(g, [(r, c), (r + 1, c)], color)
+        else:
+            put(g, [(r - radius, c), (r + radius, c), (r, c - radius), (r, c + radius),
+                    (r - radius + 1, c - radius + 1), (r - radius + 1, c + radius - 1),
+                    (r + radius - 1, c - radius + 1), (r + radius - 1, c + radius - 1)], color)
+    return g
+
+
+def frame_decor_lunar_lanterns(i):
+    """Lunar New Year: two red lanterns on a string over the meadow rock, swaying."""
+    g = blank()
+    put(g, [(2, c) for c in range(16)], "D")
+    for c in (4, 11):
+        put(g, [(3, c)], "m")
+        put(g, [(4, c - 1), (4, c), (4, c + 1), (5, c - 1), (5, c + 1), (6, c - 1), (6, c), (6, c + 1)], "M")
+        put(g, [(5, c)], "m")
+        put(g, [(7, c + (i % 2) - (1 if c == 11 and i % 2 else 0))], "m")  # tassels swing
+    return g
+
+
+# Over the flower's cell. A key "holiday@night" replaces the holiday's decor at night.
 DECOR = {
     "halloween": (frame_decor_halloween, 4, 3),
+    "christmas": (frame_decor_christmas_pot, 4, 2),
+    "newYear@night": (frame_decor_newyear_fireworks, 8, 4),
 }
+
+# Over the meadow's cell (the long rock), same keys.
+MEADOW_DECOR = {
+    "christmas": (frame_decor_christmas_tree, 2, 2),
+    "newYear": (frame_decor_newyear_bunting, 2, 2),
+    "newYear@night": (frame_decor_newyear_bunting, 2, 2),
+    "lunarNewYear": (frame_decor_lunar_lanterns, 2, 2),
+}
+DECOR_ROWS = len(DECOR) + len(MEADOW_DECOR)
 
 
 # ---------------------------------------------------------------- radio props
@@ -1325,7 +1403,7 @@ def build_skin():
     visits = {name: fn() for name, fn in VISITORS.items()}
     max_frames = max(max(n for _, (_, n, _) in entries), GARDEN_STAGES, MEADOW_STAGES, VISIT_WRAP)
     visit_rows = {name: -(-len(fn()[0]) // VISIT_WRAP) for name, fn in VISITORS.items()}
-    rows = len(entries) + 1 + len(OUTFITS) * len(entries) + len(DECOR) + len(PROPS) + 5 + len(WEATHER_EFFECTS) + sum(visit_rows.values())
+    rows = len(entries) + 1 + len(OUTFITS) * len(entries) + DECOR_ROWS + len(PROPS) + 5 + len(WEATHER_EFFECTS) + sum(visit_rows.values())
     sheet = Image.new("RGBA", (SIZE * max_frames, SIZE * rows), (0, 0, 0, 0))
     frames = {}
     for row, (name, (fn, n, _)) in enumerate(entries):
@@ -1347,20 +1425,23 @@ def build_skin():
                 grid = fn(i) if name in NO_OUTFIT else wear(fn(i), hat)
                 sheet.paste(to_image(grid), (i * SIZE, (row + offset) * SIZE))
 
-    decor_rows = {}
-    for k, (holiday, (fn, n, _)) in enumerate(DECOR.items()):
-        decor_rows[holiday] = garden_row + 1 + len(OUTFITS) * len(entries) + k
-        frames[f"decor:{holiday}"] = [to_image(fn(i)) for i in range(n)]
-        for i, f in enumerate(frames[f"decor:{holiday}"]):
-            sheet.paste(f, (i * SIZE, decor_rows[holiday] * SIZE))
+    decor_rows, meadow_decor_rows = {}, {}
+    row = garden_row + 1 + len(OUTFITS) * len(entries)
+    for table, rows_out, prefix in ((DECOR, decor_rows, "decor"), (MEADOW_DECOR, meadow_decor_rows, "meadowDecor")):
+        for key, (fn, n, _) in table.items():
+            rows_out[key] = row
+            row += 1
+            frames[f"{prefix}:{key}"] = [to_image(fn(i)) for i in range(n)]
+            for i, f in enumerate(frames[f"{prefix}:{key}"]):
+                sheet.paste(f, (i * SIZE, rows_out[key] * SIZE))
 
     prop_rows = {}
     for k, (name, (fn, n, _)) in enumerate(PROPS.items()):
-        prop_rows[name] = garden_row + 1 + len(OUTFITS) * len(entries) + len(DECOR) + k
+        prop_rows[name] = garden_row + 1 + len(OUTFITS) * len(entries) + DECOR_ROWS + k
         frames[f"prop:{name}"] = [to_image(fn(i)) for i in range(n)]
         for i, f in enumerate(frames[f"prop:{name}"]):
             sheet.paste(f, (i * SIZE, prop_rows[name] * SIZE))
-    meadow_row = garden_row + 1 + len(OUTFITS) * len(entries) + len(DECOR) + len(PROPS)
+    meadow_row = garden_row + 1 + len(OUTFITS) * len(entries) + DECOR_ROWS + len(PROPS)
     meadow = [to_image(meadow_stage(s)) for s in range(MEADOW_STAGES)]
     for s, f in enumerate(meadow):
         sheet.paste(f, (s * SIZE, meadow_row * SIZE))
@@ -1422,8 +1503,9 @@ def build_skin():
                   for time, colors in WATER_LIGHT.items()},
         "props": {name: {"row": prop_rows[name], "frames": n, "fps": fps}
                   for name, (_, n, fps) in PROPS.items()},
-        "decor": {holiday: {"row": decor_rows[holiday], "frames": n, "fps": fps}
-                  for holiday, (_, n, fps) in DECOR.items()},
+        "decor": {key: {"row": decor_rows[key], "frames": n, "fps": fps} for key, (_, n, fps) in DECOR.items()},
+        "meadowDecor": {key: {"row": meadow_decor_rows[key], "frames": n, "fps": fps}
+                        for key, (_, n, fps) in MEADOW_DECOR.items()},
     }
     for row, (name, (_, n, fps)) in enumerate(entries):
         key = "states" if name in STATES else "actions" if name in ACTIONS else "transitions"
@@ -1442,9 +1524,6 @@ def write_previews(entries, frames, garden, sheet):
     transition between two sample clips."""
     items = [(name, frames[name], fps) for name, (_, _, fps) in entries if name not in TRANSITIONS]
     items += [(f"flower {s}", [garden[s]], 1) for s in range(GARDEN_STAGES)]
-    for holiday in DECOR:
-        bloom = garden[-1]
-        items.append((holiday, [Image.alpha_composite(bloom, f) for f in frames[f"decor:{holiday}"]], DECOR[holiday][2]))
     for name in PROPS:
         items.append((name, [Image.alpha_composite(garden[-1], f) for f in frames[f"prop:{name}"]], PROPS[name][2]))
     write_gif(items, SKIN_DIR / "preview.gif", 24)
@@ -1463,6 +1542,7 @@ def write_previews(entries, frames, garden, sheet):
 
     # Every visit across the whole pool, as the app plays it.
     visitor_gif(frames, garden)
+    holiday_gif(frames, garden)
 
     # The tide pool through the day: flower + Pibbo, water coloured per time.
     scene = Image.new("RGBA", (SIZE * 2, SIZE))
@@ -1484,6 +1564,30 @@ def write_previews(entries, frames, garden, sheet):
         sequences.append((key.replace("@", ""), clip, TRANSITION_FPS))
     write_gif(sequences, SKIN_DIR / "preview-transitions.gif", 13, tick=1 / TRANSITION_FPS)
     sheet.resize((sheet.width * 8, sheet.height * 8), Image.NEAREST).save(SKIN_DIR / "sprites@8x.png")
+
+
+def holiday_gif(frames, garden):
+    """preview-holidays.gif: each holiday's decor over the whole pool, Pibbo in his hat."""
+    scale, ticks = 5, 16
+    keys = list(dict.fromkeys(list(DECOR) + list(MEADOW_DECOR)))
+    hats = {name: wear(frame_chill(0), hat) for name, hat in OUTFITS.items()}
+    night = (40, 44, 66, 255)
+    gif = []
+    for t in range(ticks):
+        row = Image.new("RGBA", (SIZE * 3 * len(keys) + 4 * (len(keys) - 1), SIZE), (247, 242, 232, 255))
+        for k, key in enumerate(keys):
+            holiday = key.split("@")[0]
+            scene = Image.new("RGBA", (SIZE * 3, SIZE), night if key.endswith("@night") else (247, 242, 232, 255))
+            scene.alpha_composite(frames["meadow"][-1], (0, 0))
+            scene.alpha_composite(garden[-1], (SIZE, 0))
+            for prefix, table, x in (("meadowDecor", MEADOW_DECOR, 0), ("decor", DECOR, SIZE)):
+                if key in table:
+                    clip = frames[f"{prefix}:{key}"]
+                    scene.alpha_composite(clip[(t * table[key][2] // 4) % len(clip)], (x, 0))
+            scene.alpha_composite(to_image(hats[holiday]), (SIZE * 2, 0))
+            row.alpha_composite(scene, (k * (SIZE * 3 + 4), 0))
+        gif.append(row.resize((row.width * scale, SIZE * scale), Image.NEAREST).convert("RGB"))
+    gif[0].save(SKIN_DIR / "preview-holidays.gif", save_all=True, append_images=gif[1:], duration=250, loop=0)
 
 
 def visitor_gif(frames, garden):

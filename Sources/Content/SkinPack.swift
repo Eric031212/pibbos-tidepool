@@ -85,6 +85,9 @@ public struct SkinManifest: Codable, Equatable, Sendable {
     public let transitions: [String: Clip]?
     /// Holiday extras played over the flower's cell, keyed like `outfits`.
     public let decor: [String: Clip]?
+    /// Holiday extras over the meadow's cell (the long rock), keyed like `decor`.
+    /// In both, a key "holiday@night" replaces the holiday's decor at night.
+    public let meadowDecor: [String: Clip]?
     /// Water colours per time of day ("dawn", "dusk", "night"): hex RGB →
     /// hex RGB. Missing times keep the sheet's own colours.
     public let water: [String: [String: String]]?
@@ -118,7 +121,7 @@ public struct SkinManifest: Codable, Equatable, Sendable {
     public init(id: String, name: String, author: String, version: String, type: String,
                 frameSize: Int, states: [String: Clip], actions: [String: Clip]?, garden: GardenSpec? = nil,
                 outfits: [String: OutfitSpec]? = nil, poses: [String: String]? = nil,
-                transitions: [String: Clip]? = nil, decor: [String: Clip]? = nil,
+                transitions: [String: Clip]? = nil, decor: [String: Clip]? = nil, meadowDecor: [String: Clip]? = nil,
                 water: [String: [String: String]]? = nil, props: [String: Clip]? = nil,
                 meadow: GardenSpec? = nil, bottle: Clip? = nil, moonGlint: MoonGlint? = nil,
                 shootingStar: Clip? = nil, weatherEffects: [String: Clip]? = nil, snowCover: GardenSpec? = nil,
@@ -136,6 +139,7 @@ public struct SkinManifest: Codable, Equatable, Sendable {
         self.poses = poses
         self.transitions = transitions
         self.decor = decor
+        self.meadowDecor = meadowDecor
         self.water = water
         self.props = props
         self.meadow = meadow
@@ -208,6 +212,7 @@ public struct SkinPack: Sendable {
         let all = manifest.states.merging(manifest.actions ?? [:]) { state, _ in state }
             .merging(manifest.transitions ?? [:]) { clip, _ in clip }
             .merging((manifest.decor ?? [:]).map { ("decor \($0.key)", $0.value) }) { clip, _ in clip }
+            .merging((manifest.meadowDecor ?? [:]).map { ("meadow decor \($0.key)", $0.value) }) { clip, _ in clip }
             .merging((manifest.props ?? [:]).map { ("prop \($0.key)", $0.value) }) { clip, _ in clip }
         for (name, clip) in all where clip.row < 0 || clip.frames < 1 || clip.fps <= 0 || (clip.beats ?? 1) < 1 || (clip.wrap ?? 1) < 1 {
             throw SkinError.invalidClip(name)
@@ -265,9 +270,22 @@ public struct SkinPack: Sendable {
 
     /// The holiday extras for `holiday`, or nil. They sit in the flower's
     /// cell, so skins without a garden show none.
-    public func decor(for holiday: String?) -> Clip? {
-        guard let holiday, manifest.garden != nil else { return nil }
-        return manifest.decor?[holiday]
+    public func decor(for holiday: String?, night: Bool = false) -> Clip? {
+        guard manifest.garden != nil else { return nil }
+        return Self.pick(manifest.decor, holiday: holiday, night: night)
+    }
+
+    /// The holiday extras for the meadow's cell (needs a meadow).
+    public func meadowDecor(for holiday: String?, night: Bool = false) -> Clip? {
+        guard hasMeadow else { return nil }
+        return Self.pick(manifest.meadowDecor, holiday: holiday, night: night)
+    }
+
+    /// "holiday@night" at night when the skin has it, else "holiday".
+    private static func pick(_ table: [String: Clip]?, holiday: String?, night: Bool) -> Clip? {
+        guard let holiday, let table else { return nil }
+        if night, let nightly = table["\(holiday)@night"] { return nightly }
+        return table[holiday]
     }
 
     /// The radio prop called `name`, or nil. Like decor, it sits in the

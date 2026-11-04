@@ -55,3 +55,24 @@ final class DecorTests: XCTestCase {
         XCTAssertNil(try SkinPack(manifest: manifest, directory: repo).decor(for: "halloween"))
     }
 }
+
+final class WinterDecorTests: XCTestCase {
+    let repo = URL(fileURLWithPath: #filePath).deletingLastPathComponent().deletingLastPathComponent().deletingLastPathComponent()
+
+    func testEveryHolidayHasSomethingOnTheRocks() throws {
+        let pack = try SkinPack.load(from: repo.appendingPathComponent("Assets/Skins/pibbo"))
+        for holiday in ["halloween", "christmas", "newYear", "lunarNewYear"] {
+            let some = pack.decor(for: holiday) != nil || pack.meadowDecor(for: holiday) != nil
+            XCTAssertTrue(some, holiday)
+        }
+    }
+
+    func testNewYearNightsHaveFireworks() throws {
+        let pack = try SkinPack.load(from: repo.appendingPathComponent("Assets/Skins/pibbo"))
+        XCTAssertNil(pack.decor(for: "newYear"), "no fireworks by day")
+        let fireworks = try XCTUnwrap(pack.decor(for: "newYear", night: true))
+        XCTAssertEqual(fireworks, pack.manifest.decor?["newYear@night"])
+        XCTAssertNotNil(pack.meadowDecor(for: "newYear"), "bunting by day")
+        XCTAssertEqual(pack.decor(for: "halloween", night: true), pack.decor(for: "halloween"), "no night variant: same decor")
+    }
+}
