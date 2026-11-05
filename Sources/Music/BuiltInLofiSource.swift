@@ -33,6 +33,14 @@ final class BuiltInLofiSource: NSObject, MusicSource, AVAudioPlayerDelegate {
     private(set) var beat: BeatSync?
     /// The playing theme's skin prop (nil when stopped or the theme has none).
     private(set) var prop: String?
+    /// The playing theme's toy (e.g. "game"), nil when stopped or none.
+    private(set) var toy: String?
+    /// `--theme <title>`: start the radio with that theme (testing).
+    private static let forcedTheme: String? = {
+        let args = CommandLine.arguments
+        guard let i = args.firstIndex(of: "--theme"), i + 1 < args.count else { return nil }
+        return args[i + 1]
+    }()
 
     var isAvailable: Bool { !library.isEmpty }
     /// True while playing, false once a fade-out has begun.
@@ -58,7 +66,7 @@ final class BuiltInLofiSource: NSObject, MusicSource, AVAudioPlayerDelegate {
             continuation.yield(.started)
             return
         }
-        plan = RadioPlan(library: library, random: Self.random)
+        plan = RadioPlan(library: library, random: Self.random, startingWith: Self.forcedTheme)
         isPlaying = true
         continuation.yield(.started)
         playNext()
@@ -77,6 +85,7 @@ final class BuiltInLofiSource: NSObject, MusicSource, AVAudioPlayerDelegate {
             self.nowPlaying = nil
             self.beat = nil
             self.prop = nil
+            self.toy = nil
             self.continuation.yield(.paused)
         }
         RunLoop.main.add(timer, forMode: .common)
@@ -99,6 +108,7 @@ final class BuiltInLofiSource: NSObject, MusicSource, AVAudioPlayerDelegate {
         }
         nowPlaying = "\(theme) - \(track.title)"
         prop = plan.theme.prop
+        toy = plan.theme.toy
         continuation.yield(.trackChanged)
     }
 

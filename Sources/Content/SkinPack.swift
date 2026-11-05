@@ -117,6 +117,10 @@ public struct SkinManifest: Codable, Equatable, Sendable {
     /// Optional rainbow after rain: three static frames, for the meadow's,
     /// the flower's and Pibbo's cells, together one arc over the pool.
     public let rainbow: GardenSpec?
+    /// Optional things drifting by with the season ("spring", "summer",
+    /// "autumn"): a small looping clip in the top-left of a cell; the app
+    /// moves it across the pool.
+    public let drift: [String: Clip]?
     /// Radio props by name, played over the flower's cell while a theme that
     /// names one plays (theme.json "prop").
     public let props: [String: Clip]?
@@ -128,7 +132,8 @@ public struct SkinManifest: Codable, Equatable, Sendable {
                 water: [String: [String: String]]? = nil, props: [String: Clip]? = nil,
                 meadow: GardenSpec? = nil, bottle: Clip? = nil, moonGlint: MoonGlint? = nil,
                 shootingStar: Clip? = nil, weatherEffects: [String: Clip]? = nil, snowCover: GardenSpec? = nil,
-                visitors: [String: Visit]? = nil, gift: GardenSpec? = nil, rainbow: GardenSpec? = nil) {
+                visitors: [String: Visit]? = nil, gift: GardenSpec? = nil, rainbow: GardenSpec? = nil,
+                drift: [String: Clip]? = nil) {
         self.id = id
         self.name = name
         self.author = author
@@ -154,6 +159,7 @@ public struct SkinManifest: Codable, Equatable, Sendable {
         self.visitors = visitors
         self.gift = gift
         self.rainbow = rainbow
+        self.drift = drift
     }
 }
 

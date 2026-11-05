@@ -195,6 +195,8 @@ def hints():
         ("🤏", "Rub him.", big(solo(pet("backfloat", 2))), None, None),
         ("🤝", "Rest your cursor on him.", big(solo(pet("holdpaw", 1))), None, "otters hold paws"),
         ("👆", "Click him.", big(solo(pet("chill"))), ["Music Time? 🎧", "Dive time 🫧", "Swim away 👋"], None),
+        ("💦", "Splash, splash, splash.", big(row([solo(pet("flip", k)) for k in (1, 2, 3)], gap=1)), None, "a little secret"),
+        ("🎮", "Put on some music. Wait for the retro one.", big(solo(pet("game", 0))), ["GG! ✨"], None),
         ("🌧️", "Wait for the rain to stop.", big(scene(pet("admire", 2), extras=rainbow)), None, None),
         ("😴", "Step away for a while.", big(solo(pet("sleep"))), ["💭 🦀"], None),
         ("🌠", "Look up on a clear night.", big(scene(pet("wish", 0), sky=NIGHT_SKY, light="night")), ["Made a wish ✨"], None),

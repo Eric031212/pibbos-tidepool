@@ -71,6 +71,7 @@ final class PetController {
     private static let forcedRainbow = CommandLine.arguments.contains("--rainbow")
     /// Things Pibbo saw lately, newest last: what he dreams of.
     private var memories: [String] = []
+    private var recentSplashes: [Date] = []
     /// x range (view points) where a click opens the bottle: its channel.
     private let bottleHitRange: ClosedRange<CGFloat>
     /// `--garden-days <n>` shows the flower and meadow as on day n.
@@ -200,6 +201,7 @@ final class PetController {
         if source === lofi {
             renderer.beat = lofi.beat
             renderer.prop = lofi.prop
+            send(.radioToyChanged(lofi.toy))
         }
         send(.musicChanged(source: source.id, playing: event != .paused))
         if event != .paused { remember("music") }
@@ -213,6 +215,7 @@ final class PetController {
         renderer.outfit = context.holiday?.rawValue
         renderer.lighting = context.timeOfDay.rawValue
         renderer.moonlight = context.moonlight
+        renderer.drift = Drift.item(for: context)
         switch context.weather {
         case .rain, .storm: renderer.weatherEffect = "rain"
         case .snow: renderer.weatherEffect = "snow"
@@ -302,11 +305,12 @@ final class PetController {
                              anchorX: anchor.x, bottomY: anchor.y)
         case .nowPlaying:
             showNowPlaying()
-        case .note, .wish, .dream:
+        case .note, .wish, .dream, .gg:
             let text: String
             switch bubble {
             case .note(let pick): text = Strings.bottleNote(pick: pick)
             case .dream(let pick): text = dreamText(pick: pick) ?? Strings.dreams["shell"]!
+            case .gg: text = Strings.Bubble.gg
             default: text = Strings.Bubble.wish
             }
             guard let image = bubbleRenderer.image(for: text) else { return }
@@ -380,13 +384,21 @@ final class PetController {
 
     private func splashed(atX x: CGFloat) {
         guard !brain.output.isWorkMode else { return }
+        // The secret: three splashes in a row, quickly, and he flips.
+        let now = Date()
+        recentSplashes = recentSplashes.filter { now.timeIntervalSince($0) < 1.2 } + [now]
         if brain.output.bottle, bottleHitRange.contains(x) {
             send(.bottleClicked)  // Pibbo fishes it out and reads the note
             remember("bottle")
             return
         }
         renderer.playRipple(atX: x, within: panel.frame.width)
-        send(.splashed)
+        if recentSplashes.count >= 3 {
+            recentSplashes = []
+            send(.splashCombo)
+        } else {
+            send(.splashed)
+        }
     }
 
     // MARK: - Dragging

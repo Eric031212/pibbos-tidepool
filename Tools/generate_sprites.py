@@ -371,6 +371,50 @@ def frame_wish(i):
     return water(g, i // 2)
 
 
+def frame_game(i):
+    """Pixel Tide is on: headphones on, playing the little handheld, paws mashing."""
+    g = base()
+    headphones(g)
+    remove_shell(g)
+    put(g, [(4, 5), (4, 10)], "e")  # eyes down on the screen
+    stamp(g, 7, 5, ["oooooo", "okkkko", "orRrMo", "oooooo"])
+    put(g, [[(8, 7)], [(8, 8)], [(8, 9)], [(8, 8)]][i], "m")  # the game on its screen
+    put(g, [(9, 4), (9, 11)] if i % 2 == 0 else [(10, 4), (10, 11)], "p")  # paws mashing
+    return water(shift(g, [0, 1, 0, 1][i]), i // 2)
+
+
+def frame_flip(i):
+    """The secret: a flip out of the water with a big splash (plays once)."""
+    if i == 0:  # crouch
+        g = water(shift(base(), 3), 0)
+        splash(g)
+        return g
+    if i in (1, 3):  # flying, side-on
+        g = blank()
+        body = BACK_BODY if i == 1 else [row[::-1] for row in BACK_BODY]
+        stamp(g, 1 if i == 1 else 2, 0, body)
+        g = water(g, 1)
+        put(g, [(10, 2), (11, 13), (9, 7)], "W")
+        return g
+    if i == 2:  # upside down at the top
+        g = base()
+        eyes(g, "closed")
+        upside = [row[:] for row in g[:12]][::-1]
+        g = water(upside + [["."] * SIZE for _ in range(4)], 0)
+        return g
+    if i == 4:  # back into the water: a big splash
+        g = water(blank(), 1)
+        splash(g, wide=True)
+        put(g, [(9, 4), (8, 7), (9, 11), (10, 6), (10, 9)], "W")
+        return g
+    g = base()  # pops back up, very pleased
+    eyes(g, "closed")
+    mouth(g, 1)
+    g = water(shift(g, 1), 0)
+    put(g, [(2, 1), (1, 14)], "W")
+    return g
+
+
 def frame_crack(i):
     """Idle: cracks the shell on his belly with a rock."""
     g = base()
@@ -913,6 +957,22 @@ VISITORS = {
 }
 
 
+# Things that drift by with the season while Pibbo is out: a tiny item in the
+# top-left corner of its cell; the app moves the layer across the pool.
+def frame_drift(season, i):
+    g = blank()
+    item = {
+        "spring": [["f.", "Ff"], [".f", "fF"]],          # a petal turning
+        "summer": [[".X.", "XWX", ".R."], ["X.X", ".W.", ".R."]],  # dandelion fluff
+        "autumn": [["LL", ".L"], ["L.", "LL"]],          # a leaf tumbling
+    }[season][i]
+    stamp(g, 0, 0, item)
+    return g
+
+
+DRIFT_SEASONS = ["spring", "summer", "autumn"]
+
+
 # The rainbow after rain: one arc over the whole pool (meadow, flower, Pibbo),
 # split into three cells. Half see-through, so the flower shows behind it.
 RAINBOW_BANDS = [(222, 96, 92), (240, 168, 84), (244, 218, 112), (130, 196, 120), (112, 160, 214)]
@@ -1117,10 +1177,20 @@ def frame_prop_paperboat(i):
     return g
 
 
+def frame_prop_handheld(i):
+    """Pixel Tide: a little handheld game on a pebble, a dot hopping on its screen."""
+    g = blank()
+    pebble(g)
+    stamp(g, 4, 11, ["ooooo", "orrro", "okkko", "okkko", "orrro", "oRrMo", "ooooo"])
+    put(g, [[(6, 12)], [(7, 13)], [(6, 14)], [(7, 13)]][i], "m")  # the little game
+    return g
+
+
 PROPS = {
     "streetlamp": (frame_prop_streetlamp, 2, 2),
     "teacup": (frame_prop_teacup, 2, 2),
     "paperboat": (frame_prop_paperboat, 4, 2),
+    "handheld": (frame_prop_handheld, 4, 3),
 }
 
 
@@ -1155,6 +1225,8 @@ ACTIONS = {
     "look": (frame_look, 2, 2),            # a splash nearby
     "friendpaw": (frame_friendpaw, 4, 2),  # holding paws with the friend otter
     "admire": (frame_admire, 4, 2),        # looking up at a rainbow
+    "game": (frame_game, 4, 3),            # playing the handheld while Pixel Tide plays
+    "flip": (frame_flip, 6, 8),            # the secret: tap the water three times
     "ripple": (frame_ripple, 4, 7),        # splash effect, drawn over the water
     "note": (frame_note, 4, 2),            # reading a message in a bottle
     "wish": (frame_wish, 4, 3),            # wishing on a shooting star
@@ -1174,7 +1246,7 @@ ACTIONS = {
 
 
 # Clips that play once and hold their last frame.
-ONE_SHOT = {"unplug", "ripple"}
+ONE_SHOT = {"unplug", "ripple", "flip"}
 # Beats one loop spans: with built-in music, the app plays these in time with
 # the track (one nod per beat) instead of at their fps.
 CLIP_BEATS = {"music": 2}
@@ -1448,7 +1520,7 @@ def build_skin():
     visits = {name: fn() for name, fn in VISITORS.items()}
     max_frames = max(max(n for _, (_, n, _) in entries), GARDEN_STAGES, MEADOW_STAGES, VISIT_WRAP)
     visit_rows = {name: -(-len(fn()[0]) // VISIT_WRAP) for name, fn in VISITORS.items()}
-    rows = len(entries) + 1 + len(OUTFITS) * len(entries) + DECOR_ROWS + len(PROPS) + 6 + len(WEATHER_EFFECTS) + sum(visit_rows.values())
+    rows = len(entries) + 1 + len(OUTFITS) * len(entries) + DECOR_ROWS + len(PROPS) + 6 + len(WEATHER_EFFECTS) + sum(visit_rows.values()) + len(DRIFT_SEASONS)
     sheet = Image.new("RGBA", (SIZE * max_frames, SIZE * rows), (0, 0, 0, 0))
     frames = {}
     for row, (name, (fn, n, _)) in enumerate(entries):
@@ -1523,6 +1595,11 @@ def build_skin():
     frames["rainbow"] = rainbow_cells()
     for k, cell in enumerate(frames["rainbow"]):
         sheet.paste(cell, (k * SIZE, rainbow_row * SIZE))
+    drift_rows = {}
+    for k, season in enumerate(DRIFT_SEASONS):
+        drift_rows[season] = rainbow_row + 1 + k
+        for i in range(2):
+            sheet.paste(to_image(frame_drift(season, i)), (i * SIZE, drift_rows[season] * SIZE))
     sheet.save(SKIN_DIR / "sprites.png")
 
     manifest = {
@@ -1542,6 +1619,7 @@ def build_skin():
         "snowCover": {"row": snow_row, "stages": 2},
         "gift": {"row": gift_row, "stages": 1},
         "rainbow": {"row": rainbow_row, "stages": 3},
+        "drift": {season: {"row": drift_rows[season], "frames": 2, "fps": 2} for season in DRIFT_SEASONS},
         "visitors": {name: {"row": visitor_rows[name], "frames": len(grids), "fps": fps, "wrap": VISIT_WRAP, "path": path}
                      for name, (grids, path, fps) in visits.items()},
         "weatherEffects": {name: {"row": weather_rows[name], "frames": n, "fps": fps}

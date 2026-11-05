@@ -79,6 +79,12 @@ public struct Brain {
     /// Who is visiting during the current appearance.
     private var visitor: String?
 
+    /// What the playing radio theme lets him play with, and when he picks it up next.
+    private var radioToy: String?
+    private var nextToy: Date?
+    /// When the `GG! ✨` of the current game shows.
+    private var ggAt: Date?
+
     /// Next dream bubble while Pibbo sleeps (nil while awake).
     private var nextDream: Date?
 
@@ -113,6 +119,8 @@ public struct Brain {
         if let bottleUntil { candidates.append(bottleUntil) } else if !isQuiet { candidates.append(nextBottle) }
         if let wishUntil { candidates.append(wishUntil) }
         if let nextDream, isUserAway, !isQuiet { candidates.append(nextDream) }
+        if let nextToy, isBuiltInPlaying, !isQuiet { candidates.append(nextToy) }
+        if let ggAt { candidates.append(ggAt) }
         if let nextStar, !workMode { candidates.append(nextStar) }
         switch presence {
         case .hidden:
@@ -150,6 +158,16 @@ public struct Brain {
             if presence.isChill {
                 setPresence(.chill(hideAt: now.addingTimeInterval(config.hideAfterNoInteraction)), at: now)
             }
+
+        case .radioToyChanged(let toy):
+            radioToy = toy
+            nextToy = toy == nil ? nil : now.addingTimeInterval(random(config.toyInterval))
+
+        case .splashCombo:
+            guard !isQuiet else { break }
+            interact(at: now)
+            holdingPaw = false
+            reaction = ("flip", now.addingTimeInterval(config.flipDuration))
 
         case .rainbowAppeared:
             guard case .hidden = presence, canAppearOnHisOwn else { break }
@@ -363,6 +381,19 @@ public struct Brain {
             bottleUntil = now.addingTimeInterval(config.bottleStay)
         }
         if let until = wishUntil, until <= now { wishUntil = nil }
+        if let at = ggAt, at <= now {
+            ggAt = nil
+            if let reaction, reaction.name == radioToy {  // still playing: say GG
+                bubble = (.gg, now.addingTimeInterval(config.ggDuration))
+            }
+        }
+        if let toy = radioToy, let due = nextToy, due <= now, isBuiltInPlaying, !isQuiet {
+            if reaction == nil, !holdingPaw {
+                reaction = (toy, now.addingTimeInterval(config.toyDuration))
+                ggAt = now.addingTimeInterval(config.toyDuration - config.ggDuration)
+            }
+            nextToy = now.addingTimeInterval(random(config.toyInterval))
+        }
         if let due = nextDream, due <= now, isUserAway, !isQuiet {
             if playingSources.isEmpty, bubble == nil {
                 bubble = (.dream(pick: random(0...0.999_999)), now.addingTimeInterval(config.dreamDuration))

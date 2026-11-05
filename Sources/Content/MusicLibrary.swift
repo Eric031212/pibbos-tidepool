@@ -20,6 +20,9 @@ public struct MusicLibrary: Sendable {
         public let tracks: [Track]
         /// Skin prop shown beside the flower while this theme plays (theme.json "prop").
         public var prop: String? = nil
+        /// Something Pibbo plays with while this theme plays (theme.json "toy",
+        /// a skin action such as "game").
+        public var toy: String? = nil
     }
 
     public let themes: [Theme]
@@ -33,6 +36,7 @@ public struct MusicLibrary: Sendable {
     private struct ThemeFile: Decodable {
         let title: String
         let prop: String?
+        let toy: String?
     }
     private struct BeatMap: Decodable {
         let track: String
@@ -60,7 +64,7 @@ public struct MusicLibrary: Sendable {
                     guard fm.fileExists(atPath: audio.path) else { return nil }
                     return Track(title: map.title ?? audio.deletingPathExtension().lastPathComponent, url: audio, bpm: map.bpm, offset: map.offset)
                 }
-            themes.append(Theme(title: theme.title, tracks: tracks, prop: theme.prop))
+            themes.append(Theme(title: theme.title, tracks: tracks, prop: theme.prop, toy: theme.toy))
         }
         return MusicLibrary(themes: themes)
     }
@@ -76,10 +80,11 @@ public struct RadioPlan: Sendable {
     private let library: MusicLibrary
 
     /// `random(n)` returns an index in 0..<n; injected so tests can control it.
-    public init?(library: MusicLibrary, random: (Int) -> Int) {
+    /// `startingWith`: a theme title to begin with (testing); otherwise random.
+    public init?(library: MusicLibrary, random: (Int) -> Int, startingWith first: String? = nil) {
         guard !library.isEmpty else { return nil }
         self.library = library
-        theme = library.themes[random(library.themes.count)]
+        theme = library.themes.first { $0.title == first } ?? library.themes[random(library.themes.count)]
         queue = RadioPlan.shuffled(theme.tracks, random: random)
     }
 

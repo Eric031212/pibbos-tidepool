@@ -30,11 +30,13 @@ public enum Bubble: Equatable, Sendable {
     /// A dream while Pibbo sleeps: `pick` in 0..<1 chooses which of the things
     /// he has seen lately he dreams of (Brain doesn't know them).
     case dream(pick: Double)
+    /// `GG! ✨` at the end of a little game on the handheld.
+    case gg
 
     /// Bubbles that answer something the user just did show even over music.
     var showsOverMusic: Bool {
         switch self {
-        case .note, .wish: return true
+        case .note, .wish, .gg: return true
         case .musicInvitation, .nowPlaying, .dream: return false
         }
     }
@@ -71,6 +73,11 @@ public enum BrainEvent: Equatable, Sendable {
     case splashed
     /// A click on the message in a bottle: Pibbo comes out and reads the note.
     case bottleClicked
+    /// The playing radio theme offers something to do while listening (e.g.
+    /// "game", the handheld of Pixel Tide), or nil.
+    case radioToyChanged(String?)
+    /// The water was clicked three times in a row: the secret flip.
+    case splashCombo
     /// The rain just stopped and a rainbow is out: Pibbo comes up to look.
     case rainbowAppeared
     /// Who may visit now (weighted, like `availableActionsChanged`) and how long
@@ -164,6 +171,14 @@ public struct BrainConfig: Sendable {
     public var visitorLinger: TimeInterval = 1.5
     /// Looking up at a rainbow.
     public var admireDuration: TimeInterval = 8
+    /// While the radio plays a theme with a toy, he picks it up this often...
+    public var toyInterval: ClosedRange<TimeInterval> = 40...80
+    /// ...plays for this long...
+    public var toyDuration: TimeInterval = 8
+    /// ...and says `GG! ✨` for the last few seconds.
+    public var ggDuration: TimeInterval = 3
+    /// The secret flip.
+    public var flipDuration: TimeInterval = 1.4
     /// While he sleeps, a dream bubble now and then...
     public var dreamInterval: ClosedRange<TimeInterval> = (4 * 60)...(8 * 60)
     /// ...for this long.
@@ -188,6 +203,7 @@ public struct BrainConfig: Sendable {
         config.shootingStarInterval = 15...25
         config.visitorChance = 0.7
         config.dreamInterval = 10...15
+        config.toyInterval = 8...12
         return config
     }
 }

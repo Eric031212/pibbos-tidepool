@@ -28,6 +28,8 @@ final class SpriteRenderer {
     /// The rainbow's three pieces: over the meadow, the flower and Pibbo. All
     /// sublayers of the garden, so the rainbow shows and hides with it.
     private let rainbowLayers = [CALayer(), CALayer(), CALayer()]
+    /// A petal, fluff or leaf drifting across the pool (a sublayer of the garden).
+    private let driftLayer = CALayer()
     /// The seagull's present, lying on the meadow rock.
     private let giftLayer = CALayer()
     /// Snow resting on the flower's rock and the meadow's.
@@ -94,6 +96,7 @@ final class SpriteRenderer {
         showSnowCover()
         showGift()
         showRainbow()
+        showDrift()
         restartCurrentClip()
     }
 
@@ -147,6 +150,8 @@ final class SpriteRenderer {
         gardenLayer.addSublayer(rainbowLayers[1])
         gardenLayer.addSublayer(rainbowLayers[2])
         rainbowLayers.forEach { $0.isHidden = true }
+        gardenLayer.addSublayer(driftLayer)
+        driftLayer.isHidden = true
         meadowDecorLayer.isHidden = true
         meadowLayer.addSublayer(snowLayers[1])
         giftLayer.isHidden = true
@@ -159,7 +164,7 @@ final class SpriteRenderer {
         visitorLayer.isHidden = true
         for sprite in [layer, gardenLayer, rippleLayer, decorLayer, meadowDecorLayer, propLayer, meadowLayer, bottleLayer, starLayer,
                        visitorLayer, giftLayer]
-            + weatherLayers + snowLayers + rainbowLayers {
+            + weatherLayers + snowLayers + rainbowLayers + [driftLayer] {
             sprite.frame = CGRect(x: 0, y: 0, width: pointSize, height: pointSize)
             sprite.magnificationFilter = .nearest
             sprite.actions = noFades
@@ -200,6 +205,46 @@ final class SpriteRenderer {
         guard stage != gardenStage, let rect = pack.gardenFrameRect(stage: stage) else { return }
         gardenStage = stage
         gardenLayer.contents = sheet.cropping(to: CGRect(x: rect.x, y: rect.y, width: rect.width, height: rect.height))
+    }
+
+    /// The season's drifting thing ("spring", "summer", "autumn"), or nil.
+    var drift: String? {
+        didSet { if drift != oldValue { showDrift() } }
+    }
+
+    /// Every ~30 s the item crosses the pool from the meadow to past Pibbo in
+    /// whole art pixels, bobbing a little, then waits off to the side. One
+    /// looping Core Animation keyframe animation: no timers.
+    private func showDrift() {
+        driftLayer.removeAllAnimations()
+        guard let season = drift, let clip = pack.manifest.drift?[season] else {
+            driftLayer.isHidden = true
+            return
+        }
+        let flutter = keyframes(frames(for: "drift#\(season)", clip: clip), fps: clip.fps)
+        flutter.repeatCount = .infinity
+        let artPixel = pointSize / CGFloat(pack.manifest.frameSize)
+        let size = pack.manifest.frameSize
+        let left = hasMeadow ? -size : 0  // garden-layer coordinates, in art pixels
+        let steps = Array(stride(from: left - 4, through: 2 * size + 2, by: 2))
+        let bob = [0, 1, 2, 1]
+        let hold = 30.0, crossing = Double(steps.count) / 3  // 3 art-pixel steps per second
+        let move = CAKeyframeAnimation(keyPath: "position")
+        move.values = steps.enumerated().map { k, x in
+            // The item sits in its frame's top rows; lower the frame 2–4 art
+            // pixels (y grows upward) so it floats over the pool, inside the window.
+            NSValue(point: CGPoint(x: (CGFloat(x) + CGFloat(size) / 2) * artPixel,
+                                   y: pointSize / 2 - CGFloat(2 + bob[k % bob.count]) * artPixel))
+        } + [NSValue(point: CGPoint(x: -pointSize * 3, y: pointSize / 2))]
+        move.calculationMode = .discrete
+        let total = crossing + hold
+        move.keyTimes = (0...steps.count).map { NSNumber(value: Double($0) / 3 / total) } + [1]
+        move.duration = total
+        move.repeatCount = .infinity
+        driftLayer.contents = nil
+        driftLayer.isHidden = false
+        driftLayer.add(flutter, forKey: "flutter")
+        driftLayer.add(move, forKey: "drift")
     }
 
     /// Whether a rainbow arches over the pool.

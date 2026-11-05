@@ -30,6 +30,13 @@ final class WorldMonitor {
 
     /// `--time <dawn|day|dusk|night>` forces the time of day, for trying
     /// out the water colours and time-based actions.
+    /// `--season <spring|summer|autumn|winter>` forces the season.
+    private static let forcedSeason: Season? = {
+        let args = CommandLine.arguments
+        guard let i = args.firstIndex(of: "--season"), i + 1 < args.count else { return nil }
+        return Season(rawValue: args[i + 1])
+    }()
+
     private static let forcedTimeOfDay: TimeOfDay? = {
         let args = CommandLine.arguments
         guard let i = args.firstIndex(of: "--time"), i + 1 < args.count else { return nil }
@@ -219,7 +226,7 @@ final class WorldMonitor {
         let now = Date()
         let month = Calendar.current.component(.month, from: now)
         return WorldContext(timeOfDay: forcedTimeOfDay ?? SunClock.timeOfDay(at: now, coordinate: coordinate),
-                            season: Season.of(month: month, latitude: coordinate.latitude),
+                            season: forcedSeason ?? Season.of(month: month, latitude: coordinate.latitude),
                             weather: forcedWeather ?? weather,
                             holiday: forcedHoliday ?? Holidays.current(on: now, region: Locale.current.region?.identifier),
                             moonlight: forcedMoonlight ?? MoonPhase.moonlight(at: now))

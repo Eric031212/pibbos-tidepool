@@ -95,12 +95,12 @@ final class ThemePropTests: XCTestCase {
     func testEveryBundledThemeNamesAPropTheSkinHas() throws {
         let library = MusicLibrary.load(from: repo.appendingPathComponent("Assets/Music"))
         let pack = try SkinPack.load(from: repo.appendingPathComponent("Assets/Skins/pibbo"))
-        XCTAssertEqual(library.themes.count, 3)
+        XCTAssertEqual(library.themes.count, 4)
         for theme in library.themes {
             let prop = try XCTUnwrap(theme.prop, theme.title)
             XCTAssertNotNil(pack.prop(named: prop), "\(theme.title): skin has no prop \(prop)")
         }
-        XCTAssertEqual(Set(library.themes.compactMap(\.prop)).count, 3, "each theme has its own prop")
+        XCTAssertEqual(Set(library.themes.compactMap(\.prop)).count, 4, "each theme has its own prop")
     }
 
     func testUnknownOrMissingPropShowsNothing() throws {
