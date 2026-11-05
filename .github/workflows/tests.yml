@@ -1,0 +1,19 @@
+# Runs the core tests (Brain, Content, World, Strings) on every push and pull
+# request. The macOS app itself is built and checked by hand before each release
+# (CLAUDE.md, release checklist).
+name: tests
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  core:
+    runs-on: macos-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Swift version
+        run: swift --version
+      - name: Core tests
+        run: swift test

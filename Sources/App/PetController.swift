@@ -270,6 +270,8 @@ final class PetController {
         renderer.showMeadow(stage: Garden.meadowStage(daysSinceFirstLaunch: gardenDays(), stageCount: pack.manifest.meadow?.stages ?? 0))
         renderer.showBottle(output.bottle && !output.isSuspended)
         if output.shootingStar && !starWasFalling { renderer.playShootingStar() }
+        // Under water (Dive time, a call) or suspended: nothing left playing on screen.
+        if output.isSuspended || output.visual == .submerged { renderer.stopEffects() }
         if let visitor = output.visitor, visitor != shownVisitor { playVisit(visitor) }
         shownVisitor = output.visitor
         starWasFalling = output.shootingStar

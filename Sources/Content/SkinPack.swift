@@ -210,7 +210,10 @@ public struct SkinPack: Sendable {
         } catch {
             throw SkinError.invalidManifest(String(describing: error))
         }
-        return try SkinPack(manifest: manifest, directory: directory)
+        let pack = try SkinPack(manifest: manifest, directory: directory)
+        guard let sheet = pngSize(pack.spriteSheetURL) else { throw SkinError.unreadable(pack.spriteSheetURL.path) }
+        try checkBounds(manifest, width: sheet.width, height: sheet.height)
+        return pack
     }
 
     /// Rejects skins missing a required state or with impossible clips.
@@ -219,27 +222,77 @@ public struct SkinPack: Sendable {
         guard manifest.frameSize > 0 else { throw SkinError.invalidClip("frameSize must be positive") }
         let missing = requiredStates.filter { manifest.states[$0] == nil }
         guard missing.isEmpty else { throw SkinError.missingStates(missing) }
-        let all = manifest.states.merging(manifest.actions ?? [:]) { state, _ in state }
-            .merging(manifest.transitions ?? [:]) { clip, _ in clip }
-            .merging((manifest.decor ?? [:]).map { ("decor \($0.key)", $0.value) }) { clip, _ in clip }
-            .merging((manifest.meadowDecor ?? [:]).map { ("meadow decor \($0.key)", $0.value) }) { clip, _ in clip }
-            .merging((manifest.props ?? [:]).map { ("prop \($0.key)", $0.value) }) { clip, _ in clip }
-        for (name, clip) in all where clip.row < 0 || clip.frames < 1 || clip.fps <= 0 || (clip.beats ?? 1) < 1 || (clip.wrap ?? 1) < 1 {
+        for (name, clip) in allClips(manifest)
+        where clip.row < 0 || clip.frames < 1 || clip.fps <= 0 || (clip.beats ?? 1) < 1 || (clip.wrap ?? 1) < 1 {
             throw SkinError.invalidClip(name)
         }
-        for (name, spec) in [("garden", manifest.garden), ("meadow", manifest.meadow)] {
-            if let spec, spec.row < 0 || spec.stages < 1 { throw SkinError.invalidClip(name) }
-        }
-        if let bottle = manifest.bottle, bottle.row < 0 || bottle.frames < 1 || bottle.fps <= 0 {
-            throw SkinError.invalidClip("bottle")
-        }
-        for (name, visit) in manifest.visitors ?? [:]
-        where visit.row < 0 || visit.frames < 1 || visit.fps <= 0 || visit.path.count != visit.frames || (visit.wrap ?? 1) < 1 {
+        for (name, visit) in manifest.visitors ?? [:] where visit.path.count != visit.frames {
             throw SkinError.invalidClip("visitor \(name)")
+        }
+        for (name, spec) in allStrips(manifest) where spec.row < 0 || spec.stages < 1 {
+            throw SkinError.invalidClip(name)
         }
         for (name, outfit) in manifest.outfits ?? [:] where outfit.offset < 1 {
             throw SkinError.invalidClip("outfit \(name)")
         }
+    }
+
+    /// Every animated clip in the manifest, named for error messages.
+    static func allClips(_ m: SkinManifest) -> [(String, Clip)] {
+        var clips: [(String, Clip)] = []
+        func add(_ prefix: String, _ table: [String: Clip]?) {
+            clips += (table ?? [:]).map { ("\(prefix)\($0.key)", $0.value) }
+        }
+        add("", m.states)
+        add("", m.actions)
+        add("transition ", m.transitions)
+        add("decor ", m.decor)
+        add("meadow decor ", m.meadowDecor)
+        add("prop ", m.props)
+        add("weather ", m.weatherEffects)
+        add("drift ", m.drift)
+        add("visitor ", m.visitors?.mapValues(\.clip))
+        if let bottle = m.bottle { clips.append(("bottle", bottle)) }
+        if let star = m.shootingStar { clips.append(("shootingStar", star)) }
+        return clips
+    }
+
+    /// Every static strip (one frame per stage) in the manifest.
+    static func allStrips(_ m: SkinManifest) -> [(String, GardenSpec)] {
+        [("garden", m.garden), ("meadow", m.meadow), ("snowCover", m.snowCover), ("gift", m.gift), ("rainbow", m.rainbow)]
+            .compactMap { name, spec in spec.map { (name, $0) } }
+    }
+
+    /// Rejects frames that fall outside a sheet of `width`×`height` pixels,
+    /// including every clip's outfit copies.
+    public static func checkBounds(_ m: SkinManifest, width: Int, height: Int) throws {
+        let size = m.frameSize
+        let offsets = [0] + (m.outfits ?? [:]).values.map(\.offset)
+        let dressed = Set(Array(m.states.keys) + Array((m.actions ?? [:]).keys))
+        for (name, clip) in allClips(m) {
+            let perRow = clip.wrap ?? clip.frames
+            let columns = min(perRow, clip.frames)
+            let rows = (clip.frames + perRow - 1) / perRow
+            for offset in dressed.contains(name) || name.hasPrefix("transition ") ? offsets : [0] {
+                let bottom = (clip.row + offset + rows) * size
+                guard columns * size <= width, bottom <= height else {
+                    throw SkinError.invalidClip("\(name) is outside the \(width)×\(height) sheet")
+                }
+            }
+        }
+        for (name, spec) in allStrips(m) where spec.stages * size > width || (spec.row + 1) * size > height {
+            throw SkinError.invalidClip("\(name) is outside the \(width)×\(height) sheet")
+        }
+    }
+
+    /// Width and height from a PNG's header (IHDR), without decoding it.
+    static func pngSize(_ url: URL) -> (width: Int, height: Int)? {
+        guard let handle = try? FileHandle(forReadingFrom: url) else { return nil }
+        defer { try? handle.close() }
+        guard let header = try? handle.read(upToCount: 24), header.count == 24,
+              header.starts(with: [0x89, 0x50, 0x4E, 0x47]) else { return nil }
+        func number(_ range: Range<Int>) -> Int { header[range].reduce(0) { $0 << 8 | Int($1) } }
+        return (number(16..<20), number(20..<24))
     }
 
     /// The clip to play for a state or action name, applying the fallbacks:
@@ -258,7 +311,7 @@ public struct SkinPack: Sendable {
         let plain = resolve(name)
         guard let outfit, let spec = manifest.outfits?[outfit] else { return plain }
         let clip = plain.clip
-        return (plain.name, Clip(row: clip.row + spec.offset, frames: clip.frames, fps: clip.fps, loop: clip.loop, beats: clip.beats))
+        return (plain.name, Clip(row: clip.row + spec.offset, frames: clip.frames, fps: clip.fps, loop: clip.loop, beats: clip.beats, wrap: clip.wrap))
     }
 
     /// The in-between clip to play once when switching from one resolved clip
@@ -275,7 +328,7 @@ public struct SkinPack: Sendable {
         }
         guard let clip = keys.lazy.compactMap({ transitions[$0] }).first else { return nil }
         guard let outfit, let spec = manifest.outfits?[outfit] else { return clip }
-        return Clip(row: clip.row + spec.offset, frames: clip.frames, fps: clip.fps, loop: false)
+        return Clip(row: clip.row + spec.offset, frames: clip.frames, fps: clip.fps, loop: false, wrap: clip.wrap)
     }
 
     /// The holiday extras for `holiday`, or nil. They sit in the flower's

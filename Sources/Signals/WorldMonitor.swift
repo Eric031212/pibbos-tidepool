@@ -58,7 +58,9 @@ final class WorldMonitor {
     }()
 
     private var coordinate: Coordinate
-    private let zoneCoordinate: Coordinate?
+    private var zoneCoordinate: Coordinate?
+    /// tzdb zone.tab, kept to find the new zone's city after a time-zone change.
+    private let zoneTable: String
     private let sessionConfig: URLSessionConfiguration
     private var timeTimer: Timer?
     private var weatherTimer: Timer?
@@ -67,6 +69,7 @@ final class WorldMonitor {
 
     init(zoneTab: URL?) {
         let table = zoneTab.flatMap { try? String(contentsOf: $0, encoding: .utf8) } ?? ""
+        zoneTable = table
         zoneCoordinate = ZoneTab.coordinate(for: TimeZone.current.identifier, in: table)
         if let saved = UserDefaults.standard.array(forKey: Self.coordinateKey) as? [Double], saved.count == 2 {
             coordinate = Coordinate(latitude: saved[0], longitude: saved[1])
@@ -89,11 +92,14 @@ final class WorldMonitor {
             (workspace, NSWorkspace.screensDidWakeNotification),
             (DistributedNotificationCenter.default(), Notification.Name("com.apple.screenIsUnlocked")),
             (NotificationCenter.default, .NSSystemClockDidChange),
-            (NotificationCenter.default, .NSSystemTimeZoneDidChange),
         ]
         catchUpTokens = catchUpAfter.map { center, name in
             (center, center.addObserver(forName: name, object: nil, queue: .main) { [weak self] _ in self?.catchUp() })
         }
+        let center = NotificationCenter.default
+        catchUpTokens.append((center, center.addObserver(forName: .NSSystemTimeZoneDidChange, object: nil, queue: .main) { [weak self] _ in
+            self?.timeZoneChanged()
+        }))
     }
 
     /// The time-of-day timer may have slept through dusk (its clock stops while
@@ -104,6 +110,16 @@ final class WorldMonitor {
         publish(weather: context.weather)
         scheduleTimeOfDay()
         if let due = weatherTimer?.fireDate, due <= Date() { refreshWeather() }
+    }
+
+    /// Travelled to another time zone: use the new zone's city right away,
+    /// then look up the location again and fetch its weather.
+    private func timeZoneChanged() {
+        NSTimeZone.resetSystemTimeZone()
+        zoneCoordinate = ZoneTab.coordinate(for: TimeZone.current.identifier, in: zoneTable)
+        if let zone = zoneCoordinate { coordinate = zone.rounded }
+        catchUp()
+        locate { [weak self] in self?.refreshWeather() }
     }
 
     deinit {
@@ -182,9 +198,7 @@ final class WorldMonitor {
     /// Next fetch: after `Expires` but at least an hour and at most three
     /// from now, with random jitter so clients don't all hit MET at once.
     private func scheduleWeather(after expires: Date?, failed: Bool) {
-        let now = Date()
-        var next = failed ? now.addingTimeInterval(30 * 60) : max(expires ?? now, now.addingTimeInterval(3600))
-        next = min(next, now.addingTimeInterval(3 * 3600)).addingTimeInterval(.random(in: 0...600))
+        let next = WeatherSchedule.next(after: Date(), expires: expires, failed: failed, jitter: .random(in: 0...600))
         weatherTimer?.invalidate()
         let timer = Timer(fire: next, interval: 0, repeats: false) { [weak self] _ in self?.refreshWeather() }
         timer.tolerance = 120

@@ -67,9 +67,14 @@ final class BuiltInLofiSource: NSObject, MusicSource, AVAudioPlayerDelegate {
             return
         }
         plan = RadioPlan(library: library, random: Self.random, startingWith: Self.forcedTheme)
+        // Only say "started" once a track really plays: never headphones without sound.
+        guard startNextPlayable() else {
+            plan = nil
+            return
+        }
         isPlaying = true
         continuation.yield(.started)
-        playNext()
+        continuation.yield(.trackChanged)
     }
 
     /// Fades to silence over `duration`, then pauses.
@@ -92,28 +97,56 @@ final class BuiltInLofiSource: NSObject, MusicSource, AVAudioPlayerDelegate {
         fadeTimer = timer
     }
 
-    private func playNext() {
-        guard var plan else { return }
-        let (theme, track) = plan.next(random: Self.random)
-        self.plan = plan
-        guard let player = try? AVAudioPlayer(contentsOf: track.url) else { return }
-        player.delegate = self
-        player.volume = 0
-        player.prepareToPlay()
-        player.play()
-        player.setVolume(volume, fadeDuration: fadeInDuration)
-        self.player = player
-        beat = BeatGrid(bpm: track.bpm, offset: track.offset).map {
-            BeatSync(grid: $0, trackStart: CACurrentMediaTime() - player.currentTime)
+    /// Starts the next track that actually plays, skipping any that fail to
+    /// load or start (at most one pass over the whole library). False if none do.
+    private func startNextPlayable() -> Bool {
+        guard var plan else { return false }
+        let attempts = library.themes.reduce(0) { $0 + $1.tracks.count }
+        for _ in 0..<attempts {
+            let (theme, track) = plan.next(random: Self.random)
+            self.plan = plan
+            guard let player = try? AVAudioPlayer(contentsOf: track.url) else { continue }
+            player.delegate = self
+            player.volume = 0
+            guard player.prepareToPlay(), player.play() else { continue }
+            player.setVolume(volume, fadeDuration: fadeInDuration)
+            self.player = player
+            beat = BeatGrid(bpm: track.bpm, offset: track.offset).map {
+                BeatSync(grid: $0, trackStart: CACurrentMediaTime() - player.currentTime)
+            }
+            nowPlaying = "\(theme) - \(track.title)"
+            prop = plan.theme.prop
+            toy = plan.theme.toy
+            return true
         }
-        nowPlaying = "\(theme) - \(track.title)"
-        prop = plan.theme.prop
-        toy = plan.theme.toy
-        continuation.yield(.trackChanged)
+        return false
+    }
+
+    /// Nothing plays any more: back to silence, with nothing left on screen.
+    private func giveUp() {
+        isPlaying = false
+        player?.stop()
+        player = nil
+        plan = nil
+        nowPlaying = nil
+        beat = nil
+        prop = nil
+        toy = nil
+        continuation.yield(.paused)
+    }
+
+    private func playNext() {
+        if startNextPlayable() { continuation.yield(.trackChanged) } else { giveUp() }
     }
 
     func audioPlayerDidFinishPlaying(_ finished: AVAudioPlayer, successfully flag: Bool) {
         guard isPlaying, finished === player else { return }
+        playNext()
+    }
+
+    /// A track that breaks mid-way: move on to the next one.
+    func audioPlayerDecodeErrorDidOccur(_ broken: AVAudioPlayer, error: Error?) {
+        guard isPlaying, broken === player else { return }
         playNext()
     }
 

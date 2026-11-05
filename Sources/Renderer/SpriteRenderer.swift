@@ -41,6 +41,9 @@ final class SpriteRenderer {
     /// Splash effect drawn over the water where the user clicked.
     let rippleLayer = CALayer()
     let pointSize: CGFloat
+    private lazy var ripple = OneShot(rippleLayer)
+    private lazy var walkOn = OneShot(visitorLayer)
+    private lazy var star = OneShot(starLayer)
     var hasGarden: Bool { pack.manifest.garden != nil }
     var hasMeadow: Bool { pack.hasMeadow }
 
@@ -420,17 +423,13 @@ final class SpriteRenderer {
         guard let clip = pack.manifest.actions?["ripple"] else { return }
         let frames = self.frames(for: "ripple", clip: clip)
         guard !frames.isEmpty else { return }
-        rippleLayer.removeAllAnimations()
+        let play = ripple.begin()
         rippleLayer.frame.origin.x = min(max((x - pointSize / 2).rounded(), 0), width - pointSize)
         rippleLayer.contents = frames.last
-        rippleLayer.isHidden = false
 
         let animation = keyframes(frames, fps: clip.fps)
-        let duration = animation.duration
         rippleLayer.add(animation, forKey: "ripple")
-        DispatchQueue.main.asyncAfter(deadline: .now() + duration) { [weak self] in
-            self?.rippleLayer.isHidden = true
-        }
+        ripple.end(after: animation.duration, play: play)
     }
 
     /// Starts the current clip over (no in-between), e.g. to re-sync its beat.
@@ -447,9 +446,8 @@ final class SpriteRenderer {
         let frames = self.frames(for: "visitor#\(name)", clip: visit.clip)
         guard !frames.isEmpty else { return }
         let artPixel = pointSize / CGFloat(pack.manifest.frameSize)
-        visitorLayer.removeAllAnimations()
+        let play = walkOn.begin()
         visitorLayer.contents = nil
-        visitorLayer.isHidden = false
 
         let look = keyframes(frames, fps: visit.fps)
         let walk = CAKeyframeAnimation(keyPath: "position.x")
@@ -464,9 +462,15 @@ final class SpriteRenderer {
         }
         visitorLayer.add(look, forKey: "visit")
         visitorLayer.add(walk, forKey: "walk")
-        DispatchQueue.main.asyncAfter(deadline: .now() + look.duration) { [weak self] in
-            self?.visitorLayer.isHidden = true
-        }
+        walkOn.end(after: look.duration, play: play)
+    }
+
+    /// Ends any splash, visit or shooting star still playing (Pibbo dived, a
+    /// call started, the screen locked).
+    func stopEffects() {
+        ripple.stop()
+        walkOn.stop()
+        star.stop()
     }
 
     /// Plays the skin's shooting star once (no-op for skins without one).
@@ -474,14 +478,11 @@ final class SpriteRenderer {
         guard let clip = pack.manifest.shootingStar else { return }
         let frames = self.frames(for: "shootingStar", clip: clip)
         guard !frames.isEmpty else { return }
-        starLayer.removeAllAnimations()
+        let play = star.begin()
         starLayer.contents = nil
-        starLayer.isHidden = false
         let animation = keyframes(frames, fps: clip.fps)
         starLayer.add(animation, forKey: "star")
-        DispatchQueue.main.asyncAfter(deadline: .now() + animation.duration) { [weak self] in
-            self?.starLayer.isHidden = true
-        }
+        star.end(after: animation.duration, play: play)
     }
 
     func pause() {
@@ -514,5 +515,38 @@ final class SpriteRenderer {
         }
         frameCache[name] = frames
         return frames
+    }
+}
+
+/// A one-shot effect on its own layer (a splash, a visitor, a shooting star).
+/// Each play gets a number: a hide scheduled for an earlier play is ignored,
+/// so a quick second play is never cut short, and `stop()` ends it at once
+/// (when Pibbo dives, a call starts or the screen locks).
+private final class OneShot {
+    let layer: CALayer
+    private var play = 0
+
+    init(_ layer: CALayer) { self.layer = layer }
+
+    /// Starts a new play on a clean, visible layer; returns its number.
+    func begin() -> Int {
+        play += 1
+        layer.removeAllAnimations()
+        layer.isHidden = false
+        return play
+    }
+
+    /// Hides the layer after `seconds`, unless another play has begun by then.
+    func end(after seconds: Double, play number: Int) {
+        DispatchQueue.main.asyncAfter(deadline: .now() + seconds) { [weak self] in
+            guard let self, self.play == number else { return }
+            self.stop()
+        }
+    }
+
+    func stop() {
+        play += 1
+        layer.removeAllAnimations()
+        layer.isHidden = true
     }
 }

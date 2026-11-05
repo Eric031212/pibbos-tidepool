@@ -210,3 +210,18 @@ final class SeagullGiftTests: XCTestCase {
         XCTAssertEqual(SeagullGift.visit(seagullVisitsSoFar: 40, hasGift: true), "seagull", "only one gift, ever")
     }
 }
+
+final class WeatherScheduleTests: XCTestCase {
+    let now = Date(timeIntervalSince1970: 1_000_000)
+
+    func testEveryOneToThreeHoursButNeverBeforeExpires() {
+        XCTAssertEqual(WeatherSchedule.next(after: now, expires: nil, failed: false), now.addingTimeInterval(3600))
+        XCTAssertEqual(WeatherSchedule.next(after: now, expires: now.addingTimeInterval(600), failed: false),
+                       now.addingTimeInterval(3600), "at least an hour apart")
+        XCTAssertEqual(WeatherSchedule.next(after: now, expires: now.addingTimeInterval(2 * 3600), failed: false),
+                       now.addingTimeInterval(2 * 3600))
+        XCTAssertEqual(WeatherSchedule.next(after: now, expires: now.addingTimeInterval(5 * 3600), failed: false),
+                       now.addingTimeInterval(5 * 3600), "never before Expires, even past 3 hours")
+        XCTAssertEqual(WeatherSchedule.next(after: now, expires: nil, failed: true), now.addingTimeInterval(1800))
+    }
+}

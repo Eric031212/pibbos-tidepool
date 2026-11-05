@@ -275,7 +275,7 @@ Goal: **the app never triggers a system permission prompt.**
 | External music | Observe distributed notifications `com.apple.Music.playerInfo` and `com.spotify.client.PlaybackStateChanged` | Apple Music: VERIFIED, no prompt, state + track info but no position, no state at launch (spike 1). Spotify: [UNVERIFIED], not installed on test Mac |
 | Built-in music playback | `AVAudioPlayer` | — |
 | Approximate location | `https://ipwho.is/` (free, no key, HTTPS, commercial use allowed, 1,000 req/day) when its `timezone.id` matches `TimeZone.current`; otherwise (offline, VPN) the zone's city coordinate from a bundled tzdb `zone.tab` (public domain, 19 KB). **Do not use CoreLocation.** | VERIFIED (spike 5) |
-| Weather | MET Norway `locationforecast/2.0/compact` (free, commercial OK, CC BY 4.0), request every 1–3 hours and never before `Expires`; coordinates rounded to 2 decimals; identifying `User-Agent` required. ~~Open-Meteo~~: free tier is non-commercial only | VERIFIED (spike 5) |
+| Weather | MET Norway `locationforecast/2.0/compact` (free, commercial OK, CC BY 4.0), request every 1–3 hours and never before `Expires` (`World.WeatherSchedule`, tested; a later `Expires` wins over the 3-hour cap since v1.2.1); after a time-zone change the zone's city is used at once and the location is looked up again; coordinates rounded to 2 decimals; identifying `User-Agent` required. ~~Open-Meteo~~: free tier is non-commercial only | VERIFIED (spike 5) |
 | Region for holidays | `Locale.current.region` (confirmed: the user's region setting, not the physical location) | — |
 | Call detection (camera / microphone in use by any app) | CoreMediaIO `kCMIODevicePropertyDeviceIsRunningSomewhere` per camera, CoreAudio `kAudioDevicePropertyDeviceIsRunningSomewhere` per input device, property listeners on each plus the device lists. Never opens a device | VERIFIED (spike 8 + developer test 2026-11-02): no prompt; Pibbo dives when the camera turns on and comes back after |
 | Launch at login | `SMAppService.mainApp.register()`, registered automatically on first launch | VERIFIED: no prompt, no approval needed, status `enabled` at once; macOS shows a one-time "Login Item Added" notification (cannot be suppressed); app started automatically after reboot (spike 6) |
@@ -395,7 +395,7 @@ Example `manifest.json`:
 - Optional `decor`: `{"halloween": {"row": …, "frames": 4, "fps": 3}}`, a looping clip drawn over the garden frame (transparent elsewhere) while that holiday is on. Needs a `garden`. A key `"newYear@night"` replaces `"newYear"` at night (and may exist alone: then that holiday has decor only at night).
 - Optional `meadowDecor`: same as `decor`, drawn over the meadow's cell. Needs a `meadow`.
 - Optional `poses` + `transitions` (smooth switches): `poses` maps each clip to a body pose (`under`, `low`, `peek`, `up`, `back`); `transitions` holds in-between clips (played once, then the new clip takes over, scheduled in Core Animation with no timers) keyed `"from>to"`, each side a clip name or `@pose`. Most specific wins: `a>b`, `@poseA>b`, `a>@poseB`, `@poseA>@poseB`; no key means a straight cut. Keep each under ~0.6 s, because Brain's timings start when the clip is shown. Outfits apply to transitions too. `preview-transitions.gif` shows them all.
-- Validate on load: reject skins missing a required state; missing optional actions fall back to `chill`
+- Validate on load: reject skins missing a required state; missing optional actions fall back to `chill`. Every clip (states, actions, transitions, decor, props, weather, drift, visitors, bottle, shooting star) and every strip (garden, meadow, snow cover, gift, rainbow) is checked, and `SkinPack.load` checks that every frame, including outfit copies, fits inside `sprites.png` (read from its PNG header). Outfits keep a clip's `wrap` (v1.2.1)
 - Packs live in `~/Library/Application Support/Tidepool/Packs/`
 - GitHub build: users drop pack folders into that directory manually
 - Steam build: the Workshop is only a channel that downloads packs into the same directory
@@ -413,6 +413,8 @@ Example `manifest.json`:
 - Network: every request (ipwho.is, MET Norway) runs in its own `URLSession`, invalidated when it finishes. A shared session kept its HTTP/3 (QUIC) connection open with keepalive wakeups (~1.5/s) after each request; found and fixed in v0.5.0
 - Pause everything when fullscreen, locked, or asleep
 - Timers run on a clock that stops while the Mac sleeps, so a long timer (time of day, weather) fires late by however long the Mac slept. `WorldMonitor` recomputes the world on wake, screen wake, unlock, clock change and time-zone change (found 2026-10-24: day-coloured water at 8 pm after an evening of sleep). Anything scheduled hours ahead must re-check on wake the same way
+- One-shot effects (splash, visitor, shooting star) go through `OneShot` in the renderer: each play has a number, so a hide scheduled for an earlier play never cuts a new one short, and `stopEffects()` ends them the moment Pibbo is under water (Dive time, a call) or suspended. The window must obey the same rules as Brain, not just Brain's tests (found in a review, fixed in v1.2.1)
+- The radio says "started" only once a track really plays; tracks that fail to load, start or decode are skipped (one pass over the library), and if none plays it goes back to silence. Never headphones without sound
 - Verification: Activity Monitor "Energy Impact" stays low; spot-check with `powermetrics` or Instruments
 
 ## 13. Distribution
@@ -561,13 +563,15 @@ Code: `Spikes/08-call-signal/` (`run.sh [seconds]` wraps it in its own ad-hoc-si
 - **On Windows, always start by cloning the repo or `git pull` on `main`**, before reading or changing anything; push when a piece of work is done.
 - On the Mac, push finished work before the developer switches to Windows, so the PC starts from the latest state.
 
+- CI (`.github/workflows/tests.yml`, since v1.2.1) runs `swift test` on every push to `main`; the app itself is still built and checked by hand before each release.
+
 ### Release checklist (only when the developer says to release)
 
 1. Bump `MARKETING_VERSION` and `CURRENT_PROJECT_VERSION` in `project.yml`; rerun `Tools/generate_github_page.py` (add hints for new features) and update this file.
 2. `swift test` (all pass) → `xcodegen generate` → Release build → check `CFBundleShortVersionString` in the built Info.plist.
 3. Launch the Release build; after Pibbo hides, `top -c d -pid <pid>` should show ~0 % CPU and ~0 idle wakeups.
 4. Commit with a summary message → push `main` → annotated tag `vX.Y.Z` → push the tag → `python3 Tools/package_dmg.py` → `gh release create vX.Y.Z dist/PibbosTidepool-X.Y.Z.dmg` with casual emoji notes (point to the README's Open Anyway steps until a notarized build exists; credit Suno / MET Norway).
-5. Releases so far: v0.1.0 app shell · v0.2.0 actions, flower, pixel UI · v0.3.0 themed radio, ticker, drag · v0.3.1 mouse play · v0.3.2 holiday outfits · v0.3.3 smooth transitions · v0.4.0 second theme "Solo Float", nodding to the beat · v0.4.1 Halloween decor · v0.5.0 water light by time of day · v0.6.0 third theme "Pibbo in the City", theme props · v0.7.0 the meadow, messages in a bottle · v0.8.0 shooting stars, moonlight, wake fix for time of day · v1.0.0 "Pibbo's Tidepool": visitors, the seagull's gift, weather in the pool, quiet during calls, final bundle ID · v1.1.0 winter holiday decor, rainbow after rain, dream bubbles · v1.2.0 fourth theme "Pixel Tide", playing the handheld, the secret flip, seasonal drifting.
+5. Releases so far: v0.1.0 app shell · v0.2.0 actions, flower, pixel UI · v0.3.0 themed radio, ticker, drag · v0.3.1 mouse play · v0.3.2 holiday outfits · v0.3.3 smooth transitions · v0.4.0 second theme "Solo Float", nodding to the beat · v0.4.1 Halloween decor · v0.5.0 water light by time of day · v0.6.0 third theme "Pibbo in the City", theme props · v0.7.0 the meadow, messages in a bottle · v0.8.0 shooting stars, moonlight, wake fix for time of day · v1.0.0 "Pibbo's Tidepool": visitors, the seagull's gift, weather in the pool, quiet during calls, final bundle ID · v1.1.0 winter holiday decor, rainbow after rain, dream bubbles · v1.2.0 fourth theme "Pixel Tide", playing the handheld, the secret flip, seasonal drifting · v1.2.1 sturdiness: effects obey state, radio never stuck, full skin validation, weather Expires and time zones, CI.
 
 ## 16. Open items
 
