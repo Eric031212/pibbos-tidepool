@@ -10,6 +10,7 @@ Outputs:
     Assets/Skins/pibbo/   sprites.png, manifest.json, preview.gif, sprites@8x.png
     Assets/UI/            ui.png + ui.json (pixel font, emoji icons, speech bubble)
     Assets/AppIcon/       AppIcon.icns + AppIcon.png (Pibbo in his tide pool; needs macOS iconutil)
+    Assets/Games/         games.png + games.json (game window frame, game art), preview-games.png
 
 Usage:
     python3 Tools/generate_sprites.py
@@ -28,6 +29,7 @@ ROOT = Path(__file__).resolve().parent.parent
 SKIN_DIR = ROOT / "Assets/Skins/pibbo"
 UI_DIR = ROOT / "Assets/UI"
 ICON_DIR = ROOT / "Assets/AppIcon"
+GAMES_DIR = ROOT / "Assets/Games"
 
 SIZE = 16  # frame size in pixels; the bottom 3 rows are water
 
@@ -1381,6 +1383,8 @@ ICONS = {
            "..k.K.k..", "...kKk...", "....K...."],
     "🌊": [".........", "...oooo..", "..oxxxxo.", ".oxxoooxo", ".oxo...o.",
            "oxxxo....", "xxxxxxxxx", "xuxxuxxux", "xxxxxxxxx"],
+    "🎮": [".........", ".........", ".ooooooo.", "oHHHHHHHo", "oHuHHHmHo", "ouuuHmHMo",
+           "oHuHHHMHo", "oHHoooHHo", ".oo...oo."],
     "❄": ["....x....", ".x..x..x.", "..x.x.x..", "...xxx...", "xxxxxxxxx",
           "...xxx...", "..x.x.x..", ".x..x..x.", "....x...."],
 }
@@ -1772,11 +1776,154 @@ def write_gif(items, path, ticks, tick=1 / 12):
     gif_frames[0].save(path, save_all=True, append_images=gif_frames[1:], duration=int(tick * 1000), loop=0)
 
 
+# ---------------------------------------------------------------- games (Game time 🎮)
+# One sheet for every game: the window frame around the 160x120 playfield,
+# the close button, and each game's art keyed "<game id>.<name>" in games.json.
+
+GAME_W, GAME_H = 160, 120          # playfield, art pixels (Games.Playfield)
+CHROME_W = GAME_W + 8              # 1 outline + 2 wood + 1 inner outline, each side
+TITLE_H = 13                       # outline row + 12 rows of title bar
+CHROME_H = TITLE_H + 1 + GAME_H + 4
+PLAYFIELD_X, PLAYFIELD_Y = 4, TITLE_H + 1
+WOOD = (214, 176, 126)
+WOOD_LIGHT = (234, 204, 158)
+WOOD_DARK = (176, 136, 94)
+HOVER = (207, 234, 247)  # the menu's hover highlight
+GAME_WATER_Y = 101       # top of the water in the Shell Catch background
+
+
+def game_chrome():
+    """The frame: a cream title bar like the speech bubbles, driftwood sides,
+    a transparent hole for the playfield, rounded outer corners."""
+    img = Image.new("RGBA", (CHROME_W, CHROME_H), (0, 0, 0, 0))
+    px = img.load()
+    for y in range(CHROME_H):
+        for x in range(CHROME_W):
+            edge = x in (0, CHROME_W - 1) or y in (0, CHROME_H - 1)
+            if edge:
+                px[x, y] = TEXT + (255,)
+            elif y < TITLE_H:
+                px[x, y] = BUBBLE_FILL + (255,)
+            else:
+                shade = WOOD_LIGHT if (x + y) % 7 == 0 else WOOD_DARK if (x * 3 + y) % 11 == 0 else WOOD
+                px[x, y] = shade + (255,)
+    # inner outline around the playfield, and the hole itself
+    for x in range(PLAYFIELD_X - 1, PLAYFIELD_X + GAME_W + 1):
+        px[x, PLAYFIELD_Y - 1] = TEXT + (255,)
+        px[x, PLAYFIELD_Y + GAME_H] = TEXT + (255,)
+    for y in range(PLAYFIELD_Y - 1, PLAYFIELD_Y + GAME_H + 1):
+        px[PLAYFIELD_X - 1, y] = TEXT + (255,)
+        px[PLAYFIELD_X + GAME_W, y] = TEXT + (255,)
+    for y in range(PLAYFIELD_Y, PLAYFIELD_Y + GAME_H):
+        for x in range(PLAYFIELD_X, PLAYFIELD_X + GAME_W):
+            px[x, y] = (0, 0, 0, 0)
+    # rounded outer corners
+    w, h = CHROME_W - 1, CHROME_H - 1
+    for cx, cy, dx, dy in ((0, 0, 1, 1), (w, 0, -1, 1), (0, h, 1, -1), (w, h, -1, -1)):
+        px[cx, cy] = (0, 0, 0, 0)
+        px[cx + dx, cy] = (0, 0, 0, 0)
+        px[cx, cy + dy] = (0, 0, 0, 0)
+        px[cx + dx, cy + dy] = TEXT + (255,)
+    return img
+
+
+CLOSE = [".........", ".o.....o.", "..o...o..", "...o.o...", "....o....",
+         "...o.o...", "..o...o..", ".o.....o.", "........."]
+
+
+def game_close():
+    """Close button: normal, then under the pointer."""
+    img = Image.new("RGBA", (18, 9), (0, 0, 0, 0))
+    img.alpha_composite(to_image(CLOSE, {"o": TEXT, ".": BUBBLE_FILL}), (0, 0))
+    img.alpha_composite(to_image(CLOSE, {"o": TEXT, ".": HOVER}), (9, 0))
+    return img
+
+
+def shellcatch_background():
+    """A calm afternoon sea: warm sky, two clouds, the water along the bottom."""
+    img = Image.new("RGBA", (GAME_W, GAME_H), (0, 0, 0, 255))
+    px = img.load()
+    sky = [(255, 240, 214), (255, 232, 200), (255, 222, 186), (252, 212, 176)]
+    for y in range(GAME_H):
+        for x in range(GAME_W):
+            if y < GAME_WATER_Y:
+                band = min(y * len(sky) // GAME_WATER_Y, len(sky) - 1)
+                # dither the band edges a little
+                if band + 1 < len(sky) and (y * len(sky)) % GAME_WATER_Y > GAME_WATER_Y - 6 and (x + y) % 2 == 0:
+                    band += 1
+                px[x, y] = sky[band] + (255,)
+            elif y == GAME_WATER_Y:
+                px[x, y] = PALETTE["W"] + (255,) if (x // 3) % 4 != 3 else PALETTE["w"] + (255,)
+            elif y < GAME_WATER_Y + 7:
+                glint = (x * 7 + y * 13) % 23 == 0
+                px[x, y] = (PALETTE["W"] if glint else PALETTE["w"]) + (255,)
+            else:
+                glint = (x * 5 + y * 11) % 29 == 0
+                px[x, y] = (PALETTE["w"] if glint else PALETTE["x"]) + (255,)
+    cloud = ["....XXX.....", "..XXXXXXX...", ".XXXXXXXXXX.", "XXXXXXXXXXXX"]
+    for left, top in ((22, 18), (112, 30)):
+        img.alpha_composite(to_image(cloud, {"X": (255, 250, 240)}), (left, top))
+    sun = ["..mmm..", ".mmmmm.", "mmmmmmm", "mmmmmmm", "mmmmmmm", ".mmmmm.", "..mmm.."]
+    img.alpha_composite(to_image(sun, {"m": (255, 214, 120)}), (126, 20))
+    return img
+
+
+def shellcatch_pibbo(i):
+    """Pibbo on his back, bobbing a pixel (16x8; no water: the background has it)."""
+    g = [["."] * SIZE for _ in range(8)]
+    stamp(g, 1 + [0, 0, 1, 1][i], 0, BACK_BODY)
+    return g
+
+
+def build_games():
+    """games.png + games.json: the game window frame and every game's art."""
+    GAMES_DIR.mkdir(parents=True, exist_ok=True)
+    chrome = game_chrome()
+    close = game_close()
+    background = shellcatch_background()
+    pibbo = [to_image(shellcatch_pibbo(i)) for i in range(4)]
+
+    width = max(CHROME_W, GAME_W)
+    y_close = CHROME_H
+    y_bg = y_close + close.height
+    y_pibbo = y_bg + GAME_H
+    sheet = Image.new("RGBA", (width, y_pibbo + 8), (0, 0, 0, 0))
+    sheet.alpha_composite(chrome, (0, 0))
+    sheet.alpha_composite(close, (0, y_close))
+    sheet.alpha_composite(background, (0, y_bg))
+    for i, frame in enumerate(pibbo):
+        sheet.alpha_composite(frame, (i * SIZE, y_pibbo))
+    sheet.save(GAMES_DIR / "games.png")
+
+    meta = {
+        "chrome": {
+            "frame": {"x": 0, "y": 0, "w": CHROME_W, "h": CHROME_H, "frames": 1},
+            "playfieldX": PLAYFIELD_X, "playfieldY": PLAYFIELD_Y,
+            "titleX": 6, "titleY": 3,
+            "close": {"x": 0, "y": y_close, "w": 9, "h": 9, "frames": 2},
+            "closeX": CHROME_W - 12, "closeY": 2,
+        },
+        "items": {
+            "shellCatch.background": {"x": 0, "y": y_bg, "w": GAME_W, "h": GAME_H, "frames": 1},
+            "shellCatch.pibbo": {"x": 0, "y": y_pibbo, "w": SIZE, "h": 8, "frames": 4},
+        },
+    }
+    (GAMES_DIR / "games.json").write_text(json.dumps(meta, indent=1) + "\n")
+
+    # preview: the window as it looks before a round
+    preview = chrome.copy()
+    preview.alpha_composite(background, (PLAYFIELD_X, PLAYFIELD_Y))
+    preview.alpha_composite(pibbo[0], (PLAYFIELD_X + (GAME_W - SIZE) // 2, PLAYFIELD_Y + 96))
+    preview.alpha_composite(close.crop((0, 0, 9, 9)), (CHROME_W - 12, 2))
+    preview.resize((CHROME_W * 4, CHROME_H * 4), Image.NEAREST).save(GAMES_DIR / "preview-games.png")
+
+
 def main():
     build_skin()
     build_ui()
+    build_games()
     build_icon()
-    print(f"wrote {SKIN_DIR.relative_to(ROOT)}, {UI_DIR.relative_to(ROOT)} and {ICON_DIR.relative_to(ROOT)}")
+    print(f"wrote {SKIN_DIR.relative_to(ROOT)}, {UI_DIR.relative_to(ROOT)}, {GAMES_DIR.relative_to(ROOT)} and {ICON_DIR.relative_to(ROOT)}")
 
 
 if __name__ == "__main__":

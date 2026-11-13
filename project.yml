@@ -28,6 +28,7 @@ targets:
       - path: Sources/Renderer
       - path: Sources/Signals
       - path: Sources/Music
+      - path: Sources/GameWindow
       - path: Assets/Skins/pibbo
         type: folder
         buildPhase: resources
@@ -35,6 +36,9 @@ targets:
         type: folder
         buildPhase: resources
       - path: Assets/Music
+        type: folder
+        buildPhase: resources
+      - path: Assets/Games
         type: folder
         buildPhase: resources
       - path: Assets/Data/zone.tab
@@ -45,7 +49,7 @@ targets:
         buildPhase: resources
     dependencies:
       - package: TidepoolCore
-        products: [Brain, Content, Strings, World]
+        products: [Brain, Content, Games, Strings, World]
     info:
       path: Sources/App/Info.plist
       properties:

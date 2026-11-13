@@ -1,4 +1,5 @@
 import XCTest
+import Games
 @testable import Content
 import Strings
 
@@ -92,6 +93,12 @@ final class GardenAndFontTests: XCTestCase {
         XCTAssertEqual(font.layout("🎧").placed.first?.glyph, font.glyphs["🎧"])
         // Unknown characters fall back to "?".
         XCTAssertEqual(font.layout("€").placed.first?.glyph, font.glyphs["?"])
+    }
+
+    func testEveryGameHasATitle() {
+        for entry in GameCatalog.all {
+            XCTAssertNotNil(Strings.Games.titles[entry.id], "no title for \(entry.id)")
+        }
     }
 
     func testEveryBuiltInBubbleStringIsDrawable() throws {

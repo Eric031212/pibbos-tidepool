@@ -86,6 +86,9 @@ public enum BrainEvent: Equatable, Sendable {
     /// A camera or microphone started / stopped being used by any app: Pibbo
     /// dives during calls so he never shows up on a shared screen.
     case callChanged(Bool)
+    /// A game window opened / closed (`Game time 🎮`): Pibbo plays along in
+    /// the pool and nothing else happens until it closes.
+    case gameChanged(Bool)
     /// Whether it is a clear night (shooting stars only fall then).
     case clearNightChanged(Bool)
     /// A click on Pibbo right after a shooting star: he makes a wish (instead

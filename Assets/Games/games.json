@@ -1,0 +1,40 @@
+{
+ "chrome": {
+  "frame": {
+   "x": 0,
+   "y": 0,
+   "w": 168,
+   "h": 138,
+   "frames": 1
+  },
+  "playfieldX": 4,
+  "playfieldY": 14,
+  "titleX": 6,
+  "titleY": 3,
+  "close": {
+   "x": 0,
+   "y": 138,
+   "w": 9,
+   "h": 9,
+   "frames": 2
+  },
+  "closeX": 156,
+  "closeY": 2
+ },
+ "items": {
+  "shellCatch.background": {
+   "x": 0,
+   "y": 147,
+   "w": 160,
+   "h": 120,
+   "frames": 1
+  },
+  "shellCatch.pibbo": {
+   "x": 0,
+   "y": 267,
+   "w": 16,
+   "h": 8,
+   "frames": 4
+  }
+ }
+}

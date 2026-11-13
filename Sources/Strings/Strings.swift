@@ -6,6 +6,7 @@ public enum Strings {
     public enum Menu {
         public static let music = "Music Time? 🎧"
         public static let stopMusic = "Tunes off 🐚"
+        public static let games = "Game time 🎮"
         public static let workMode = "Dive time 🫧"
         public static let quit = "Swim away 👋"
     }
@@ -18,6 +19,19 @@ public enum Strings {
         public static let snowCocoa = "Snow! Cocoa? ❄️"
         public static let wish = "Made a wish ✨"
         public static let gg = "GG! ✨"
+    }
+
+    /// The little games (`Game time 🎮`). Titles by `GameCatalog` id.
+    public enum Games {
+        public static let titles: [String: String] = [
+            "shellCatch": "Shell Catch 🐚",
+        ]
+        public static let clickToPlay = "Click to play 🎮"
+        public static let escToClose = "Esc to close 👋"
+        public static let paused = "Paused 🫧"
+        public static let newBest = "New best! ✨"
+        public static func score(_ value: Int) -> String { "Score \(value)" }
+        public static func best(_ value: Int) -> String { "Best \(value)" }
     }
 
     /// Notes found in a message in a bottle; one is picked at random.
@@ -60,9 +74,10 @@ public enum Strings {
 
     /// Everything above that is drawn in pixel text.
     public static let allPixelText: [String] = [
-        Menu.music, Menu.stopMusic, Menu.workMode, Menu.quit,
+        Menu.music, Menu.stopMusic, Menu.games, Menu.workMode, Menu.quit,
+        Games.clickToPlay, Games.escToClose, Games.paused, Games.newBest, Games.score(1_234_567_890), Games.best(1_234_567_890),
         Bubble.musicInvitation, Bubble.goodbye, Bubble.napTime, Bubble.brb, Bubble.snowCocoa, Bubble.wish, Bubble.gg,
-    ] + bottleNotes + dreams.values.sorted()
+    ] + bottleNotes + dreams.values.sorted() + Games.titles.values.sorted()
 
     public enum Errors {
         /// Shown in the log only (the app has no error UI).

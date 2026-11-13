@@ -38,8 +38,10 @@ public struct Brain {
     /// A camera or microphone is in use (a call, most likely): Pibbo stays
     /// under water like in work mode, without the user asking.
     private var inCall = false
-    /// Work mode or a call: no surfacing, no bubbles, no visitors.
-    private var isQuiet: Bool { workMode || inCall }
+    /// A game window is open: Pibbo plays along (`game`) and stays put.
+    private var inGame = false
+    /// Work mode, a call or a game: no surfacing, no bubbles, no visitors.
+    private var isQuiet: Bool { workMode || inCall || inGame }
     private var suspendReasons: Set<SuspendReason> = []
     private var playingSources: Set<String> = []
     private var pendingStops: [String: Date] = [:]
@@ -188,6 +190,21 @@ public struct Brain {
                 setPresence(.hidden, at: now)
             } else {
                 becomeHidden(at: now)  // resurface quietly: back to hidden, no popping up
+            }
+
+        case .gameChanged(let open):
+            guard open != inGame else { break }
+            inGame = open
+            hovering = false
+            holdingPaw = false
+            reaction = nil
+            bubble = nil
+            if open {
+                setPresence(.hidden, at: now)
+            } else if suspendReasons.isEmpty && !workMode && !inCall {
+                interact(at: now)  // just played together: he stays out a while
+            } else {
+                setPresence(.hidden, at: now)
             }
 
         case .clicked:
@@ -402,7 +419,7 @@ public struct Brain {
         }
         if let due = nextStar, due <= now, !workMode {
             // Nobody to see it while away: let that one go by unseen.
-            if !isUserAway && !inCall { wishUntil = now.addingTimeInterval(config.wishWindow) }
+            if !isUserAway && !inCall && !inGame { wishUntil = now.addingTimeInterval(config.wishWindow) }
             nextStar = isClearNight ? now.addingTimeInterval(random(config.shootingStarInterval)) : nil
         }
 
@@ -487,8 +504,10 @@ public struct Brain {
     private mutating func refreshOutput() {
         let visual: PetVisual
         let allFading = !playingSources.isEmpty && playingSources.isSubset(of: fadingSources)
-        if isQuiet {
+        if workMode || inCall {
             visual = .submerged
+        } else if inGame {
+            visual = .action("game")
         } else if allFading || unplugUntil != nil {
             visual = .action("unplug")
         } else if holdingPaw {

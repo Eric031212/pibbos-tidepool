@@ -21,7 +21,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             let resources = PetController.Resources(
                 skin: skin, ui: ui,
                 music: bundle.url(forResource: "Music", withExtension: nil),
-                zoneTab: bundle.url(forResource: "zone", withExtension: "tab"))
+                zoneTab: bundle.url(forResource: "zone", withExtension: "tab"),
+                games: bundle.url(forResource: "Games", withExtension: nil))
             // `--demo`: everything sped up, for trying Tidepool out.
             let controller = try PetController(resources: resources, demo: CommandLine.arguments.contains("--demo"))
             controller.start()

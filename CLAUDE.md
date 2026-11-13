@@ -23,13 +23,14 @@ README.md, LICENSE                 public page (generated, see Tools/generate_gi
 docs/design-notes.md               background: market research and why decisions were made
 docs/games-plan.md                 brief for the planned games menu (not built yet)
 CREDITS.md                         third-party data and attribution (MET Norway, tzdb), bundled into the app
-Package.swift                      TidepoolCore: Brain, Content, Strings, World (Foundation only) + tests
+Package.swift                      TidepoolCore: Brain, Content, Games, Strings, World (Foundation only) + tests
 project.yml                        XcodeGen spec for the macOS app (Tidepool.xcodeproj is generated, not committed)
-Sources/                           modules from Section 7 (App, PetWindow, Renderer, Signals, Music = macOS; Brain, Content, Strings, World = core)
-Tests/                             BrainTests, ContentTests, WorldTests
+Sources/                           modules from Section 7 (App, PetWindow, Renderer, Signals, Music, GameWindow = macOS; Brain, Content, Games, Strings, World = core)
+Tests/                             BrainTests, ContentTests, GamesTests, WorldTests
 Spikes/                            research prototypes from Section 14 (never part of the app)
 Assets/Skins/pibbo/                Pibbo's skin pack (manifest.json, sprites.png, previews)
 Assets/UI/                         pixel font, emoji icons, bubble frame (ui.png + ui.json)
+Assets/Games/                      game window frame and game art (games.png + games.json, drawn by Tools/generate_sprites.py)
 Assets/Music/<theme>/              built-in lofi by theme: theme.json, tracks (AAC in CAF), beat maps (Tools/import_track.py)
 Assets/MusicMasters/<Theme Name>/  WAV masters of the tracks (local only: git-ignored, never bundled)
 Assets/Data/zone.tab               tzdb time-zone coordinates (offline location fallback)
@@ -61,6 +62,7 @@ open build/Build/Products/Debug/Tidepool.app --args --visitor friend      # crab
 open build/Build/Products/Debug/Tidepool.app --args --rainbow             # a rainbow right away
 open build/Build/Products/Debug/Tidepool.app --args --dreams              # asleep after ~30 s idle, a dream every few seconds
 open build/Build/Products/Debug/Tidepool.app --args --demo --theme "Pixel Tide" --season autumn   # radio starts with that theme; force the season
+open build/Build/Products/Debug/Tidepool.app --args --game shellCatch    # opens that game 2 s after launch
 ```
 
 Builds are ad-hoc signed until a Developer ID certificate exists. Login-item registration only happens when the app runs from `/Applications` or `~/Applications`, so development builds never register themselves.
@@ -253,6 +255,8 @@ Sources/
   World/      time of day, season, weather mapping, action rules, flower growth (pure Swift, unit tested)
   Signals/    providers of external signals (idle, frontmost app, fullscreen, lock, music, time, weather)
   Music/      built-in player, external music watchers, beat maps
+  Games/      little games' rules: GameSession (fixed 60 Hz step, pause, best score), GameCatalog, ShellCatch (pure Swift, unit tested)
+  GameWindow/ the game's own key window, input (keys, swipe, mouse; only in that window), frame loop, drawing; exists only while a game is open
   Content/    content pack loading and validation
   Strings/    string table
   Steam/      Steamworks integration (Steam build only)
@@ -553,7 +557,7 @@ Code: `Spikes/08-call-signal/` (`run.sh [seconds]` wraps it in its own ad-hoc-si
 
 - The developer writes in Chinese; reply in Chinese. User-facing app text stays English (Section 6). README and release notes: short, casual, with emoji. The README is a pixel-styled field guide made by `Tools/generate_github_page.py` (2026-11-03): explore-by-hints, not a feature list; add a hint there when a feature ships. GitHub wraps README images in links, so clickable `<summary>` lines must stay text
 - New features are proposed first and built only after a yes (Principle 1). Present options with a recommendation; flag anything that conflicts with this file instead of changing the design silently.
-- Hand-off for testing: build, launch the app yourself, then give a short numbered checklist of what to try. `open` on an already-running app ignores `--args`, so relaunch with `pkill -x Tidepool; open … --args …`. `--demo` speeds everything up; `--holiday <name>` previews an outfit; `--time <dawn|day|dusk|night>` forces the time of day; `--bottle` brings a bottle in 3 s; `--garden-days <n>` previews the flower and meadow on day n; `--stars` makes any night clear (shooting stars); `--moon <0…1>` sets the moonlight; `--weather <rain|snow>` forces the weather; `--visitor <crab|seagull|fish|friend>` brings that visitor every few seconds; `--rainbow` shows a rainbow at launch; `--dreams` makes him fall asleep quickly and dream often; `--theme <title>` starts the radio with that theme; `--season <name>` forces the season.
+- Hand-off for testing: build, launch the app yourself, then give a short numbered checklist of what to try. `open` on an already-running app ignores `--args`, so relaunch with `pkill -x Tidepool; open … --args …`. `--demo` speeds everything up; `--holiday <name>` previews an outfit; `--time <dawn|day|dusk|night>` forces the time of day; `--bottle` brings a bottle in 3 s; `--garden-days <n>` previews the flower and meadow on day n; `--stars` makes any night clear (shooting stars); `--moon <0…1>` sets the moonlight; `--weather <rain|snow>` forces the weather; `--visitor <crab|seagull|fish|friend>` brings that visitor every few seconds; `--rainbow` shows a rainbow at launch; `--dreams` makes him fall asleep quickly and dream often; `--theme <title>` starts the radio with that theme; `--season <name>` forces the season; `--game <id>` opens a game 2 s after launch. Debug builds also take distributed notifications `io.github.eric031212.pibbostidepool.debug.game` (object `open` / `press` / `right` / `stop` / `close`) to measure an open game without clicking.
 - The repo is **public**: never put personal data (city or location, machine host name, email) in files, test fixtures, or commit messages. Commits use the repo-local identity already set in `.git/config`; don't change it.
 - Music: new tracks arrive as WAVs in `Assets/MusicMasters/<Theme Name>/` → `python3 Tools/import_track.py`. It re-encodes every theme and the old CAFs come out byte-different (same audio): `git checkout -- Assets/Music/<old-theme>` afterwards so only the new theme is committed. Art: edit `Tools/generate_sprites.py` and rerun; rerun `Tools/generate_promo.py` / `Tools/generate_promo_video.py` when the promo material should follow.
 

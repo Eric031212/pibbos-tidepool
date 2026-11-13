@@ -1,6 +1,7 @@
 import AppKit
 import Brain
 import Content
+import Games
 import Strings
 import World
 
@@ -13,6 +14,7 @@ final class PetController {
         let ui: URL
         let music: URL?
         let zoneTab: URL?
+        let games: URL?
     }
 
     private var brain: Brain
@@ -23,6 +25,7 @@ final class PetController {
     private let bubblePanel: BubblePanel
     private let menuPanel: PixelMenuPanel
     private let marqueePanel: MarqueePanel
+    private let games: GameController
     private let brainConfig: BrainConfig
     private let demo: Bool
 
@@ -69,6 +72,12 @@ final class PetController {
     private static let rainbowLasts: TimeInterval = 10 * 60
     /// `--rainbow`: a rainbow right after launch.
     private static let forcedRainbow = CommandLine.arguments.contains("--rainbow")
+    /// `--game <id>`: opens that game 2 s after launch (e.g. `--game shellCatch`).
+    private static let forcedGame: String? = {
+        let args = CommandLine.arguments
+        guard let i = args.firstIndex(of: "--game"), i + 1 < args.count else { return nil }
+        return args[i + 1]
+    }()
     /// Things Pibbo saw lately, newest last: what he dreams of.
     private var memories: [String] = []
     private var recentSplashes: [Date] = []
@@ -105,6 +114,7 @@ final class PetController {
         bubblePanel = BubblePanel(scale: Self.uiScale)
         menuPanel = PixelMenuPanel(renderer: bubbleRenderer, scale: Self.uiScale)
         marqueePanel = MarqueePanel(renderer: bubbleRenderer, scale: Self.uiScale)
+        games = GameController(directory: resources.games, text: bubbleRenderer)
 
         worldMonitor = WorldMonitor(zoneTab: resources.zoneTab)
         lofi = BuiltInLofiSource(directory: resources.music)
@@ -148,6 +158,7 @@ final class PetController {
         panel.petView.onHoldEnded = { [weak self] in self?.send(.holdEnded) }
         panel.petView.onSplash = { [weak self] x in self?.splashed(atX: x) }
         bubblePanel.onClick = { [weak self] in self?.bubbleClicked() }
+        games.onOpenChanged = { [weak self] open in self?.send(.gameChanged(open)) }
 
         idleMonitor.onSample = { [weak self] seconds in self?.send(.userIdle(seconds: seconds)) }
         sessionMonitor.onEvent = { [weak self] event in self?.send(event) }
@@ -182,6 +193,12 @@ final class PetController {
         apply()
 
         if Self.forcedRainbow { showRainbow(true) }
+        if let id = Self.forcedGame {
+            DispatchQueue.main.asyncAfter(deadline: .now() + 2) { [weak self] in
+                guard let self else { return }
+                self.games.show(id: id, above: self.panel.frame)
+            }
+        }
         sessionMonitor.start()
         if SessionMonitor.isLockedNow { send(.suspended(.locked)) }
         fullscreenProbe.start()
@@ -250,6 +267,7 @@ final class PetController {
             panel.orderOut(nil)
             menuPanel.close()
             marqueePanel.hide()
+            games.close()  // fullscreen, lock or sleep: the game goes away with everything else
             idleMonitor.stop()
         } else {
             renderer.resume()
@@ -461,6 +479,10 @@ final class PetController {
             menuPanel.close()  // a second click closes the menu
             return
         }
+        if games.isOpen {
+            games.bringToFront()  // a click on Pibbo brings the open game back
+            return
+        }
         if brain.output.shootingStar {
             send(.wished)  // right after a shooting star, a click is a wish
             remember("star")
@@ -476,8 +498,23 @@ final class PetController {
                 self.lofi.isPlaying ? self.stopRadio() : self.lofi.play()
             })
         }
+        if games.isAvailable {
+            items.append(.init(title: Strings.Menu.games) { [weak self] in self?.openGameList() })
+        }
         items.append(.init(title: Strings.Menu.workMode) { [weak self] in self?.send(.workModeEntered) })
         items.append(.init(title: Strings.Menu.quit) { NSApp.terminate(nil) })
+        let anchor = bubbleAnchor()
+        menuPanel.open(items, anchorX: anchor.x, bottomY: anchor.y)
+    }
+
+    /// `Game time 🎮`: the list of games, in the menu's place.
+    private func openGameList() {
+        let items = GameCatalog.all.map { entry in
+            PixelMenuPanel.Item(title: Strings.Games.titles[entry.id] ?? entry.id) { [weak self] in
+                guard let self else { return }
+                self.games.show(id: entry.id, above: self.panel.frame)
+            }
+        }
         let anchor = bubbleAnchor()
         menuPanel.open(items, anchorX: anchor.x, bottomY: anchor.y)
     }
