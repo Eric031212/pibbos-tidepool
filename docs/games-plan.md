@@ -1,6 +1,6 @@
-# Games with Pibbo: plan (approved idea, 2026-11-04)
+# Games with Pibbo: plan (approved idea, 2026-11-04; built in v1.3, 2026-11-13)
 
-The developer's idea: a fourth menu item next to Music / Dive / Swim away, where you play small pixel games with Pibbo. One game first, a list that can grow. Not built yet; this file is the brief for the session that builds it. Read `CLAUDE.md` first (principles, permissions, performance budget, how to work with the developer).
+The developer's idea: a fourth menu item next to Music / Dive / Swim away, where you play small pixel games with Pibbo. One game first, a list that can grow. Built in v1.3 (framework + Shell Catch); how it works now is in `CLAUDE.md` Section 3 "Games with Pibbo". The other options below stay as ideas for later games. Read `CLAUDE.md` first (principles, permissions, performance budget, how to work with the developer).
 
 ## Decided
 
@@ -20,8 +20,8 @@ The developer's idea: a fourth menu item next to Music / Dive / Swim away, where
 - **C. Bubble Pop 🫧:** bubbles rise from the water; click them before they reach the top, some carry a fish or a shell. Mouse/trackpad only, the most relaxing.
 - **D. Kelp Hop 🌿:** side-scroller; press space to dive under or jump over driftwood and kelp. Most exciting, keyboard only.
 
-## Open questions for the developer
+## Decided by the developer (2026-11-13)
 
-1. Which game first (A recommended)?
-2. Is "one best score per game" right, or no score at all?
-3. Ship games as v1.3 on their own (recommended) or bundled with something else?
+1. First game: A, Shell Catch.
+2. One best score per game.
+3. Games ship on their own as v1.3.

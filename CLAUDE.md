@@ -21,7 +21,7 @@ Pibbo's Tidepool (display name since v1.0; the app file stays `Tidepool.app` so 
 CLAUDE.md                          this plan
 README.md, LICENSE                 public page (generated, see Tools/generate_github_page.py) and GPL-3.0
 docs/design-notes.md               background: market research and why decisions were made
-docs/games-plan.md                 brief for the planned games menu (not built yet)
+docs/games-plan.md                 brief and decisions for the games menu (built in v1.3)
 CREDITS.md                         third-party data and attribution (MET Norway, tzdb), bundled into the app
 Package.swift                      TidepoolCore: Brain, Content, Games, Strings, World (Foundation only) + tests
 project.yml                        XcodeGen spec for the macOS app (Tidepool.xcodeproj is generated, not committed)
@@ -139,6 +139,16 @@ While Pibbo sleeps (user away), every 4–8 min a thought bubble shows for 5 s w
 - **The secret flip:** three clicks on the water within 1.2 s and he flips out of the water with a big splash (`flip`, one-shot, 1.4 s). Not mentioned in the app; it is a hint on the GitHub page. Brain's `.splashCombo`; never in Dive time or calls.
 - **Drifting by:** while Pibbo is out, every ~30 s a spring petal, summer dandelion fluff or autumn leaf drifts across the pool (`World.Drift`, skin key `drift`; nothing in winter, rain, storm or snow). One looping Core Animation keyframe animation on a sublayer of the garden: no timers.
 
+### Games with Pibbo (v1.3, approved 2026-11-04, built 2026-11-13)
+
+`Game time 🎮` in the click menu opens a pixel list of games (the menu style); one game so far, more can join by adding a `GameCatalog` entry, a title in `Strings.Games.titles` and art in the games sheet. A game opens in its own window above the pool (168×138 art pixels at the largest integer scale that fits, 4× = 672×552 pt): a pixel frame with the title and a close button, drawn from `Assets/Games/games.png` (`Tools/generate_sprites.py`, `build_games`). It is an ordinary key window, so keys, trackpad swipes and the mouse reach it only while it is in front; no global monitors, no permission. Opening activates the app; closing gives focus back to the app that was in front. Drag the frame to move it; Esc, ⌘W or × closes it.
+
+- **Only heavy while open:** the window, layers, art and a 60 fps frame loop (`NSView.displayLink` on macOS 14+, a timer on 13) exist only while a game is open, and the loop stops while the window is in the back (`Paused 🫧` mid-round; a click wakes it). Measured (debug build): ~3.5 % CPU while playing; after closing 0 % CPU, 0 idle wakeups, window gone, memory back to ~16–18 MB (the first open leaves ~1 MB of AppKit caches; repeated opens add nothing). Fullscreen, lock and sleep close the game.
+- **Rules in `Games` (pure Swift, tested):** `GameSession` steps a game at a fixed 60 Hz whatever the display does (≤ 5 steps per frame), merges input between steps, pauses, and keeps the one best score (`bestScore.<id>` in UserDefaults). Games describe a `GameScene` (sheet keys, positions, text keys); the platform draws it into a 160×120 bitmap with the pixel font.
+- **Shell Catch 🐚:** Pibbo floats on his back along the bottom; ← → / A D, a two-finger swipe, or the mouse (he glides to it) move him. Shells 1, starfish 2, little fish 3; a jellyfish makes him dizzy for 1.5 s (no points lost); misses just splash. 60 s rounds; things fall 1.1 s → 0.45 s apart and ~30 → 62 px/s. `Time's up! 🐚`, the score, `New best! ✨`; clicks in the first second after a round are ignored. All tuning sits at the top of `Games/ShellCatch.swift`.
+- **While a game is open:** Brain's `.gameChanged`: Pibbo plays the handheld (`game`) in the pool, and there is no surfacing, bubbles, visitors, bottles or shooting stars; a call still sends him under. A click on Pibbo brings the game back to the front. After closing he stays out a little while (just played together).
+- Scores: one best per game, nothing else (no leaderboards, streaks or goals).
+
 ### Quiet during calls (v1.0)
 
 While any camera or microphone is in use by any app (spike 8: a call, most likely, including browser calls and screen sharing from another app), Pibbo stays under water like in work mode: no surfacing, bubbles, bottles or shooting stars; hover and play are ignored. A call starts after 2 s of use and ends after 5 s of quiet (so Siri or a quick dictation don't count); afterwards he goes back to hidden without popping up. `Signals/CallMonitor` reads only the devices' "running somewhere" flags (property listeners, no polling); Brain's `.callChanged`. Unlike work mode a click still opens the menu.
@@ -164,7 +174,7 @@ Pibbo sinks under the water. Only a few small bubbles rise occasionally. Skins p
 - Moonlight on the water and shooting stars with wishes (approved 2026-10-24)
 - v1.1 (approved 2026-11-03): winter holiday decor, rainbow after rain, dream bubbles
 - v1.2 (approved 2026-11-04): fourth theme "Pixel Tide" with a handheld-game prop, Pibbo playing that game while it plays, a hidden triple-splash flip, seasonal things drifting by
-- **Planned, not built (approved idea 2026-11-04): games with Pibbo**, a fourth menu item `Game time 🎮` opening a list of small pixel games; heavier only while a game is open. The brief and open questions are in `docs/games-plan.md`
+- v1.3 (approved 2026-11-04, built 2026-11-13): games with Pibbo, a fourth menu item `Game time 🎮` opening a list of small pixel games, first game Shell Catch; heavier only while a game is open (Section 3, `docs/games-plan.md`)
 - v1.0 (approved 2026-11-02): weather in the pool (rain ripples, snowfall, snow on the rocks), quiet during calls, visitors (crab, seagull, fish, a friend otter), the seagull's gift
 - Launch at login
 
@@ -207,6 +217,7 @@ launch → peek (~5 s) → chill → no interaction for a while → hidden
 | A message in a bottle is due (every 2–4 days) | The bottle floats beside Pibbo for 30 min; click it → Pibbo reads the note (~7 s) |
 | Clear night, every 20–60 min | A shooting star; a click on Pibbo within 6 s makes a wish (`wish` + `Made a wish ✨`) instead of opening the menu |
 | A camera or microphone is in use (2 s) | Pibbo dives and stays down until it has been off for 5 s |
+| A game window is open | Pibbo plays the handheld (`game`); nothing else happens until it closes |
 | Click on Pibbo | Open the menu |
 
 Play (rub, hold, splash) wakes Pibbo, restarts the hide timer, shows over `music` for its duration, and is ignored in work mode. Mouse moves are only tracked while the cursor is over Pibbo, so idle cost stays zero.
@@ -216,6 +227,7 @@ Play (rub, hold, splash) wakes Pibbo, restarts the hide timer, shows over `music
 A pixel menu in the bubble style (not a system menu), above Pibbo. Hover highlights a line. It closes after a pick, a second click on Pibbo, when another app activates, or ~1 s after the mouse leaves it (4 s if the mouse never comes over). No global event monitors.
 
 - `Music Time? 🎧` / `Tunes off 🐚` — play / stop built-in lofi
+- `Game time 🎮` — the list of games (Section 3)
 - `Dive time 🫧` — enter work mode: Pibbo stays submerged, ignores hover, never appears on his own, until the user clicks him again
 - `Swim away 👋` — quit
 
@@ -575,7 +587,7 @@ Code: `Spikes/08-call-signal/` (`run.sh [seconds]` wraps it in its own ad-hoc-si
 2. `swift test` (all pass) → `xcodegen generate` → Release build → check `CFBundleShortVersionString` in the built Info.plist.
 3. Launch the Release build; after Pibbo hides, `top -c d -pid <pid>` should show ~0 % CPU and ~0 idle wakeups.
 4. Commit with a summary message → push `main` → annotated tag `vX.Y.Z` → push the tag → `python3 Tools/package_dmg.py` → `gh release create vX.Y.Z dist/PibbosTidepool-X.Y.Z.dmg` with casual emoji notes (point to the README's Open Anyway steps until a notarized build exists; credit Suno / MET Norway).
-5. Releases so far: v0.1.0 app shell · v0.2.0 actions, flower, pixel UI · v0.3.0 themed radio, ticker, drag · v0.3.1 mouse play · v0.3.2 holiday outfits · v0.3.3 smooth transitions · v0.4.0 second theme "Solo Float", nodding to the beat · v0.4.1 Halloween decor · v0.5.0 water light by time of day · v0.6.0 third theme "Pibbo in the City", theme props · v0.7.0 the meadow, messages in a bottle · v0.8.0 shooting stars, moonlight, wake fix for time of day · v1.0.0 "Pibbo's Tidepool": visitors, the seagull's gift, weather in the pool, quiet during calls, final bundle ID · v1.1.0 winter holiday decor, rainbow after rain, dream bubbles · v1.2.0 fourth theme "Pixel Tide", playing the handheld, the secret flip, seasonal drifting · v1.2.1 sturdiness: effects obey state, radio never stuck, full skin validation, weather Expires and time zones, CI.
+5. Releases so far: v0.1.0 app shell · v0.2.0 actions, flower, pixel UI · v0.3.0 themed radio, ticker, drag · v0.3.1 mouse play · v0.3.2 holiday outfits · v0.3.3 smooth transitions · v0.4.0 second theme "Solo Float", nodding to the beat · v0.4.1 Halloween decor · v0.5.0 water light by time of day · v0.6.0 third theme "Pibbo in the City", theme props · v0.7.0 the meadow, messages in a bottle · v0.8.0 shooting stars, moonlight, wake fix for time of day · v1.0.0 "Pibbo's Tidepool": visitors, the seagull's gift, weather in the pool, quiet during calls, final bundle ID · v1.1.0 winter holiday decor, rainbow after rain, dream bubbles · v1.2.0 fourth theme "Pixel Tide", playing the handheld, the secret flip, seasonal drifting · v1.2.1 sturdiness: effects obey state, radio never stuck, full skin validation, weather Expires and time zones, CI · v1.3.0 games with Pibbo: `Game time 🎮`, Shell Catch.
 
 ## 16. Open items
 

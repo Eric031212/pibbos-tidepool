@@ -24,6 +24,7 @@ Usage:
 
 Requires: Python 3.10+, Pillow
 """
+import json
 import sys
 from pathlib import Path
 
@@ -187,6 +188,28 @@ def holiday(name, frame=0):
     return scene(pet("chill", 0, outfit=name), extras=extras)
 
 
+GAMES = json.loads((ROOT / "Assets/Games/games.json").read_text())
+GAME_SHEET = Image.open(ROOT / "Assets/Games/games.png").convert("RGBA")
+
+
+def game_item(name, frame=0):
+    it = GAMES["items"][f"shellCatch.{name}"]
+    x = it["x"] + frame * it["w"]
+    return GAME_SHEET.crop((x, it["y"], x + it["w"], it["y"] + it["h"]))
+
+
+def shell_catch():
+    """A corner of Shell Catch: Pibbo on his back, a shell landing, a starfish on its way."""
+    left, top, w, h = 52, 62, 56, 50
+    bg = GAMES["items"]["shellCatch.background"]
+    img = GAME_SHEET.crop((bg["x"] + left, bg["y"] + top, bg["x"] + left + w, bg["y"] + top + h))
+    img.alpha_composite(game_item("starfish"), (34, 4))
+    img.alpha_composite(game_item("shell"), (22, 22))
+    img.alpha_composite(game_item("sparkle"), (24, 12))
+    img.alpha_composite(game_item("pibbo"), (20, 96 - top))
+    return img
+
+
 def hints():
     """(emoji, hint, picture, speech bubble, short note): a few words each."""
     rainbow = [(cell(M["rainbow"]["row"], k), FS * k) for k in range(3)]
@@ -194,7 +217,8 @@ def hints():
         ("👀", "Hover over the corner.", big(solo(pet("peek"))), None, "he peeks out to say hi"),
         ("🤏", "Rub him.", big(solo(pet("backfloat", 2))), None, None),
         ("🤝", "Rest your cursor on him.", big(solo(pet("holdpaw", 1))), None, "otters hold paws"),
-        ("👆", "Click him.", big(solo(pet("chill"))), ["Music Time? 🎧", "Dive time 🫧", "Swim away 👋"], None),
+        ("👆", "Click him.", big(solo(pet("chill"))), ["Music Time? 🎧", "Game time 🎮", "Dive time 🫧", "Swim away 👋"], None),
+        ("🐚", "Up for a little game?", big(shell_catch()), None, "catch shells, dodge jellies"),
         ("💦", "Splash, splash, splash.", big(row([solo(pet("flip", k)) for k in (1, 2, 3)], gap=1)), None, "a little secret"),
         ("🎮", "Put on some music. Wait for the retro one.", big(solo(pet("game", 0))), ["GG! ✨"], None),
         ("🌧️", "Wait for the rain to stop.", big(scene(pet("admire", 2), extras=rainbow)), None, None),
