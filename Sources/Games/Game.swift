@@ -65,8 +65,10 @@ public struct GameSprite: Equatable, Sendable {
 /// rules never hold user-visible text (CLAUDE.md Section 6).
 public struct GameText: Equatable, Sendable {
     public enum Key: Equatable, Sendable {
-        case clickToPlay, escToClose, newBest
+        case clickToPlay, escToClose, newBest, timeUp
         case score(Int)
+        /// Seconds left in the round.
+        case timeLeft(Int)
         case best(Int)
     }
 

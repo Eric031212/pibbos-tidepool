@@ -1875,6 +1875,177 @@ def shellcatch_pibbo(i):
     return g
 
 
+# Shell Catch's falling things and effects, 12x12, two frames each (a little
+# wobble), keys of PALETTE plus a few of their own.
+CATCH_PALETTE = dict(PALETTE, **{
+    "J": (236, 160, 200),   # jellyfish
+    "j": (200, 116, 170),   # jellyfish dark
+    "P": (255, 214, 236),   # jellyfish shine
+    "O": (244, 150, 76),    # starfish
+    "N": (96, 156, 206),    # little fish
+})
+
+CATCH_ART = {
+    "shell": [
+        [
+            "............",
+            ".....oo.....",
+            "....osso....",
+            "...osSsSo...",
+            "..osSsSsSo..",
+            ".osSsSsSsSo.",
+            ".oSsSsSsSso.",
+            "oSsSsSsSsSso",
+            ".oooooooooo.",
+            "....oSSo....",
+            ".....oo.....",
+            "............",
+        ],
+    ],
+    "starfish": [
+        [
+            ".....oo.....",
+            ".....oOo....",
+            "....oOOo....",
+            "oooooOOooooo",
+            "oOOOOOOOOOOo",
+            ".ooOOmOOOoo.",
+            "...oOOOOo...",
+            "...oOOOOo...",
+            "..oOOooOOo..",
+            "..oOo..oOo..",
+            ".ooo....ooo.",
+            "............",
+        ],
+    ],
+    "fish": [
+        [
+            "............",
+            "............",
+            "....oooo....",
+            "..ooNNNNo..o",
+            ".oNNNNNNNooo",
+            "oNeNNNNNNNNo",
+            "oNNNNNNNNooo",
+            ".oyNNNNNo..o",
+            "..ooooooo...",
+            "............",
+            "............",
+            "............",
+        ],
+    ],
+    "jelly": [
+        [
+            "............",
+            "...oooooo...",
+            "..oJPJJJJo..",
+            ".oJPJJJJJJo.",
+            ".oJJeJJeJJo.",
+            ".ojjjjjjjjo.",
+            "..o.j..j.o..",
+            "...j.j..j...",
+            "..j..j.j....",
+            "...j..j..j..",
+            "............",
+            "............",
+        ],
+    ],
+    "sparkle": [
+        [
+            "............",
+            "............",
+            ".....m......",
+            ".....m......",
+            "...mmXmm....",
+            ".....m......",
+            ".....m...m..",
+            ".........m..",
+            "..m....mmXmm",
+            ".........m..",
+            "............",
+            "............",
+        ],
+        [
+            ".....m......",
+            "............",
+            ".....X......",
+            ".m.......m..",
+            "............",
+            "...m........",
+            "........m...",
+            "............",
+            "..X.........",
+            "...........m",
+            ".........X..",
+            "............",
+        ],
+    ],
+    "splash": [
+        [
+            "............",
+            "............",
+            "............",
+            "............",
+            "............",
+            "............",
+            "............",
+            "............",
+            ".....XX.....",
+            "....XWWX....",
+            "...XX..XX...",
+            "............",
+        ],
+        [
+            "............",
+            "............",
+            "............",
+            "............",
+            "............",
+            ".....X......",
+            "..X..X..X...",
+            "...X.X.X....",
+            "..X.XXX.X...",
+            ".XX.....XX..",
+            "............",
+            "............",
+        ],
+        [
+            "............",
+            "............",
+            "............",
+            "............",
+            "..X......X..",
+            "............",
+            ".X........X.",
+            "............",
+            "X..........X",
+            "............",
+            "............",
+            "............",
+        ],
+    ],
+    # little stars circling over a dizzy Pibbo's head
+    "dizzy": [
+        ["............", "............", "............", "............", "............", "............",
+         "............", "..m......X..", ".mmm........", "..m....m....", "......mmm...", ".......m...."],
+        ["............", "............", "............", "............", "............", "............",
+         "............", "....m.......", "...mmm...m..", "....m...mmm.", ".X.......m..", "............"],
+        ["............", "............", "............", "............", "............", "............",
+         "............", ".......m....", "......mmm...", ".m.....m....", "mmm.....X...", ".m.........."],
+        ["............", "............", "............", "............", "............", "............",
+         "............", ".........m..", "..X.....mmm.", ".........m..", "..m.........", ".mmm........"],
+    ],
+}
+
+
+def catch_frames(name):
+    frames = CATCH_ART[name]
+    if len(frames) == 1:  # a gentle wobble: the second frame shifted a pixel
+        base = frames[0]
+        frames = [base, ["." + row[:-1] for row in base]]
+    return [to_image(f, CATCH_PALETTE) for f in frames]
+
+
 def build_games():
     """games.png + games.json: the game window frame and every game's art."""
     GAMES_DIR.mkdir(parents=True, exist_ok=True)
@@ -1887,7 +2058,15 @@ def build_games():
     y_close = CHROME_H
     y_bg = y_close + close.height
     y_pibbo = y_bg + GAME_H
-    sheet = Image.new("RGBA", (width, y_pibbo + 8), (0, 0, 0, 0))
+    catch = {name: catch_frames(name) for name in CATCH_ART}
+    # one 12-px row per item, frames left to right
+    y_catch = y_pibbo + 8
+    sheet = Image.new("RGBA", (width, y_catch + 12 * len(catch)), (0, 0, 0, 0))
+    catch_meta = {}
+    for row, (name, frames) in enumerate(catch.items()):
+        for i, frame in enumerate(frames):
+            sheet.alpha_composite(frame, (i * 12, y_catch + row * 12))
+        catch_meta[f"shellCatch.{name}"] = {"x": 0, "y": y_catch + row * 12, "w": 12, "h": 12, "frames": len(frames)}
     sheet.alpha_composite(chrome, (0, 0))
     sheet.alpha_composite(close, (0, y_close))
     sheet.alpha_composite(background, (0, y_bg))
@@ -1906,6 +2085,7 @@ def build_games():
         "items": {
             "shellCatch.background": {"x": 0, "y": y_bg, "w": GAME_W, "h": GAME_H, "frames": 1},
             "shellCatch.pibbo": {"x": 0, "y": y_pibbo, "w": SIZE, "h": 8, "frames": 4},
+            **catch_meta,
         },
     }
     (GAMES_DIR / "games.json").write_text(json.dumps(meta, indent=1) + "\n")
@@ -1915,6 +2095,9 @@ def build_games():
     preview.alpha_composite(background, (PLAYFIELD_X, PLAYFIELD_Y))
     preview.alpha_composite(pibbo[0], (PLAYFIELD_X + (GAME_W - SIZE) // 2, PLAYFIELD_Y + 96))
     preview.alpha_composite(close.crop((0, 0, 9, 9)), (CHROME_W - 12, 2))
+    for k, name in enumerate(["shell", "starfish", "fish", "jelly"]):
+        preview.alpha_composite(catch[name][0], (PLAYFIELD_X + 30 + k * 30, PLAYFIELD_Y + 30 + (k % 2) * 18))
+    preview.alpha_composite(catch["dizzy"][0], (PLAYFIELD_X + (GAME_W - SIZE) // 2 + 4, PLAYFIELD_Y + 87))
     preview.resize((CHROME_W * 4, CHROME_H * 4), Image.NEAREST).save(GAMES_DIR / "preview-games.png")
 
 

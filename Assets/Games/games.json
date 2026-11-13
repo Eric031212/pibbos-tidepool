@@ -35,6 +35,55 @@
    "w": 16,
    "h": 8,
    "frames": 4
+  },
+  "shellCatch.shell": {
+   "x": 0,
+   "y": 275,
+   "w": 12,
+   "h": 12,
+   "frames": 2
+  },
+  "shellCatch.starfish": {
+   "x": 0,
+   "y": 287,
+   "w": 12,
+   "h": 12,
+   "frames": 2
+  },
+  "shellCatch.fish": {
+   "x": 0,
+   "y": 299,
+   "w": 12,
+   "h": 12,
+   "frames": 2
+  },
+  "shellCatch.jelly": {
+   "x": 0,
+   "y": 311,
+   "w": 12,
+   "h": 12,
+   "frames": 2
+  },
+  "shellCatch.sparkle": {
+   "x": 0,
+   "y": 323,
+   "w": 12,
+   "h": 12,
+   "frames": 2
+  },
+  "shellCatch.splash": {
+   "x": 0,
+   "y": 335,
+   "w": 12,
+   "h": 12,
+   "frames": 3
+  },
+  "shellCatch.dizzy": {
+   "x": 0,
+   "y": 347,
+   "w": 12,
+   "h": 12,
+   "frames": 4
   }
  }
 }

@@ -68,7 +68,7 @@ final class GameArt {
         if session.isNewBest && session.game.phase == .over {
             lines.append((Strings.Games.newBest, GameText(.newBest, x: Playfield.width / 2, y: 24, align: .center)))
         }
-        if session.isPaused {
+        if session.isPaused && session.game.phase == .playing {  // a finished round keeps its result on screen
             lines = lines.filter { $0.1.y < 14 }  // keep the score line, drop the rest
             lines.append((Strings.Games.paused, GameText(.clickToPlay, x: Playfield.width / 2, y: 44, align: .center)))
         }
@@ -90,6 +90,8 @@ final class GameArt {
         case .clickToPlay: return Strings.Games.clickToPlay
         case .escToClose: return Strings.Games.escToClose
         case .newBest: return Strings.Games.newBest
+        case .timeUp: return Strings.Games.timeUp
+        case .timeLeft(let seconds): return Strings.Games.timeLeft(seconds)
         case .score(let value): return Strings.Games.score(value)
         case .best(let value): return Strings.Games.best(value)
         }

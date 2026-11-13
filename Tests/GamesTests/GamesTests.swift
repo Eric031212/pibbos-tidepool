@@ -197,6 +197,129 @@ final class ShellCatchTests: XCTestCase {
     }
 }
 
+final class ShellCatchRoundTests: XCTestCase {
+    private let dt = GameSession.stepLength
+
+    /// A random source that returns scripted values in turn, round and round.
+    private final class Script {
+        let values: [Double]
+        var index = 0
+        init(_ values: [Double]) { self.values = values }
+        func next(_ range: ClosedRange<Double>) -> Double {
+            let value = values[index % values.count]
+            index += 1
+            return range.lowerBound + (range.upperBound - range.lowerBound) * value
+        }
+    }
+
+    private func started(_ script: Script) -> ShellCatch {
+        var game = ShellCatch(random: script.next)
+        var press = GameInput()
+        press.pressed = true
+        game.step(press, dt: dt)
+        return game
+    }
+
+    private func run(_ game: inout ShellCatch, seconds: Double, _ input: GameInput = GameInput()) {
+        for _ in 0..<Int((seconds / dt).rounded()) { game.step(input, dt: dt) }
+    }
+
+    /// Script values: kind roll, x, speed jitter, interval jitter, repeating.
+    /// Kind roll 0 → shell; x 0.5 → middle of the field (where Pibbo starts).
+    func testThingsFallAndHeCatchesThemWhereHeIs() {
+        var game = started(Script([0, 0.5, 0.5, 0.5]))
+        run(&game, seconds: 0.7)
+        XCTAssertEqual(game.items.count, 1)
+        XCTAssertEqual(game.items.first?.kind, .shell)
+        run(&game, seconds: 4)
+        XCTAssertGreaterThanOrEqual(game.score, 1, "a shell falling onto him counts")
+    }
+
+    func testMissedThingsSplashAndCostNothing() {
+        var game = started(Script([0, 0.0, 0.5, 0.5]))  // far left
+        var right = GameInput()
+        right.right = true
+        run(&game, seconds: 4, right)  // he swims to the far right
+        XCTAssertEqual(game.score, 0)
+        XCTAssertTrue(game.items.allSatisfy { $0.y + Double(ShellCatch.itemSize) < Double(ShellCatch.waterLine) })
+    }
+
+    func testAJellyfishMakesHimDizzyButCostsNothing() {
+        // A jellyfish in the middle (roll near the top of the weights), then a shell far left, in turn.
+        var game = started(Script([0.99, 0.5, 0.5, 0.5, 0, 0, 0.5, 0.5]))
+        run(&game, seconds: 0.7)
+        XCTAssertEqual(game.items.first?.kind, .jelly)
+        var sawDizzy = false
+        for _ in 0..<600 {
+            game.step(GameInput(), dt: dt)
+            if game.dizzy > 0 { sawDizzy = true; break }
+        }
+        XCTAssertTrue(sawDizzy)
+        XCTAssertEqual(game.score, 0)
+        XCTAssertTrue(game.scene.sprites.contains { $0.name == "dizzy" })
+
+        let x = game.pibboX
+        var left = GameInput()
+        left.left = true
+        game.step(left, dt: dt)
+        XCTAssertEqual(game.pibboX, x, "dizzy: he can't move")
+        run(&game, seconds: ShellCatch.dizzyLength, left)
+        XCTAssertLessThan(game.pibboX, x, "and swims again afterwards")
+    }
+
+    func testPointsByKind() {
+        XCTAssertEqual(ShellCatch.Kind.shell.points, 1)
+        XCTAssertEqual(ShellCatch.Kind.starfish.points, 2)
+        XCTAssertEqual(ShellCatch.Kind.fish.points, 3)
+        XCTAssertEqual(ShellCatch.Kind.jelly.points, 0)
+    }
+
+    func testARoundLastsAMinuteAndGetsFaster() {
+        var game = started(Script([0.0, 0.0, 0.5, 0.5]))
+        run(&game, seconds: 1)
+        let earlySpeed = game.items.last?.speed ?? 0
+        XCTAssertEqual(game.secondsLeft, 59)
+        run(&game, seconds: 57)
+        let lateSpeed = game.items.last?.speed ?? 0
+        XCTAssertGreaterThan(lateSpeed, earlySpeed * 1.5)
+        XCTAssertEqual(game.phase, .playing)
+        run(&game, seconds: 2.1)
+        XCTAssertEqual(game.phase, .over)
+        XCTAssertTrue(game.items.isEmpty)
+        XCTAssertTrue(game.scene.texts.contains { $0.key == .timeUp })
+    }
+
+    func testNoAccidentalRestartRightAfterTheRound() {
+        var game = started(Script([0.0, 0.0, 0.5, 0.5]))
+        run(&game, seconds: 60.1)
+        XCTAssertEqual(game.phase, .over)
+        var press = GameInput()
+        press.pressed = true
+        game.step(press, dt: dt)
+        XCTAssertEqual(game.phase, .over, "a click just after the end doesn't restart")
+        XCTAssertFalse(game.scene.texts.contains { $0.key == .clickToPlay })
+        run(&game, seconds: ShellCatch.restartDelay)
+        XCTAssertTrue(game.scene.texts.contains { $0.key == .clickToPlay })
+        game.step(press, dt: dt)
+        XCTAssertEqual(game.phase, .playing)
+        XCTAssertEqual(game.score, 0)
+        XCTAssertEqual(game.secondsLeft, 60)
+    }
+
+    func testTheBestScoreFollowsAFullRound() {
+        // Everything falls in the middle onto Pibbo: he catches a lot.
+        var session = GameSession(game: ShellCatch(random: Script([0, 0.5, 0.5, 0.5]).next), best: 3)
+        var press = GameInput()
+        press.pressed = true
+        session.receive(press)
+        for _ in 0..<(61 * 60) { session.advance(by: dt) }
+        XCTAssertEqual(session.game.phase, .over)
+        XCTAssertGreaterThan(session.best, 3)
+        XCTAssertEqual(session.best, session.game.score)
+        XCTAssertTrue(session.isNewBest)
+    }
+}
+
 final class CatalogAndSheetTests: XCTestCase {
     private var repo: URL {
         URL(fileURLWithPath: #filePath).deletingLastPathComponent().deletingLastPathComponent().deletingLastPathComponent()

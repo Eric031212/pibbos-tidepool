@@ -30,6 +30,8 @@ public enum Strings {
         public static let escToClose = "Esc to close 👋"
         public static let paused = "Paused 🫧"
         public static let newBest = "New best! ✨"
+        public static let timeUp = "Time's up! 🐚"
+        public static func timeLeft(_ seconds: Int) -> String { "\(seconds)s" }
         public static func score(_ value: Int) -> String { "Score \(value)" }
         public static func best(_ value: Int) -> String { "Best \(value)" }
     }
@@ -75,7 +77,7 @@ public enum Strings {
     /// Everything above that is drawn in pixel text.
     public static let allPixelText: [String] = [
         Menu.music, Menu.stopMusic, Menu.games, Menu.workMode, Menu.quit,
-        Games.clickToPlay, Games.escToClose, Games.paused, Games.newBest, Games.score(1_234_567_890), Games.best(1_234_567_890),
+        Games.clickToPlay, Games.escToClose, Games.paused, Games.newBest, Games.timeUp, Games.timeLeft(60), Games.score(1_234_567_890), Games.best(1_234_567_890),
         Bubble.musicInvitation, Bubble.goodbye, Bubble.napTime, Bubble.brb, Bubble.snowCocoa, Bubble.wish, Bubble.gg,
     ] + bottleNotes + dreams.values.sorted() + Games.titles.values.sorted()
 
