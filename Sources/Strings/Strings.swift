@@ -6,6 +6,8 @@ public enum Strings {
     public enum Menu {
         public static let music = "Music Time? 🎧"
         public static let stopMusic = "Tunes off 🐚"
+        public static let tide = "Tide sounds 🌊"
+        public static let tideOff = "Hush now 🫧"
         public static let games = "Game time 🎮"
         public static let workMode = "Dive time 🫧"
         public static let quit = "Swim away 👋"
@@ -91,7 +93,7 @@ public enum Strings {
 
     /// Everything above that is drawn in pixel text.
     public static let allPixelText: [String] = [
-        Menu.music, Menu.stopMusic, Menu.games, Menu.workMode, Menu.quit,
+        Menu.music, Menu.stopMusic, Menu.tide, Menu.tideOff, Menu.games, Menu.workMode, Menu.quit,
         Games.clickToPlay, Games.escToClose, Games.paused, Games.newBest, Games.timeUp, Games.timeLeft(60), Games.score(1_234_567_890), Games.best(1_234_567_890),
         Bubble.musicInvitation, Bubble.goodbye, Bubble.napTime, Bubble.brb, Bubble.snowCocoa, Bubble.wish, Bubble.gg,
     ] + bottleNotes + dreams.values.sorted() + Games.titles.values.sorted() + Greetings.all

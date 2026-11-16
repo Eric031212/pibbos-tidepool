@@ -41,6 +41,9 @@ targets:
       - path: Assets/Games
         type: folder
         buildPhase: resources
+      - path: Assets/Sounds
+        type: folder
+        buildPhase: resources
       - path: Assets/Data/zone.tab
         buildPhase: resources
       - path: CREDITS.md

@@ -15,6 +15,7 @@ final class PetController {
         let music: URL?
         let zoneTab: URL?
         let games: URL?
+        let sounds: URL?
     }
 
     private var brain: Brain
@@ -26,6 +27,8 @@ final class PetController {
     private let menuPanel: PixelMenuPanel
     private let marqueePanel: MarqueePanel
     private let games: GameController
+    private let tide: TideSounds
+    private var callActive = false
     private let brainConfig: BrainConfig
     private let demo: Bool
 
@@ -126,6 +129,7 @@ final class PetController {
         menuPanel = PixelMenuPanel(renderer: bubbleRenderer, scale: Self.uiScale)
         marqueePanel = MarqueePanel(renderer: bubbleRenderer, scale: Self.uiScale)
         games = GameController(directory: resources.games, text: bubbleRenderer)
+        tide = TideSounds(directory: resources.sounds)
 
         worldMonitor = WorldMonitor(zoneTab: resources.zoneTab)
         lofi = BuiltInLofiSource(directory: resources.music)
@@ -186,7 +190,10 @@ final class PetController {
             self?.send(isFullscreen ? .suspended(.fullscreen) : .resumed(.fullscreen))
         }
         worldMonitor.onChange = { [weak self] context in self?.worldChanged(context) }
-        callMonitor.onChange = { [weak self] active in self?.send(.callChanged(active)) }
+        callMonitor.onChange = { [weak self] active in
+            self?.callActive = active
+            self?.send(.callChanged(active))
+        }
 
         for source in musicSources {
             musicTasks.append(Task { @MainActor [weak self] in
@@ -213,6 +220,8 @@ final class PetController {
         apply()
 
         if Self.forcedRainbow { showRainbow(true) }
+        // `--tide`: tide sounds from the start (for listening while trying things).
+        if CommandLine.arguments.contains("--tide"), tide.isAvailable { tide.start(mix: TideMix.layers(for: worldMonitor.context)) }
         // Launch (at login, most mornings): say hello once the weather is likely in.
         DispatchQueue.main.asyncAfter(deadline: .now() + (Self.forcedGreeting != nil ? 3 : 20)) { [weak self] in
             self?.greetAtLaunch()
@@ -244,6 +253,7 @@ final class PetController {
             renderer.prop = lofi.prop
             send(.radioToyChanged(lofi.toy))
         }
+        if source === lofi, event != .paused { tide.stop() }  // the radio takes over from the tide
         send(.musicChanged(source: source.id, playing: event != .paused))
         if event != .paused { remember("music") }
         if source === lofi, event == .trackChanged {
@@ -255,6 +265,7 @@ final class PetController {
     private func worldChanged(_ context: WorldContext) {
         renderer.outfit = context.holiday?.rawValue
         renderer.season = context.season.rawValue
+        tide.update(mix: TideMix.layers(for: context))
         renderer.lighting = context.timeOfDay.rawValue
         renderer.moonlight = context.moonlight
         renderer.drift = Drift.item(for: context)
@@ -323,6 +334,7 @@ final class PetController {
         }
 
         updateBubble(output.isSuspended ? nil : output.bubble)
+        tide.hold(output.isSuspended || callActive)
         scheduleDeadline()
     }
 
@@ -522,6 +534,17 @@ final class PetController {
             items.append(.init(title: title) { [weak self] in
                 guard let self else { return }
                 self.lofi.isPlaying ? self.stopRadio() : self.lofi.play()
+            })
+        }
+        if tide.isAvailable {
+            items.append(.init(title: tide.isOn ? Strings.Menu.tideOff : Strings.Menu.tide) { [weak self] in
+                guard let self else { return }
+                if self.tide.isOn {
+                    self.tide.stop()
+                } else {
+                    if self.lofi.isPlaying { self.stopRadio() }  // one sound at a time
+                    self.tide.start(mix: TideMix.layers(for: self.worldMonitor.context))
+                }
             })
         }
         if games.isAvailable {
