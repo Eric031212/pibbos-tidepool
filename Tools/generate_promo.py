@@ -66,10 +66,11 @@ def text(s, color=BROWN, scale=1):
     """Pixel-font text; plain glyphs are recoloured, emoji icons keep their colours."""
     pieces = []
     for ch in s:
-        key = ch.replace("️", "")
-        g = UI["glyphs"].get(key) or UI["glyphs"]["?"]
+        if ch == "\ufe0f":  # emoji variation selector: the plain icon is drawn
+            continue
+        g = UI["glyphs"].get(ch) or UI["glyphs"]["?"]
         glyph = ATLAS.crop((g["x"], g["y"], g["x"] + g["w"], g["y"] + LH))
-        if len(key.encode("utf-8")) == 1:  # ASCII: recolour
+        if len(ch.encode("utf-8")) == 1:  # ASCII: recolour
             solid = Image.new("RGBA", glyph.size, color + (255,))
             solid.putalpha(glyph.getchannel("A"))
             glyph = solid

@@ -72,6 +72,17 @@ final class PetController {
     private static let rainbowLasts: TimeInterval = 10 * 60
     /// `--rainbow`: a rainbow right after launch.
     private static let forcedRainbow = CommandLine.arguments.contains("--rainbow")
+    /// Greetings (v1.4): what has been said, when you were last here, first launch.
+    private var greetingMemory = GreetingMemory()
+    private var lastActiveMoment: Date?
+    private var isFirstLaunch = false
+    /// `--greet <hello|morning|weekend|welcome|night>`: that greeting 3 s after launch.
+    private static let forcedGreeting: String? = {
+        let args = CommandLine.arguments
+        guard let i = args.firstIndex(of: "--greet"), i + 1 < args.count else { return nil }
+        return args[i + 1]
+    }()
+
     /// `--game <id>`: opens that game 2 s after launch (e.g. `--game shellCatch`).
     private static let forcedGame: String? = {
         let args = CommandLine.arguments
@@ -144,7 +155,13 @@ final class PetController {
         renderer.showsGift = hasGift
         if UserDefaults.standard.object(forKey: Self.firstLaunchKey) == nil {
             UserDefaults.standard.set(Date(), forKey: Self.firstLaunchKey)
+            isFirstLaunch = true
         }
+        let defaults = UserDefaults.standard
+        greetingMemory = GreetingMemory(morningDay: defaults.string(forKey: "greet.morningDay"),
+                                        welcomeBackDay: defaults.string(forKey: "greet.welcomeBackDay"),
+                                        welcomeBacksThatDay: defaults.integer(forKey: "greet.welcomeBacks"),
+                                        nightOwlDay: defaults.string(forKey: "greet.nightOwlDay"))
     }
 
     func start() {
@@ -160,7 +177,10 @@ final class PetController {
         bubblePanel.onClick = { [weak self] in self?.bubbleClicked() }
         games.onOpenChanged = { [weak self] open in self?.send(.gameChanged(open)) }
 
-        idleMonitor.onSample = { [weak self] seconds in self?.send(.userIdle(seconds: seconds)) }
+        idleMonitor.onSample = { [weak self] seconds in
+            self?.send(.userIdle(seconds: seconds))
+            self?.noticeActivity(idle: seconds)
+        }
         sessionMonitor.onEvent = { [weak self] event in self?.send(event) }
         fullscreenProbe.onChange = { [weak self] isFullscreen in
             self?.send(isFullscreen ? .suspended(.fullscreen) : .resumed(.fullscreen))
@@ -193,6 +213,10 @@ final class PetController {
         apply()
 
         if Self.forcedRainbow { showRainbow(true) }
+        // Launch (at login, most mornings): say hello once the weather is likely in.
+        DispatchQueue.main.asyncAfter(deadline: .now() + (Self.forcedGreeting != nil ? 3 : 20)) { [weak self] in
+            self?.greetAtLaunch()
+        }
         if let id = Self.forcedGame {
             DispatchQueue.main.asyncAfter(deadline: .now() + 2) { [weak self] in
                 guard let self else { return }
@@ -325,9 +349,10 @@ final class PetController {
                              anchorX: anchor.x, bottomY: anchor.y)
         case .nowPlaying:
             showNowPlaying()
-        case .note, .wish, .dream, .gg:
+        case .note, .wish, .dream, .gg, .greeting:
             let text: String
             switch bubble {
+            case .greeting(let greeting): text = greetingText(greeting)
             case .note(let pick): text = Strings.bottleNote(pick: pick)
             case .dream(let pick): text = dreamText(pick: pick) ?? Strings.dreams["shell"]!
             case .gg: text = Strings.Bubble.gg
@@ -517,5 +542,66 @@ final class PetController {
         }
         let anchor = bubbleAnchor()
         menuPanel.open(items, anchorX: anchor.x, bottomY: anchor.y)
+    }
+
+    // MARK: - Greetings
+
+    private func greetAtLaunch() {
+        if let forced = Self.forcedGreeting {
+            let weather = worldMonitor.context.weather
+            let pick: [String: Greeting] = ["hello": .hello, "morning": .morning(weather), "weekend": .weekend(saturday: true),
+                                            "welcome": .welcomeBack, "night": .nightOwl]
+            if let greeting = pick[forced] { send(.greeted(greeting)) }
+            return
+        }
+        let (greeting, memory) = Greetings.onReturn(at: Date(), awayFor: nil, firstLaunch: isFirstLaunch,
+                                                    weather: worldMonitor.context.weather, memory: greetingMemory, calendar: .current)
+        remember(memory)
+        if let greeting { send(.greeted(greeting)) }
+    }
+
+    /// Each idle sample: back after a while away, or up late? (No extra timers.)
+    private func noticeActivity(idle seconds: TimeInterval) {
+        let now = Date()
+        let active = now.addingTimeInterval(-seconds)
+        defer { lastActiveMoment = max(lastActiveMoment ?? active, active) }
+        guard seconds < 60, Self.forcedGreeting == nil else { return }
+        let result: (Greeting?, GreetingMemory)
+        if let last = lastActiveMoment, active.timeIntervalSince(last) >= Greetings.welcomeAway {
+            result = Greetings.onReturn(at: now, awayFor: active.timeIntervalSince(last), firstLaunch: false,
+                                        weather: worldMonitor.context.weather, memory: greetingMemory, calendar: .current)
+        } else {
+            result = Greetings.nightOwl(at: now, memory: greetingMemory, calendar: .current)
+        }
+        remember(result.1)
+        if let greeting = result.0 { send(.greeted(greeting)) }
+    }
+
+    private func remember(_ memory: GreetingMemory) {
+        guard memory != greetingMemory else { return }
+        greetingMemory = memory
+        guard !demo else { return }
+        let defaults = UserDefaults.standard
+        defaults.set(memory.morningDay, forKey: "greet.morningDay")
+        defaults.set(memory.welcomeBackDay, forKey: "greet.welcomeBackDay")
+        defaults.set(memory.welcomeBacksThatDay, forKey: "greet.welcomeBacks")
+        defaults.set(memory.nightOwlDay, forKey: "greet.nightOwlDay")
+    }
+
+    private func greetingText(_ greeting: Greeting) -> String {
+        switch greeting {
+        case .hello: return Strings.Greetings.hello
+        case .welcomeBack: return Strings.Greetings.welcomeBack
+        case .nightOwl: return Strings.Greetings.nightOwl
+        case .weekend(let saturday): return saturday ? Strings.Greetings.saturday : Strings.Greetings.sunday
+        case .morning(let weather):
+            switch weather {
+            case .clear: return Strings.Greetings.morningSunny
+            case .cloudy: return Strings.Greetings.morningCloudy
+            case .rain, .storm: return Strings.Greetings.morningRainy
+            case .snow: return Strings.Greetings.morningSnow
+            case nil: return Strings.Greetings.morning
+            }
+        }
     }
 }

@@ -70,3 +70,43 @@ final class GameTests: XCTestCase {
         XCTAssertEqual(brain.output.visual, .state(.hidden))
     }
 }
+
+final class GreetingBrainTests: XCTestCase {
+    let start = Date(timeIntervalSince1970: 1_000_000)
+    let config = BrainConfig()
+
+    func at(_ seconds: TimeInterval) -> Date { start.addingTimeInterval(seconds) }
+
+    private func hiddenBrain() -> Brain {
+        var brain = Brain(config: config, now: start, random: { $0.lowerBound })
+        while let deadline = brain.nextDeadline, deadline <= at(400) { brain.handle(.timerFired, at: deadline) }
+        return brain
+    }
+
+    func testHeComesOutToGreetYouThenHides() {
+        var brain = hiddenBrain()
+        XCTAssertEqual(brain.output.visual, .state(.hidden))
+        brain.handle(.greeted(.morning(.clear)), at: at(500))
+        XCTAssertEqual(brain.output.visual, .state(.chill))
+        XCTAssertEqual(brain.output.bubble, .greeting(.morning(.clear)))
+        brain.handle(.timerFired, at: at(500 + config.greetingDuration))
+        XCTAssertNil(brain.output.bubble)
+        XCTAssertEqual(brain.output.visual, .state(.hidden))
+    }
+
+    func testTheNightOwlBringsCocoaAndShowsOverMusic() {
+        var brain = hiddenBrain()
+        brain.handle(.musicChanged(source: "music", playing: true), at: at(450))
+        brain.handle(.greeted(.nightOwl), at: at(500))
+        XCTAssertEqual(brain.output.bubble, .greeting(.nightOwl))
+    }
+
+    func testNoGreetingsWhileQuiet() {
+        for quiet in [BrainEvent.workModeEntered, .callChanged(true), .gameChanged(true), .suspended(.fullscreen)] {
+            var brain = hiddenBrain()
+            brain.handle(quiet, at: at(450))
+            brain.handle(.greeted(.welcomeBack), at: at(500))
+            XCTAssertNil(brain.output.bubble, "\(quiet)")
+        }
+    }
+}

@@ -14,52 +14,56 @@ Some things are nicer to find yourself. Peek below if you can't wait 👇</p>
 <br><img src="Marketing/github/page/reveal-00.png" width="276" alt="he peeks out to say hi">
 </details>
 
+<details><summary>☀️ Say good morning.</summary>
+<br><img src="Marketing/github/page/reveal-01.png" width="339" alt="Morning! Sunny ☀️ he notices when you're back">
+</details>
+
 <details><summary>🤏 Rub him.</summary>
-<br><img src="Marketing/github/page/reveal-01.png" width="132" alt="">
+<br><img src="Marketing/github/page/reveal-02.png" width="132" alt="">
 </details>
 
 <details><summary>🤝 Rest your cursor on him.</summary>
-<br><img src="Marketing/github/page/reveal-02.png" width="219" alt="otters hold paws">
+<br><img src="Marketing/github/page/reveal-03.png" width="219" alt="otters hold paws">
 </details>
 
 <details><summary>👆 Click him.</summary>
-<br><img src="Marketing/github/page/reveal-03.png" width="273" alt="Music Time? 🎧 Game time 🎮 Dive time 🫧 Swim away 👋">
+<br><img src="Marketing/github/page/reveal-04.png" width="273" alt="Music Time? 🎧 Game time 🎮 Dive time 🫧 Swim away 👋">
 </details>
 
 <details><summary>🐚 Up for a little game?</summary>
-<br><img src="Marketing/github/page/reveal-04.png" width="372" alt="catch shells, dodge jellies">
+<br><img src="Marketing/github/page/reveal-05.png" width="372" alt="catch shells, dodge jellies">
 </details>
 
 <details><summary>💦 Splash, splash, splash.</summary>
-<br><img src="Marketing/github/page/reveal-05.png" width="336" alt="a little secret">
+<br><img src="Marketing/github/page/reveal-06.png" width="336" alt="a little secret">
 </details>
 
 <details><summary>🎮 Put on some music. Wait for the retro one.</summary>
-<br><img src="Marketing/github/page/reveal-06.png" width="174" alt="GG! ✨">
+<br><img src="Marketing/github/page/reveal-07.png" width="174" alt="GG! ✨">
 </details>
 
 <details><summary>🌧️ Wait for the rain to stop.</summary>
-<br><img src="Marketing/github/page/reveal-07.png" width="324" alt="">
+<br><img src="Marketing/github/page/reveal-08.png" width="324" alt="">
 </details>
 
 <details><summary>😴 Step away for a while.</summary>
-<br><img src="Marketing/github/page/reveal-08.png" width="174" alt="💭 🦀">
+<br><img src="Marketing/github/page/reveal-09.png" width="174" alt="💭 🦀">
 </details>
 
 <details><summary>🌠 Look up on a clear night.</summary>
-<br><img src="Marketing/github/page/reveal-09.png" width="372" alt="Made a wish ✨">
+<br><img src="Marketing/github/page/reveal-10.png" width="372" alt="Made a wish ✨">
 </details>
 
 <details><summary>🍾 Come back in a few days.</summary>
-<br><img src="Marketing/github/page/reveal-10.png" width="309" alt="The sea says hi 🌊">
+<br><img src="Marketing/github/page/reveal-11.png" width="309" alt="The sea says hi 🌊">
 </details>
 
 <details><summary>🌱 Come back in a few months.</summary>
-<br><img src="Marketing/github/page/reveal-11.png" width="354" alt="things grow. neighbours visit.">
+<br><img src="Marketing/github/page/reveal-12.png" width="354" alt="things grow. neighbours visit.">
 </details>
 
 <details><summary>🎄 Come back in December.</summary>
-<br><img src="Marketing/github/page/reveal-12.png" width="324" alt="">
+<br><img src="Marketing/github/page/reveal-13.png" width="324" alt="">
 </details>
 
 <p><img src="Marketing/github/page/sign-get.png" width="186" alt="get pibbo"></p>

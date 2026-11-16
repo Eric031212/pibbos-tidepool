@@ -48,8 +48,9 @@ REPO = "https://github.com/Eric031212/pibbos-tidepool"
 
 def check_glyphs(s):
     for ch in s:
-        key = ch.replace("️", "")
-        if key not in promo.UI["glyphs"]:
+        if ch == "\ufe0f":  # emoji variation selector: drawn as the plain icon
+            continue
+        if ch not in promo.UI["glyphs"]:
             raise SystemExit(f"no pixel glyph for {ch!r} in {s!r}")
 
 
@@ -215,6 +216,7 @@ def hints():
     rainbow = [(cell(M["rainbow"]["row"], k), FS * k) for k in range(3)]
     return [
         ("👀", "Hover over the corner.", big(solo(pet("peek"))), None, "he peeks out to say hi"),
+        ("☀️", "Say good morning.", big(solo(pet("chill"))), ["Morning! Sunny ☀️"], "he notices when you're back"),
         ("🤏", "Rub him.", big(solo(pet("backfloat", 2))), None, None),
         ("🤝", "Rest your cursor on him.", big(solo(pet("holdpaw", 1))), None, "otters hold paws"),
         ("👆", "Click him.", big(solo(pet("chill"))), ["Music Time? 🎧", "Game time 🎮", "Dive time 🫧", "Swim away 👋"], None),

@@ -36,6 +36,21 @@ public enum Strings {
         public static func best(_ value: Int) -> String { "Best \(value)" }
     }
 
+    /// When Pibbo notices you (v1.4).
+    public enum Greetings {
+        public static let hello = "Hi, I'm Pibbo 🦦"
+        public static let morning = "Good morning 🐚"
+        public static let morningSunny = "Morning! Sunny ☀️"
+        public static let morningCloudy = "Morning! Cozy ☁️"
+        public static let morningRainy = "Morning! Rainy 🌧️"
+        public static let morningSnow = "Morning! Snow ❄️"
+        public static let saturday = "Lazy Saturday? 🐚"
+        public static let sunday = "Lazy Sunday? 🐚"
+        public static let welcomeBack = "Welcome back 🐚"
+        public static let nightOwl = "Night owl? 🌙"
+        static let all = [hello, morning, morningSunny, morningCloudy, morningRainy, morningSnow, saturday, sunday, welcomeBack, nightOwl]
+    }
+
     /// Notes found in a message in a bottle; one is picked at random.
     public static let bottleNotes: [String] = [
         "The sea says hi 🌊",
@@ -79,7 +94,7 @@ public enum Strings {
         Menu.music, Menu.stopMusic, Menu.games, Menu.workMode, Menu.quit,
         Games.clickToPlay, Games.escToClose, Games.paused, Games.newBest, Games.timeUp, Games.timeLeft(60), Games.score(1_234_567_890), Games.best(1_234_567_890),
         Bubble.musicInvitation, Bubble.goodbye, Bubble.napTime, Bubble.brb, Bubble.snowCocoa, Bubble.wish, Bubble.gg,
-    ] + bottleNotes + dreams.values.sorted() + Games.titles.values.sorted()
+    ] + bottleNotes + dreams.values.sorted() + Games.titles.values.sorted() + Greetings.all
 
     public enum Errors {
         /// Shown in the log only (the app has no error UI).

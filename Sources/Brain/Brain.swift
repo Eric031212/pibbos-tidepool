@@ -207,6 +207,19 @@ public struct Brain {
                 setPresence(.hidden, at: now)
             }
 
+        case .greeted(let greeting):
+            guard !isQuiet, suspendReasons.isEmpty else { break }
+            isUserAway = false
+            lastInteraction = now
+            let until = now.addingTimeInterval(config.greetingDuration)
+            bubble = (.greeting(greeting), until)
+            switch presence {
+            case .hidden, .peek, .appearance:
+                setPresence(.appearance(action: greeting.action, until: until), at: now)
+            case .chill:
+                if let action = greeting.action { reaction = (action, until) }
+            }
+
         case .clicked:
             workMode = false
             isUserAway = false
