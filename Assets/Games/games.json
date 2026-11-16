@@ -99,44 +99,51 @@
    "h": 12,
    "frames": 4
   },
-  "bubblePop.bubble": {
+  "shellCatch.golden": {
    "x": 0,
    "y": 359,
    "w": 12,
    "h": 12,
    "frames": 2
   },
-  "bubblePop.small": {
+  "bubblePop.bubble": {
    "x": 0,
    "y": 371,
    "w": 12,
    "h": 12,
    "frames": 2
   },
-  "bubblePop.shell": {
+  "bubblePop.small": {
    "x": 0,
    "y": 383,
    "w": 12,
    "h": 12,
    "frames": 2
   },
-  "bubblePop.fish": {
+  "bubblePop.shell": {
    "x": 0,
    "y": 395,
    "w": 12,
    "h": 12,
    "frames": 2
   },
-  "bubblePop.rainbow": {
+  "bubblePop.fish": {
    "x": 0,
    "y": 407,
    "w": 12,
    "h": 12,
    "frames": 2
   },
-  "bubblePop.pop": {
+  "bubblePop.rainbow": {
    "x": 0,
    "y": 419,
+   "w": 12,
+   "h": 12,
+   "frames": 2
+  },
+  "bubblePop.pop": {
+   "x": 0,
+   "y": 431,
    "w": 12,
    "h": 12,
    "frames": 3

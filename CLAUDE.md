@@ -31,6 +31,7 @@ Spikes/                            research prototypes from Section 14 (never pa
 Assets/Skins/pibbo/                Pibbo's skin pack (manifest.json, sprites.png, previews)
 Assets/UI/                         pixel font, emoji icons, bubble frame (ui.png + ui.json)
 Assets/Games/                      game window frame and game art (games.png + games.json, drawn by Tools/generate_sprites.py)
+Assets/Sounds/                     tide sounds: seamless ambient loops (ALAC in CAF), made by Tools/generate_tide_sounds.py
 Assets/Music/<theme>/              built-in lofi by theme: theme.json, tracks (AAC in CAF), beat maps (Tools/import_track.py)
 Assets/MusicMasters/<Theme Name>/  WAV masters of the tracks (local only: git-ignored, never bundled)
 Assets/Data/zone.tab               tzdb time-zone coordinates (offline location fallback)
@@ -38,6 +39,7 @@ Tools/generate_sprites.py          draws all pixel art from text grids (requires
 Tools/import_track.py              WAV master → app-ready CAF + beat map with estimated bpm (numpy + afconvert)
 Tools/generate_promo.py            social-media posters (1080×1350, 11 of them since v1.0) from the real sprites and pixel font → Marketing/promo/
 Tools/generate_promo_video.py      30 s vertical promo video (1080×1920, 30 fps, BGM "Floating Pibbo") → Marketing/video/ (needs ffmpeg)
+Tools/generate_tide_sounds.py      synthesizes the tide-sound loops from shaped noise (numpy + afconvert); no recordings
 Tools/generate_placeholder_lofi.py synthesizes a placeholder lofi loop (stdlib + afconvert), for testing without tracks
 Tools/generate_github_page.py      the GitHub page: README.md + pixel signs, reveals and buttons → Marketing/github/page/ (a "field guide": hints that open to show Pibbo doing the thing). Edit this script, never README.md by hand
 Tools/package_dmg.py               universal Release build → dist/PibbosTidepool-<version>.dmg (drag-to-install; Developer ID signing + notarization when SIGN_IDENTITY / NOTARY_PROFILE are set)
@@ -63,6 +65,8 @@ open build/Build/Products/Debug/Tidepool.app --args --rainbow             # a ra
 open build/Build/Products/Debug/Tidepool.app --args --dreams              # asleep after ~30 s idle, a dream every few seconds
 open build/Build/Products/Debug/Tidepool.app --args --demo --theme "Pixel Tide" --season autumn   # radio starts with that theme; force the season
 open build/Build/Products/Debug/Tidepool.app --args --game shellCatch    # opens that game 2 s after launch
+open build/Build/Products/Debug/Tidepool.app --args --tide                # tide sounds from launch
+open build/Build/Products/Debug/Tidepool.app --args --season autumn --garden-days 91   # the pool dressed for a season
 open build/Build/Products/Debug/Tidepool.app --args --greet morning      # hello / morning / weekend / welcome / night, 3 s after launch
 ```
 
@@ -142,13 +146,18 @@ While Pibbo sleeps (user away), every 4–8 min a thought bubble shows for 5 s w
 
 ### Games with Pibbo (v1.3, approved 2026-11-04, built 2026-11-13)
 
-`Game time 🎮` in the click menu opens a pixel list of games (the menu style); one game so far, more can join by adding a `GameCatalog` entry, a title in `Strings.Games.titles` and art in the games sheet. A game opens in its own window above the pool (168×138 art pixels at the largest integer scale that fits, 4× = 672×552 pt): a pixel frame with the title and a close button, drawn from `Assets/Games/games.png` (`Tools/generate_sprites.py`, `build_games`). It is an ordinary key window, so keys, trackpad swipes and the mouse reach it only while it is in front; no global monitors, no permission. Opening activates the app; closing gives focus back to the app that was in front. Drag the frame to move it; Esc, ⌘W or × closes it.
+`Game time 🎮` in the click menu opens a pixel list of games (the menu style): Shell Catch and Bubble Pop; more can join by adding a `GameCatalog` entry, a title in `Strings.Games.titles` and art in the games sheet. A game opens in its own window above the pool (168×138 art pixels at the largest integer scale that fits, 4× = 672×552 pt): a pixel frame with the title and a close button, drawn from `Assets/Games/games.png` (`Tools/generate_sprites.py`, `build_games`). It is an ordinary key window, so keys, trackpad swipes and the mouse reach it only while it is in front; no global monitors, no permission. Opening activates the app; closing gives focus back to the app that was in front. Drag the frame to move it; Esc, ⌘W or × closes it.
 
 - **Only heavy while open:** the window, layers, art and a 60 fps frame loop (`NSView.displayLink` on macOS 14+, a timer on 13) exist only while a game is open, and the loop stops while the window is in the back (`Paused 🫧` mid-round; a click wakes it). Measured (debug build): ~3.5 % CPU while playing; after closing 0 % CPU, 0 idle wakeups, window gone, memory back to ~16–18 MB (the first open leaves ~1 MB of AppKit caches; repeated opens add nothing). Fullscreen, lock and sleep close the game.
 - **Rules in `Games` (pure Swift, tested):** `GameSession` steps a game at a fixed 60 Hz whatever the display does (≤ 5 steps per frame), merges input between steps, pauses, and keeps the one best score (`bestScore.<id>` in UserDefaults). Games describe a `GameScene` (sheet keys, positions, text keys); the platform draws it into a 160×120 bitmap with the pixel font.
-- **Shell Catch 🐚:** Pibbo floats on his back along the bottom; ← → / A D, a two-finger swipe, or the mouse (he glides to it) move him. Shells 1, starfish 2, little fish 3; a jellyfish makes him dizzy for 1.5 s (no points lost); misses just splash. 60 s rounds; things fall 1.1 s → 0.45 s apart and ~30 → 62 px/s. `Time's up! 🐚`, the score, `New best! ✨`; clicks in the first second after a round are ignored. All tuning sits at the top of `Games/ShellCatch.swift`.
+- **Bubble Pop 🫧 (v2.0):** bubbles rise from the water around Pibbo with a little wobble; click them before they float off the top. Plain 1, small 2, with a shell 3, with a fish 5; a rare rainbow bubble pops everything within 30 px. Misses float away. 60 s rounds; bubbles 0.85 s → 0.35 s apart, rising ~18 → 38 px/s. Mouse or trackpad clicks only (games get the click as `GameInput.tap`). Shares the sea and Pibbo art with Shell Catch.
+- **Shell Catch 🐚:** Pibbo floats on his back along the bottom; ← → / A D, a two-finger swipe, or the mouse (he glides to it) move him. Shells 1, starfish 2, little fish 3, a rare golden shell 10 (v2.0, a bit quicker); a jellyfish makes him dizzy for 1.5 s (no points lost); misses just splash. 60 s rounds; things fall 1.1 s → 0.45 s apart and ~30 → 62 px/s. `Time's up! 🐚`, the score, `New best! ✨`; clicks in the first second after a round are ignored. All tuning sits at the top of `Games/ShellCatch.swift`.
 - **While a game is open:** Brain's `.gameChanged`: Pibbo plays the handheld (`game`) in the pool, and there is no surfacing, bubbles, visitors, bottles or shooting stars; a call still sends him under. A click on Pibbo brings the game back to the front. After closing he stays out a little while (just played together).
 - Scores: one best per game, nothing else (no leaderboards, streaks or goals).
+
+### Seasons in the pool (v2.0, approved 2026-11-15)
+
+The flower and the meadow dress for the real season (`WorldContext.season`, hemisphere-aware): autumn turns their greens orange with fallen leaves and an acorn, winter dries them pale with frost on the rocks, spring brings buds and little blossoms, summer grass tufts and, at night, fireflies. Recoloured strips (`seasonGarden`, `seasonMeadowStrip`: autumn and winter, every growth stage) plus static overlays (`seasonDecor`, `seasonMeadow`, with `summer@night`), sublayers of the garden so they show and hide with the flower. Static frames: no idle cost. `preview-seasons.png`; `--season <name>` forces one.
 
 ### Pibbo notices you (v1.4, approved 2026-11-15)
 
@@ -158,7 +167,8 @@ Until v1.4 everything Pibbo did on his own was random; now a few moments follow 
 - **Good morning:** first time here today (away ≥ 4 h, or a launch) before noon, with the real weather: `Morning! Sunny ☀️` / `Cozy ☁️` / `Rainy 🌧️` / `Snow ❄️` (`Good morning 🐚` without weather); weekends `Lazy Saturday? 🐚` / `Lazy Sunday? 🐚`. Once a day.
 - **Welcome back:** back after ≥ 2 h away, 6:00–23:00, `Welcome back 🐚`, at most twice a day.
 - **Night owl:** active after 23:00, once a night, he brings his cocoa: `Night owl? 🌙`. Company, not a bedtime nag.
-- `--greet <hello|morning|weekend|welcome|night>` shows one 3 s after launch.
+- **Occasions (v2.0):** in the morning greeting's place, day 100 and every year since the first launch (`100 days together 🐚`, `A year together 🐚`, `2 years together 🐚`; within 7 days of the day, so a late update throws no belated party; he floats on his back with a heart), then the first day of a new season (`Spring's here 🌸` … `Winter's here ❄️`, with that season's action; the first sighting after installing or updating is only noted). The winter's first snow, when the weather turns to snow while you're at the computer: `First snow! ❄️` with cocoa (winters keyed by the year two months earlier). Never while you're away.
+- `--greet <hello|morning|weekend|welcome|night|season|snow|together|year>` shows one 3 s after launch.
 
 ### Quiet during calls (v1.0)
 
@@ -186,6 +196,7 @@ Pibbo sinks under the water. Only a few small bubbles rise occasionally. Skins p
 - v1.1 (approved 2026-11-03): winter holiday decor, rainbow after rain, dream bubbles
 - v1.2 (approved 2026-11-04): fourth theme "Pixel Tide" with a handheld-game prop, Pibbo playing that game while it plays, a hidden triple-splash flip, seasonal things drifting by
 - v1.3 (approved 2026-11-04, built 2026-11-13): games with Pibbo, a fourth menu item `Game time 🎮` opening a list of small pixel games, first game Shell Catch; heavier only while a game is open (Section 3, `docs/games-plan.md`)
+- v2.0 (approved 2026-11-15): seasons in the pool, tide sounds, Bubble Pop; surprises: new-season and first-snow hellos, together milestones, the golden shell
 - v1.4 (approved 2026-11-15): Pibbo notices you: hello, good morning with the weather, welcome back, night owl (Section 3)
 - v1.0 (approved 2026-11-02): weather in the pool (rain ripples, snowfall, snow on the rocks), quiet during calls, visitors (crab, seagull, fish, a friend otter), the seagull's gift
 - Launch at login
@@ -239,6 +250,7 @@ Play (rub, hold, splash) wakes Pibbo, restarts the hide timer, shows over `music
 A pixel menu in the bubble style (not a system menu), above Pibbo. Hover highlights a line. It closes after a pick, a second click on Pibbo, when another app activates, or ~1 s after the mouse leaves it (4 s if the mouse never comes over). No global event monitors.
 
 - `Music Time? 🎧` / `Tunes off 🐚` — play / stop built-in lofi
+- `Tide sounds 🌊` / `Hush now 🫧` — the pool's ambient sound (Section 9)
 - `Game time 🎮` — the list of games (Section 3)
 - `Dive time 🫧` — enter work mode: Pibbo stays submerged, ignores hover, never appears on his own, until the user clicks him again
 - `Swim away 👋` — quit
@@ -327,6 +339,10 @@ Goal: **the app never triggers a system permission prompt.**
 - `Tools/generate_placeholder_lofi.py` can still synthesize a 27 s placeholder loop for testing.
 - Never plays automatically; the user starts it from the menu or the invitation bubble
 - **Theme props (v0.6.0):** while a theme plays, its prop stands in the gap between the flower and Pibbo: a street lamp with flickering light (City), a steaming teacup (Solo Float), a bobbing paper boat (Raft Days). `theme.json` names it (`"prop": "streetlamp"`); the skin draws it (`props`, Section 11). It shows with the flower, changes with the theme and goes away when the radio stops. `Tools/import_track.py` keeps extra `theme.json` keys and drops Suno's " - usesuno.com" file-name suffix from titles.
+
+### Tide sounds (v2.0, approved 2026-11-15)
+
+`Tide sounds 🌊` in the menu plays the pool's own sound, following the real world: daytime waves, softer night waves (with crickets on summer nights), rain on the water when it rains or storms, a soft wind when it snows (`World.TideMix`, tested; weather unknown = waves). Five 48 s loops synthesized by `Tools/generate_tide_sounds.py` from shaped noise built in the frequency domain, with events that wrap around, so every loop is seamless (checked: the seam is within an ordinary sample step); Apple Lossless in CAF so they loop gaplessly (5.5 MB in all). `Music/TideSounds` crossfades over 3 s when the mix changes, starts with a 1.5 s fade-in and stops with a 1.6 s fade. Never starts by itself; starting it stops the radio and the radio starting stops it (one sound at a time); calls and suspension fade it to silence and back. Players exist only while heard (measured ~0.8 % CPU, ~20 MB while playing). `--tide` starts it at launch.
 
 ### Beat maps (built-in tracks only)
 Each built-in track has a JSON file describing tempo and action cues:
@@ -422,6 +438,8 @@ Example `manifest.json`:
 - Optional `props`: `{"streetlamp": {"row": …, "frames": 2, "fps": 2}}`, looping clips drawn over the garden frame (in columns 11–15, between the flower and Pibbo; holiday decor keeps the left side) while a radio theme that names the prop plays. Needs a `garden`.
 - Optional `decor`: `{"halloween": {"row": …, "frames": 4, "fps": 3}}`, a looping clip drawn over the garden frame (transparent elsewhere) while that holiday is on. Needs a `garden`. A key `"newYear@night"` replaces `"newYear"` at night (and may exist alone: then that holiday has decor only at night).
 - Optional `meadowDecor`: same as `decor`, drawn over the meadow's cell. Needs a `meadow`.
+- Optional `seasonDecor` / `seasonMeadow` (v2.0): like `decor` / `meadowDecor` but keyed by season (`spring` … `winter`, `season@night` at night), drawn under snow, decor and props.
+- Optional `seasonGarden` / `seasonMeadowStrip` (v2.0): `{"autumn": {"row": …, "stages": 6}}`, recoloured versions of the `garden` / `meadow` strips used in that season.
 - Optional `poses` + `transitions` (smooth switches): `poses` maps each clip to a body pose (`under`, `low`, `peek`, `up`, `back`); `transitions` holds in-between clips (played once, then the new clip takes over, scheduled in Core Animation with no timers) keyed `"from>to"`, each side a clip name or `@pose`. Most specific wins: `a>b`, `@poseA>b`, `a>@poseB`, `@poseA>@poseB`; no key means a straight cut. Keep each under ~0.6 s, because Brain's timings start when the clip is shown. Outfits apply to transitions too. `preview-transitions.gif` shows them all.
 - Validate on load: reject skins missing a required state; missing optional actions fall back to `chill`. Every clip (states, actions, transitions, decor, props, weather, drift, visitors, bottle, shooting star) and every strip (garden, meadow, snow cover, gift, rainbow) is checked, and `SkinPack.load` checks that every frame, including outfit copies, fits inside `sprites.png` (read from its PNG header). Outfits keep a clip's `wrap` (v1.2.1)
 - Packs live in `~/Library/Application Support/Tidepool/Packs/`
@@ -581,7 +599,7 @@ Code: `Spikes/08-call-signal/` (`run.sh [seconds]` wraps it in its own ad-hoc-si
 
 - The developer writes in Chinese; reply in Chinese. User-facing app text stays English (Section 6). README and release notes: short, casual, with emoji. The README is a pixel-styled field guide made by `Tools/generate_github_page.py` (2026-11-03): explore-by-hints, not a feature list; add a hint there when a feature ships. GitHub wraps README images in links, so clickable `<summary>` lines must stay text
 - New features are proposed first and built only after a yes (Principle 1). Present options with a recommendation; flag anything that conflicts with this file instead of changing the design silently.
-- Hand-off for testing: build, launch the app yourself, then give a short numbered checklist of what to try. `open` on an already-running app ignores `--args`, so relaunch with `pkill -x Tidepool; open … --args …`. `--demo` speeds everything up; `--holiday <name>` previews an outfit; `--time <dawn|day|dusk|night>` forces the time of day; `--bottle` brings a bottle in 3 s; `--garden-days <n>` previews the flower and meadow on day n; `--stars` makes any night clear (shooting stars); `--moon <0…1>` sets the moonlight; `--weather <rain|snow>` forces the weather; `--visitor <crab|seagull|fish|friend>` brings that visitor every few seconds; `--rainbow` shows a rainbow at launch; `--dreams` makes him fall asleep quickly and dream often; `--theme <title>` starts the radio with that theme; `--season <name>` forces the season; `--game <id>` opens a game 2 s after launch; `--greet <hello|morning|weekend|welcome|night>` shows that greeting 3 s after launch. Debug builds also take distributed notifications `io.github.eric031212.pibbostidepool.debug.game` (object `open` / `press` / `right` / `stop` / `close`) to measure an open game without clicking.
+- Hand-off for testing: build, launch the app yourself, then give a short numbered checklist of what to try. `open` on an already-running app ignores `--args`, so relaunch with `pkill -x Tidepool; open … --args …`. `--demo` speeds everything up; `--holiday <name>` previews an outfit; `--time <dawn|day|dusk|night>` forces the time of day; `--bottle` brings a bottle in 3 s; `--garden-days <n>` previews the flower and meadow on day n; `--stars` makes any night clear (shooting stars); `--moon <0…1>` sets the moonlight; `--weather <rain|snow>` forces the weather; `--visitor <crab|seagull|fish|friend>` brings that visitor every few seconds; `--rainbow` shows a rainbow at launch; `--dreams` makes him fall asleep quickly and dream often; `--theme <title>` starts the radio with that theme; `--season <name>` forces the season; `--game <id>` opens a game 2 s after launch; `--greet <hello|morning|weekend|welcome|night|season|snow|together|year>` shows that greeting 3 s after launch; `--tide` starts the tide sounds at launch. Debug builds also take distributed notifications `io.github.eric031212.pibbostidepool.debug.game` (object `open` / `press` / `right` / `stop` / `close`) to measure an open game without clicking.
 - The repo is **public**: never put personal data (city or location, machine host name, email) in files, test fixtures, or commit messages. Commits use the repo-local identity already set in `.git/config`; don't change it.
 - Music: new tracks arrive as WAVs in `Assets/MusicMasters/<Theme Name>/` → `python3 Tools/import_track.py`. It re-encodes every theme and the old CAFs come out byte-different (same audio): `git checkout -- Assets/Music/<old-theme>` afterwards so only the new theme is committed. Art: edit `Tools/generate_sprites.py` and rerun; rerun `Tools/generate_promo.py` / `Tools/generate_promo_video.py` when the promo material should follow.
 
@@ -599,7 +617,7 @@ Code: `Spikes/08-call-signal/` (`run.sh [seconds]` wraps it in its own ad-hoc-si
 2. `swift test` (all pass) → `xcodegen generate` → Release build → check `CFBundleShortVersionString` in the built Info.plist.
 3. Launch the Release build; after Pibbo hides, `top -c d -pid <pid>` should show ~0 % CPU and ~0 idle wakeups.
 4. Commit with a summary message → push `main` → annotated tag `vX.Y.Z` → push the tag → `python3 Tools/package_dmg.py` → `gh release create vX.Y.Z dist/PibbosTidepool-X.Y.Z.dmg` with casual emoji notes (point to the README's Open Anyway steps until a notarized build exists; credit Suno / MET Norway).
-5. Releases so far: v0.1.0 app shell · v0.2.0 actions, flower, pixel UI · v0.3.0 themed radio, ticker, drag · v0.3.1 mouse play · v0.3.2 holiday outfits · v0.3.3 smooth transitions · v0.4.0 second theme "Solo Float", nodding to the beat · v0.4.1 Halloween decor · v0.5.0 water light by time of day · v0.6.0 third theme "Pibbo in the City", theme props · v0.7.0 the meadow, messages in a bottle · v0.8.0 shooting stars, moonlight, wake fix for time of day · v1.0.0 "Pibbo's Tidepool": visitors, the seagull's gift, weather in the pool, quiet during calls, final bundle ID · v1.1.0 winter holiday decor, rainbow after rain, dream bubbles · v1.2.0 fourth theme "Pixel Tide", playing the handheld, the secret flip, seasonal drifting · v1.2.1 sturdiness: effects obey state, radio never stuck, full skin validation, weather Expires and time zones, CI · v1.3.0 games with Pibbo: `Game time 🎮`, Shell Catch · v1.4.0 Pibbo notices you: hello, good morning, welcome back, night owl.
+5. Releases so far: v0.1.0 app shell · v0.2.0 actions, flower, pixel UI · v0.3.0 themed radio, ticker, drag · v0.3.1 mouse play · v0.3.2 holiday outfits · v0.3.3 smooth transitions · v0.4.0 second theme "Solo Float", nodding to the beat · v0.4.1 Halloween decor · v0.5.0 water light by time of day · v0.6.0 third theme "Pibbo in the City", theme props · v0.7.0 the meadow, messages in a bottle · v0.8.0 shooting stars, moonlight, wake fix for time of day · v1.0.0 "Pibbo's Tidepool": visitors, the seagull's gift, weather in the pool, quiet during calls, final bundle ID · v1.1.0 winter holiday decor, rainbow after rain, dream bubbles · v1.2.0 fourth theme "Pixel Tide", playing the handheld, the secret flip, seasonal drifting · v1.2.1 sturdiness: effects obey state, radio never stuck, full skin validation, weather Expires and time zones, CI · v1.3.0 games with Pibbo: `Game time 🎮`, Shell Catch · v1.4.0 Pibbo notices you: hello, good morning, welcome back, night owl · v2.0.0 seasons and sounds: the pool dresses for the season, tide sounds, Bubble Pop, new-season / first-snow / together hellos, the golden shell.
 
 ## 16. Open items
 

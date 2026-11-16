@@ -101,6 +101,13 @@ final class GreetingBrainTests: XCTestCase {
         XCTAssertEqual(brain.output.bubble, .greeting(.nightOwl))
     }
 
+    func testNoGreetingWhileYoureAway() {
+        var brain = hiddenBrain()
+        brain.handle(.userIdle(seconds: 3600), at: at(450))
+        brain.handle(.greeted(.firstSnow), at: at(500))
+        XCTAssertNil(brain.output.bubble)
+    }
+
     func testNoGreetingsWhileQuiet() {
         for quiet in [BrainEvent.workModeEntered, .callChanged(true), .gameChanged(true), .suspended(.fullscreen)] {
             var brain = hiddenBrain()

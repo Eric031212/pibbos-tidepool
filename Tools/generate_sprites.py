@@ -1473,6 +1473,10 @@ ICONS = {
           "oXXXXXXXo", ".ooooooo.", ".........", "........."],
     "🌧": ["...ooo...", "..oXXXo..", ".ooXXXXo.", "oXXXXXXXo", ".ooooooo.",
            ".w..w..w.", "w..w..w..", ".w..w..w.", "........."],
+    "🍂": [".........", "......LL.", "....LLLL.", "...LLjLL.", "..LLjLL..", ".LLjLL...",
+           ".LjLL....", "Dj.......", "........."],
+    "🌸": [".........", "...ff....", ".ff.ff...", "fFffFff..", ".ffmff...", "fFffFff..",
+           ".ff.ff...", "...ff....", "........."],
     "🌙": ["...mmm...", "..mmm....", ".mmm.....", ".mmm.....", ".mmm.....",
            ".mmm.....", "..mmm....", "...mmmm..", "........."],
     "🎮": [".........", ".........", ".ooooooo.", "oHHHHHHHo", "oHuHHHmHo", "ouuuHmHMo",
@@ -2242,6 +2246,12 @@ BUBBLE_POP = [
 
 
 def catch_frames(name):
+    if name == "golden":  # the shell in gold, with a glint that winks
+        base = CATCH_ART["shell"][0]
+        gold = [row.replace("s", "y").replace("S", "Y") for row in base]
+        wink = [row for row in gold]
+        wink[2] = wink[2][:5] + "X" + wink[2][6:]
+        return [to_image(f, CATCH_PALETTE) for f in (gold, wink)]
     frames = CATCH_ART[name]
     if len(frames) == 1:  # a gentle wobble: the second frame shifted a pixel
         base = frames[0]
@@ -2261,7 +2271,7 @@ def build_games():
     y_close = CHROME_H
     y_bg = y_close + close.height
     y_pibbo = y_bg + GAME_H
-    catch = {name: catch_frames(name) for name in CATCH_ART}
+    catch = {name: catch_frames(name) for name in list(CATCH_ART) + ["golden"]}
     pop_art = {kind: [to_image(f, CATCH_PALETTE) for f in bubble_frames(kind)]
                for kind in ("bubble", "small", "shell", "fish", "rainbow")}
     pop_art["pop"] = [to_image(f, CATCH_PALETTE) for f in BUBBLE_POP]

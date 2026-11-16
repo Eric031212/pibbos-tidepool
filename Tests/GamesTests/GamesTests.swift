@@ -246,7 +246,7 @@ final class ShellCatchRoundTests: XCTestCase {
 
     func testAJellyfishMakesHimDizzyButCostsNothing() {
         // A jellyfish in the middle (roll near the top of the weights), then a shell far left, in turn.
-        var game = started(Script([0.99, 0.5, 0.5, 0.5, 0, 0, 0.5, 0.5]))
+        var game = started(Script([0.9, 0.5, 0.5, 0.5, 0, 0, 0.5, 0.5]))
         run(&game, seconds: 0.7)
         XCTAssertEqual(game.items.first?.kind, .jelly)
         var sawDizzy = false
@@ -272,6 +272,8 @@ final class ShellCatchRoundTests: XCTestCase {
         XCTAssertEqual(ShellCatch.Kind.starfish.points, 2)
         XCTAssertEqual(ShellCatch.Kind.fish.points, 3)
         XCTAssertEqual(ShellCatch.Kind.jelly.points, 0)
+        XCTAssertEqual(ShellCatch.Kind.golden.points, 10)
+        XCTAssertLessThan(ShellCatch.Kind.golden.weight, ShellCatch.Kind.fish.weight / 3, "golden shells stay rare")
     }
 
     func testARoundLastsAMinuteAndGetsFaster() {

@@ -9,10 +9,11 @@ public struct ShellCatch: Game {
     public static let id = "shellCatch"
 
     public enum Kind: String, CaseIterable, Sendable {
-        case shell, starfish, fish, jelly
+        case shell, starfish, fish, jelly, golden
 
         var points: Int {
             switch self {
+            case .golden: return 10
             case .shell: return 1
             case .starfish: return 2
             case .fish: return 3
@@ -27,11 +28,18 @@ public struct ShellCatch: Game {
             case .starfish: return 3
             case .fish: return 1.2
             case .jelly: return 1.8
+            case .golden: return 0.25  // rare: a nice surprise
             }
         }
 
         /// Jellyfish drift down more slowly.
-        var speedFactor: Double { self == .jelly ? 0.7 : 1 }
+        var speedFactor: Double {
+            switch self {
+            case .jelly: return 0.7
+            case .golden: return 1.2  // and a little quicker
+            default: return 1
+            }
+        }
     }
 
     public struct Item: Equatable, Sendable {

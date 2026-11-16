@@ -51,7 +51,16 @@ public enum Strings {
         public static let sunday = "Lazy Sunday? 🐚"
         public static let welcomeBack = "Welcome back 🐚"
         public static let nightOwl = "Night owl? 🌙"
-        static let all = [hello, morning, morningSunny, morningCloudy, morningRainy, morningSnow, saturday, sunday, welcomeBack, nightOwl]
+        public static let spring = "Spring's here 🌸"
+        public static let summer = "Summer's here ☀️"
+        public static let autumn = "Autumn's here 🍂"
+        public static let winter = "Winter's here ❄️"
+        public static let firstSnow = "First snow! ❄️"
+        public static let hundredDays = "100 days together 🐚"
+        public static let oneYear = "A year together 🐚"
+        public static func years(_ n: Int) -> String { "\(n) years together 🐚" }
+        static let all = [hello, morning, morningSunny, morningCloudy, morningRainy, morningSnow, saturday, sunday, welcomeBack, nightOwl,
+                          spring, summer, autumn, winter, firstSnow, hundredDays, oneYear, years(1_234_567_890)]
     }
 
     /// Notes found in a message in a bottle; one is picked at random.

@@ -211,6 +211,17 @@ def shell_catch():
     return img
 
 
+def autumn():
+    """The pool in autumn: orange plants, fallen leaves, an acorn."""
+    img = Image.new("RGBA", (FS * 3, FS), (0, 0, 0, 0))
+    img.alpha_composite(cell(M["seasonMeadowStrip"]["autumn"]["row"], 6), (0, 0))
+    img.alpha_composite(cell(M["seasonMeadow"]["autumn"]["row"]), (0, 0))
+    img.alpha_composite(cell(M["seasonGarden"]["autumn"]["row"], 5), (FS, 0))
+    img.alpha_composite(cell(M["seasonDecor"]["autumn"]["row"]), (FS, 0))
+    img.alpha_composite(pet("leaf"), (FS * 2, 0))
+    return img
+
+
 def hints():
     """(emoji, hint, picture, speech bubble, short note): a few words each."""
     rainbow = [(cell(M["rainbow"]["row"], k), FS * k) for k in range(3)]
@@ -220,7 +231,8 @@ def hints():
         ("🤏", "Rub him.", big(solo(pet("backfloat", 2))), None, None),
         ("🤝", "Rest your cursor on him.", big(solo(pet("holdpaw", 1))), None, "otters hold paws"),
         ("👆", "Click him.", big(solo(pet("chill"))), ["Music Time? 🎧", "Game time 🎮", "Dive time 🫧", "Swim away 👋"], None),
-        ("🐚", "Up for a little game?", big(shell_catch()), None, "catch shells, dodge jellies"),
+        ("🌊", "Ask for the tide.", big(scene(pet("chill"))), ["Tide sounds 🌊"], "the sound of his pool, right now"),
+        ("🐚", "Up for a little game?", big(shell_catch()), None, "catch shells, pop bubbles"),
         ("💦", "Splash, splash, splash.", big(row([solo(pet("flip", k)) for k in (1, 2, 3)], gap=1)), None, "a little secret"),
         ("🎮", "Put on some music. Wait for the retro one.", big(solo(pet("game", 0))), ["GG! ✨"], None),
         ("🌧️", "Wait for the rain to stop.", big(scene(pet("admire", 2), extras=rainbow)), None, None),
@@ -229,6 +241,7 @@ def hints():
         ("🍾", "Come back in a few days.", big(solo(pet("note", 0))), ["The sea says hi 🌊"], None),
         ("🌱", "Come back in a few months.",
          big(scene(pet("look"), extras=[(promo.visit_frame("crab", 9), 4)])), None, "things grow. neighbours visit."),
+        ("🍂", "Watch the seasons turn.", big(autumn()), None, None),
         ("🎄", "Come back in December.", big(holiday("christmas")), None, None),
     ]
 

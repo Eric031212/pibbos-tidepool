@@ -208,8 +208,7 @@ public struct Brain {
             }
 
         case .greeted(let greeting):
-            guard !isQuiet, suspendReasons.isEmpty else { break }
-            isUserAway = false
+            guard !isQuiet, suspendReasons.isEmpty, !isUserAway else { break }
             lastInteraction = now
             let until = now.addingTimeInterval(config.greetingDuration)
             bubble = (.greeting(greeting), until)

@@ -165,7 +165,10 @@ final class PetController {
         greetingMemory = GreetingMemory(morningDay: defaults.string(forKey: "greet.morningDay"),
                                         welcomeBackDay: defaults.string(forKey: "greet.welcomeBackDay"),
                                         welcomeBacksThatDay: defaults.integer(forKey: "greet.welcomeBacks"),
-                                        nightOwlDay: defaults.string(forKey: "greet.nightOwlDay"))
+                                        nightOwlDay: defaults.string(forKey: "greet.nightOwlDay"),
+                                        season: defaults.string(forKey: "greet.season"),
+                                        milestone: defaults.integer(forKey: "greet.milestone"),
+                                        firstSnowWinter: defaults.string(forKey: "greet.firstSnow"))
     }
 
     func start() {
@@ -280,6 +283,12 @@ final class PetController {
             showRainbow(false)
         } else if wet.contains(lastWeather), context.weather != nil, context.timeOfDay != .night {
             showRainbow(true)
+        }
+        let userIsHere = CGEventSource.secondsSinceLastEventType(.combinedSessionState, eventType: CGEventType(rawValue: ~0)!) < 300
+        if context.weather == .snow, lastWeather != nil, lastWeather != .snow, !brain.output.isSuspended, userIsHere {
+            let (greeting, memory) = Greetings.snowStarted(at: Date(), memory: greetingMemory, calendar: .current)
+            remember(memory)
+            if let greeting { send(.greeted(greeting)) }
         }
         lastWeather = context.weather
         // Snow stays on the rocks for a while after it stops falling.
@@ -574,12 +583,15 @@ final class PetController {
         if let forced = Self.forcedGreeting {
             let weather = worldMonitor.context.weather
             let pick: [String: Greeting] = ["hello": .hello, "morning": .morning(weather), "weekend": .weekend(saturday: true),
-                                            "welcome": .welcomeBack, "night": .nightOwl]
+                                            "welcome": .welcomeBack, "night": .nightOwl,
+                                            "season": .newSeason(worldMonitor.context.season), "snow": .firstSnow,
+                                            "together": .together(days: 100), "year": .together(days: 365)]
             if let greeting = pick[forced] { send(.greeted(greeting)) }
             return
         }
         let (greeting, memory) = Greetings.onReturn(at: Date(), awayFor: nil, firstLaunch: isFirstLaunch,
-                                                    weather: worldMonitor.context.weather, memory: greetingMemory, calendar: .current)
+                                                    weather: worldMonitor.context.weather, memory: greetingMemory, calendar: .current,
+                                                    daysTogether: daysTogether(), season: worldMonitor.context.season)
         remember(memory)
         if let greeting { send(.greeted(greeting)) }
     }
@@ -593,12 +605,19 @@ final class PetController {
         let result: (Greeting?, GreetingMemory)
         if let last = lastActiveMoment, active.timeIntervalSince(last) >= Greetings.welcomeAway {
             result = Greetings.onReturn(at: now, awayFor: active.timeIntervalSince(last), firstLaunch: false,
-                                        weather: worldMonitor.context.weather, memory: greetingMemory, calendar: .current)
+                                        weather: worldMonitor.context.weather, memory: greetingMemory, calendar: .current,
+                                        daysTogether: daysTogether(), season: worldMonitor.context.season)
         } else {
             result = Greetings.nightOwl(at: now, memory: greetingMemory, calendar: .current)
         }
         remember(result.1)
         if let greeting = result.0 { send(.greeted(greeting)) }
+    }
+
+    /// Whole days since the first launch (real days, also in `--demo`).
+    private func daysTogether() -> Int {
+        let first = UserDefaults.standard.object(forKey: Self.firstLaunchKey) as? Date ?? Date()
+        return max(0, Int(Date().timeIntervalSince(first) / 86_400))
     }
 
     private func remember(_ memory: GreetingMemory) {
@@ -610,6 +629,9 @@ final class PetController {
         defaults.set(memory.welcomeBackDay, forKey: "greet.welcomeBackDay")
         defaults.set(memory.welcomeBacksThatDay, forKey: "greet.welcomeBacks")
         defaults.set(memory.nightOwlDay, forKey: "greet.nightOwlDay")
+        defaults.set(memory.season, forKey: "greet.season")
+        defaults.set(memory.milestone, forKey: "greet.milestone")
+        defaults.set(memory.firstSnowWinter, forKey: "greet.firstSnow")
     }
 
     private func greetingText(_ greeting: Greeting) -> String {
@@ -617,6 +639,18 @@ final class PetController {
         case .hello: return Strings.Greetings.hello
         case .welcomeBack: return Strings.Greetings.welcomeBack
         case .nightOwl: return Strings.Greetings.nightOwl
+        case .firstSnow: return Strings.Greetings.firstSnow
+        case .together(let days):
+            if days < 365 { return Strings.Greetings.hundredDays }
+            let years = days / 365
+            return years == 1 ? Strings.Greetings.oneYear : Strings.Greetings.years(years)
+        case .newSeason(let season):
+            switch season {
+            case .spring: return Strings.Greetings.spring
+            case .summer: return Strings.Greetings.summer
+            case .autumn: return Strings.Greetings.autumn
+            case .winter: return Strings.Greetings.winter
+            }
         case .weekend(let saturday): return saturday ? Strings.Greetings.saturday : Strings.Greetings.sunday
         case .morning(let weather):
             switch weather {
