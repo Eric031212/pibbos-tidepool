@@ -12,6 +12,7 @@ public enum GameCatalog {
 
     public static let all: [Entry] = [
         Entry(id: ShellCatch.id) { ShellCatch(random: $0) },
+        Entry(id: BubblePop.id) { BubblePop(random: $0) },
     ]
 
     public static func entry(id: String) -> Entry? {

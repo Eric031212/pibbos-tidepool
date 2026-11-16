@@ -2176,6 +2176,71 @@ CATCH_ART = {
 }
 
 
+# Bubble Pop: bubbles 12x12 (a light rim, a glint that shimmers between two
+# frames), some carrying a shell or a fish, a rainbow one, and the pop.
+BUBBLE_RIM = [
+    "....wwww....",
+    "..ww....ww..",
+    ".w........w.",
+    ".w.........w",
+    "w..........w",
+    "w..........w",
+    "w..........w",
+    "w..........w",
+    ".w........w.",
+    ".w........w.",
+    "..ww....ww..",
+    "....wwww....",
+]
+
+
+def bubble_frames(kind):
+    frames = []
+    for i in range(2):
+        g = [list(row) for row in BUBBLE_RIM]
+        if kind == "small":  # a smaller bubble in the same cell
+            g = [list("............") for _ in range(12)]
+            small = ["..wwww..", ".w....w.", "w......w", "w......w", "w.....uw", "w....u.w", ".w....w.", "..wwww.."]
+            for r, row in enumerate(small):
+                for c, ch in enumerate(row):
+                    if ch != ".":
+                        g[r + 2][c + 2] = ch
+            g[4][4 + i] = "X"
+        else:
+            glint = [(2, 3), (3, 2)] if i == 0 else [(2, 4), (3, 3)]
+            for r, c in glint:
+                g[r][c] = "X"
+            for r, c in [(8, 9), (9, 8), (7, 10)]:  # a soft reflection low on the far side
+                g[r][c] = "u"
+        if kind == "shell":
+            for r, row in enumerate(["..o..", ".oso.", "osSso", "ooooo"]):
+                for c, ch in enumerate(row):
+                    if ch != ".":
+                        g[r + 5][c + 4] = ch
+        elif kind == "fish":
+            for r, row in enumerate([".NNN.N", "NeNNNN", ".NNN.N"]):
+                for c, ch in enumerate(row):
+                    if ch != ".":
+                        g[r + 5][c + 3] = ch
+        elif kind == "rainbow":
+            colors = ["M", "Y", "m", "k", "h", "F"]
+            ring = [(r, c) for r, row in enumerate(BUBBLE_RIM) for c, ch in enumerate(row) if ch == "w"]
+            for k, (r, c) in enumerate(sorted(ring, key=lambda p: (p[1], p[0]))):
+                g[r][c] = colors[(k // 3 + i) % len(colors)]
+        frames.append(["".join(row) for row in g])
+    return frames
+
+
+BUBBLE_POP = [
+    ["............", "....w..w....", "..w......w..", "............", ".w........w.", "............",
+     "............", ".w........w.", "............", "..w......w..", "....w..w....", "............"],
+    ["...w....w...", "............", "w..........w", "............", "............", "............",
+     "............", "............", "............", "w..........w", "............", "...w....w..."],
+    ["............", "............", "............", "............", ".....X......", "............",
+     "...X....X...", "............", "......X.....", "............", "............", "............"],
+]
+
+
 def catch_frames(name):
     frames = CATCH_ART[name]
     if len(frames) == 1:  # a gentle wobble: the second frame shifted a pixel
@@ -2197,14 +2262,22 @@ def build_games():
     y_bg = y_close + close.height
     y_pibbo = y_bg + GAME_H
     catch = {name: catch_frames(name) for name in CATCH_ART}
+    pop_art = {kind: [to_image(f, CATCH_PALETTE) for f in bubble_frames(kind)]
+               for kind in ("bubble", "small", "shell", "fish", "rainbow")}
+    pop_art["pop"] = [to_image(f, CATCH_PALETTE) for f in BUBBLE_POP]
     # one 12-px row per item, frames left to right
     y_catch = y_pibbo + 8
-    sheet = Image.new("RGBA", (width, y_catch + 12 * len(catch)), (0, 0, 0, 0))
+    y_pop = y_catch + 12 * len(catch)
+    sheet = Image.new("RGBA", (width, y_pop + 12 * len(pop_art)), (0, 0, 0, 0))
     catch_meta = {}
     for row, (name, frames) in enumerate(catch.items()):
         for i, frame in enumerate(frames):
             sheet.alpha_composite(frame, (i * 12, y_catch + row * 12))
         catch_meta[f"shellCatch.{name}"] = {"x": 0, "y": y_catch + row * 12, "w": 12, "h": 12, "frames": len(frames)}
+    for row, (name, frames) in enumerate(pop_art.items()):
+        for i, frame in enumerate(frames):
+            sheet.alpha_composite(frame, (i * 12, y_pop + row * 12))
+        catch_meta[f"bubblePop.{name}"] = {"x": 0, "y": y_pop + row * 12, "w": 12, "h": 12, "frames": len(frames)}
     sheet.alpha_composite(chrome, (0, 0))
     sheet.alpha_composite(close, (0, y_close))
     sheet.alpha_composite(background, (0, y_bg))
@@ -2223,6 +2296,9 @@ def build_games():
         "items": {
             "shellCatch.background": {"x": 0, "y": y_bg, "w": GAME_W, "h": GAME_H, "frames": 1},
             "shellCatch.pibbo": {"x": 0, "y": y_pibbo, "w": SIZE, "h": 8, "frames": 4},
+            # Bubble Pop shares the sea and Pibbo with Shell Catch
+            "bubblePop.background": {"x": 0, "y": y_bg, "w": GAME_W, "h": GAME_H, "frames": 1},
+            "bubblePop.pibbo": {"x": 0, "y": y_pibbo, "w": SIZE, "h": 8, "frames": 4},
             **catch_meta,
         },
     }
@@ -2237,6 +2313,14 @@ def build_games():
         preview.alpha_composite(catch[name][0], (PLAYFIELD_X + 30 + k * 30, PLAYFIELD_Y + 30 + (k % 2) * 18))
     preview.alpha_composite(catch["dizzy"][0], (PLAYFIELD_X + (GAME_W - SIZE) // 2 + 4, PLAYFIELD_Y + 87))
     preview.resize((CHROME_W * 4, CHROME_H * 4), Image.NEAREST).save(GAMES_DIR / "preview-games.png")
+
+    bubbles = chrome.copy()
+    bubbles.alpha_composite(background, (PLAYFIELD_X, PLAYFIELD_Y))
+    bubbles.alpha_composite(pibbo[0], (PLAYFIELD_X + (GAME_W - SIZE) // 2, PLAYFIELD_Y + 96))
+    for k, (name, x, y) in enumerate([("bubble", 30, 70), ("small", 52, 40), ("shell", 80, 58), ("fish", 110, 30),
+                                      ("rainbow", 128, 74), ("bubble", 64, 84), ("pop", 96, 86)]):
+        bubbles.alpha_composite(pop_art[name][0 if name != "pop" else 1], (PLAYFIELD_X + x, PLAYFIELD_Y + y))
+    bubbles.resize((CHROME_W * 4, CHROME_H * 4), Image.NEAREST).save(GAMES_DIR / "preview-bubblepop.png")
 
 
 def main():

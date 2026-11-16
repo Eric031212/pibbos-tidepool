@@ -125,6 +125,7 @@ final class GameView: NSView {
         if closeRect.contains(p) {
             onClose?()
         } else if playfield.contains(p) {
+            pending.tap = GamePoint(x: Double(p.x - playfield.minX), y: Double(p.y - playfield.minY))
             press()
         } else {
             window?.performDrag(with: event)  // the frame moves the window

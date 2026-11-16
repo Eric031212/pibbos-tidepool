@@ -36,6 +36,20 @@
    "h": 8,
    "frames": 4
   },
+  "bubblePop.background": {
+   "x": 0,
+   "y": 147,
+   "w": 160,
+   "h": 120,
+   "frames": 1
+  },
+  "bubblePop.pibbo": {
+   "x": 0,
+   "y": 267,
+   "w": 16,
+   "h": 8,
+   "frames": 4
+  },
   "shellCatch.shell": {
    "x": 0,
    "y": 275,
@@ -84,6 +98,48 @@
    "w": 12,
    "h": 12,
    "frames": 4
+  },
+  "bubblePop.bubble": {
+   "x": 0,
+   "y": 359,
+   "w": 12,
+   "h": 12,
+   "frames": 2
+  },
+  "bubblePop.small": {
+   "x": 0,
+   "y": 371,
+   "w": 12,
+   "h": 12,
+   "frames": 2
+  },
+  "bubblePop.shell": {
+   "x": 0,
+   "y": 383,
+   "w": 12,
+   "h": 12,
+   "frames": 2
+  },
+  "bubblePop.fish": {
+   "x": 0,
+   "y": 395,
+   "w": 12,
+   "h": 12,
+   "frames": 2
+  },
+  "bubblePop.rainbow": {
+   "x": 0,
+   "y": 407,
+   "w": 12,
+   "h": 12,
+   "frames": 2
+  },
+  "bubblePop.pop": {
+   "x": 0,
+   "y": 419,
+   "w": 12,
+   "h": 12,
+   "frames": 3
   }
  }
 }

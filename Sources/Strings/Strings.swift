@@ -27,6 +27,7 @@ public enum Strings {
     public enum Games {
         public static let titles: [String: String] = [
             "shellCatch": "Shell Catch 🐚",
+            "bubblePop": "Bubble Pop 🫧",
         ]
         public static let clickToPlay = "Click to play 🎮"
         public static let escToClose = "Esc to close 👋"

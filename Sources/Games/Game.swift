@@ -12,6 +12,16 @@ public enum Playfield {
     public static let height = 120
 }
 
+/// A point on the playfield, in art pixels (top-left origin).
+public struct GamePoint: Equatable, Sendable {
+    public var x: Double
+    public var y: Double
+    public init(x: Double, y: Double) {
+        self.x = x
+        self.y = y
+    }
+}
+
 /// What the player did, gathered by the platform from its own game window only.
 public struct GameInput: Equatable, Sendable {
     /// Arrow keys (or A / D) held down right now.
@@ -25,6 +35,8 @@ public struct GameInput: Equatable, Sendable {
     public var swipe: Double = 0
     /// A click on the playfield, space or return since the last step.
     public var pressed = false
+    /// Where a click on the playfield landed since the last step (the latest).
+    public var tap: GamePoint?
 
     public init() {}
 
@@ -34,6 +46,7 @@ public struct GameInput: Equatable, Sendable {
         pointerX = nil
         swipe = 0
         pressed = false
+        tap = nil
     }
 }
 

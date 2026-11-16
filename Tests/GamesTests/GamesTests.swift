@@ -365,9 +365,109 @@ final class CatalogAndSheetTests: XCTestCase {
                 }
                 fits(item, "\(entry.id).\(name)")
             }
+            let extras: [String: [String]] = [ShellCatch.id: ShellCatch.Kind.allCases.map(\.rawValue) + ["sparkle", "splash", "dizzy"],
+                                              BubblePop.id: BubblePop.Kind.allCases.map(\.rawValue) + ["pop"]]
+            for name in extras[entry.id] ?? [] {
+                XCTAssertNotNil(sheet.item(game: entry.id, name: name), "\(entry.id).\(name) missing from games.json")
+            }
             let background = scene.background.flatMap { sheet.item(game: entry.id, name: $0) }
             XCTAssertEqual(background?.w, Playfield.width)
             XCTAssertEqual(background?.h, Playfield.height)
         }
+    }
+}
+
+final class BubblePopTests: XCTestCase {
+    private let dt = GameSession.stepLength
+
+    private final class Script {
+        let values: [Double]
+        var index = 0
+        init(_ values: [Double]) { self.values = values }
+        func next(_ range: ClosedRange<Double>) -> Double {
+            let value = values[index % values.count]
+            index += 1
+            return range.lowerBound + (range.upperBound - range.lowerBound) * value
+        }
+    }
+
+    /// Each spawn draws: kind roll, x, speed jitter, wobble phase, then the interval jitter.
+    private func started(_ values: [Double]) -> BubblePop {
+        var game = BubblePop(random: Script(values).next)
+        var press = GameInput()
+        press.pressed = true
+        game.step(press, dt: dt)
+        return game
+    }
+
+    private func run(_ game: inout BubblePop, seconds: Double) {
+        for _ in 0..<Int((seconds / dt).rounded()) { game.step(GameInput(), dt: dt) }
+    }
+
+    private func tap(_ game: inout BubblePop, x: Double, y: Double) {
+        var input = GameInput()
+        input.tap = GamePoint(x: x, y: y)
+        input.pressed = true
+        game.step(input, dt: dt)
+    }
+
+    func testBubblesRiseAndAClickPopsThem() {
+        var game = started([0, 0.5, 0.5, 0, 0.5])  // a plain bubble in the middle
+        run(&game, seconds: 0.4)
+        XCTAssertEqual(game.bubbles.count, 1)
+        let bubble = game.bubbles[0]
+        XCTAssertLessThan(bubble.y, BubblePop.startY, "it rises")
+        tap(&game, x: bubble.x, y: bubble.y)
+        XCTAssertEqual(game.score, 1)
+        XCTAssertTrue(game.bubbles.isEmpty)
+        XCTAssertTrue(game.scene.sprites.contains { $0.name == "pop" })
+    }
+
+    func testAMissDoesNothing() {
+        var game = started([0, 0.5, 0.5, 0, 0.5])
+        run(&game, seconds: 0.4)
+        let bubble = game.bubbles[0]
+        tap(&game, x: bubble.x + 20, y: bubble.y)
+        XCTAssertEqual(game.score, 0)
+        XCTAssertEqual(game.bubbles.count, 1)
+    }
+
+    func testBubblesThatFloatAwayCostNothing() {
+        var game = started([0, 0.5, 0.5, 0, 0.5])
+        run(&game, seconds: 10)
+        XCTAssertEqual(game.score, 0)
+        XCTAssertTrue(game.bubbles.allSatisfy { $0.y >= -Double(BubblePop.size) })
+    }
+
+    func testPointsByKind() {
+        XCTAssertEqual(BubblePop.Kind.bubble.points, 1)
+        XCTAssertEqual(BubblePop.Kind.small.points, 2)
+        XCTAssertEqual(BubblePop.Kind.shell.points, 3)
+        XCTAssertEqual(BubblePop.Kind.fish.points, 5)
+    }
+
+    func testARainbowBubblePopsItsNeighbours() {
+        // plain bubbles in the middle, then a rainbow bubble (roll at the very top) in the middle too
+        var game = started([0, 0.5, 0.5, 0, 0, 0, 0.5, 0.5, 0, 0, 0.999, 0.5, 0.5, 0, 0])
+        run(&game, seconds: 1.75)
+        let rainbow = game.bubbles.first { $0.kind == .rainbow }
+        XCTAssertGreaterThanOrEqual(game.bubbles.count, 3)
+        guard let rainbow else { return XCTFail("no rainbow bubble") }
+        let count = game.bubbles.count
+        tap(&game, x: rainbow.x, y: rainbow.y)
+        XCTAssertEqual(game.score, count, "every bubble nearby popped with it")
+        XCTAssertTrue(game.bubbles.isEmpty)
+    }
+
+    func testARoundLastsAMinuteAndGetsBusier() {
+        var game = started([0, 0.5, 0.5, 0, 0.5])
+        run(&game, seconds: 1)
+        let early = game.bubbles.last?.speed ?? 0
+        run(&game, seconds: 57)
+        let late = game.bubbles.last?.speed ?? 0
+        XCTAssertGreaterThan(late, early * 1.6)
+        run(&game, seconds: 2.1)
+        XCTAssertEqual(game.phase, .over)
+        XCTAssertTrue(game.scene.texts.contains { $0.key == .timeUp })
     }
 }
