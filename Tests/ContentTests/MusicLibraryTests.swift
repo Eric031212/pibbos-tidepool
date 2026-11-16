@@ -110,7 +110,7 @@ final class ThemePropTests: XCTestCase {
         let clip = Clip(row: 0, frames: 2, fps: 2)
         let bare = SkinManifest(id: "t", name: "t", author: "t", version: "1", type: "skin", frameSize: 16,
                                 states: Dictionary(uniqueKeysWithValues: SkinPack.requiredStates.map { ($0, clip) }),
-                                actions: nil, props: ["streetlamp": clip])
-        XCTAssertNil(try SkinPack(manifest: bare, directory: repo).prop(named: "streetlamp"), "no garden, no prop")
+                                actions: nil, props: ["piano": clip])
+        XCTAssertNil(try SkinPack(manifest: bare, directory: repo).prop(named: "piano"), "no garden, no prop")
     }
 }

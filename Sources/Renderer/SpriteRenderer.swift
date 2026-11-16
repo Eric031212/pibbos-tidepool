@@ -206,6 +206,7 @@ final class SpriteRenderer {
         let frames = self.frames(for: "bottle", clip: clip)
         bottleLayer.contents = frames.first
         bottleLayer.isHidden = false
+        Self.fadeIn(bottleLayer, over: 0.8)  // drifts in rather than appearing
         guard frames.count > 1 else { return }
         let animation = keyframes(frames, fps: clip.fps)
         animation.repeatCount = .infinity
@@ -272,6 +273,7 @@ final class SpriteRenderer {
                 continue
             }
             piece.contents = sheet.cropping(to: CGRect(x: cell * size, y: rainbow.row * size, width: size, height: size))
+            if piece.isHidden { Self.fadeIn(piece, over: 2) }  // the arc comes out slowly
             piece.isHidden = false
         }
     }
@@ -352,6 +354,16 @@ final class SpriteRenderer {
         loop(pack.prop(named: prop), named: "prop#\(prop ?? "")", on: propLayer)
     }
 
+    /// A short opacity fade-in, played by the render server (no timers).
+    private static func fadeIn(_ layer: CALayer, over duration: CFTimeInterval) {
+        let fade = CABasicAnimation(keyPath: "opacity")
+        fade.fromValue = 0
+        fade.toValue = 1
+        fade.duration = duration
+        fade.timingFunction = CAMediaTimingFunction(name: .easeOut)
+        layer.add(fade, forKey: "fadeIn")
+    }
+
     /// Loops `clip` on one of the flower's extra layers, or hides the layer.
     private func loop(_ clip: Clip?, named name: String, on extra: CALayer) {
         extra.removeAllAnimations()
@@ -361,7 +373,9 @@ final class SpriteRenderer {
         }
         let frames = self.frames(for: name, clip: clip)
         extra.contents = frames.first
+        let wasHidden = extra.isHidden
         extra.isHidden = false
+        if wasHidden { Self.fadeIn(extra, over: 0.4) }  // a prop or decor arriving fades in
         guard frames.count > 1 else { return }
         let animation = keyframes(frames, fps: clip.fps)
         animation.repeatCount = .infinity
@@ -373,15 +387,22 @@ final class SpriteRenderer {
     func setGardenVisible(_ visible: Bool) {
         guard visible != gardenVisible else { return }
         gardenVisible = visible
+        // Fade with his rise or sink instead of popping (v2.0): coming up, the
+        // rocks surface from about a third of the way through his rise; going
+        // down, they fade while he sinks. Rendered by Core Animation.
+        let current = gardenLayer.presentation()?.opacity ?? gardenLayer.opacity
         gardenLayer.removeAnimation(forKey: "visibility")
         gardenLayer.opacity = visible ? 1 : 0
-        let delay = visible ? transitionDuration / 2 : transitionDuration
-        guard delay > 0 else { return }
-        let hold = CABasicAnimation(keyPath: "opacity")
-        hold.fromValue = visible ? 0 : 1
-        hold.toValue = hold.fromValue
-        hold.duration = delay
-        gardenLayer.add(hold, forKey: "visibility")
+        let lead = transitionDuration * (visible ? 0.3 : 0.1)
+        let length = max(0.35, transitionDuration * (visible ? 0.7 : 0.8))
+        let fade = CABasicAnimation(keyPath: "opacity")
+        fade.fromValue = current
+        fade.toValue = visible ? 1 : 0
+        fade.beginTime = gardenLayer.convertTime(CACurrentMediaTime(), from: nil) + lead
+        fade.duration = length
+        fade.fillMode = .backwards
+        fade.timingFunction = CAMediaTimingFunction(name: .easeInEaseOut)
+        gardenLayer.add(fade, forKey: "visibility")
     }
 
     /// Shows a state or action by name, applying the pack's fallbacks. When

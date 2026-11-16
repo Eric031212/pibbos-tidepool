@@ -36,6 +36,13 @@ final class BubblePanel: NSPanel {
         imageLayer.frame = CGRect(origin: .zero, size: size)
         imageLayer.contents = image
         imageLayer.contentsScale = backingScaleFactor
+        if !isVisible {  // a new bubble fades in; one following Pibbo just moves
+            let fade = CABasicAnimation(keyPath: "opacity")
+            fade.fromValue = 0
+            fade.toValue = 1
+            fade.duration = 0.18
+            imageLayer.add(fade, forKey: "appear")
+        }
         orderFrontRegardless()
     }
 }

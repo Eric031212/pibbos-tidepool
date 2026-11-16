@@ -377,7 +377,7 @@ final class PetController {
             case .greeting(let greeting): text = greetingText(greeting)
             case .note(let pick): text = Strings.bottleNote(pick: pick)
             case .dream(let pick): text = dreamText(pick: pick) ?? Strings.dreams["shell"]!
-            case .gg: text = Strings.Bubble.gg
+            case .gg: text = lofi.toy == "piano" ? Strings.Bubble.taDa : Strings.Bubble.gg  // a tune ends with a bow
             default: text = Strings.Bubble.wish
             }
             guard let image = bubbleRenderer.image(for: text) else { return }

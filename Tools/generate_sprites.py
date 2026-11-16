@@ -393,6 +393,59 @@ def frame_game(i):
     return water(shift(g, [0, 1, 0, 1][i]), i // 2)
 
 
+KEYBOARD = ["DDDDDDDDDD", "DXqXqXXqXD", "DXXXXXXXXD"]
+
+
+def frame_piano(i):
+    """Paws on Keys is on: a toy keyboard on his belly, paws hopping across the
+    keys, eyes closed and smiling, little notes rising."""
+    g = base()
+    remove_shell(g)
+    eyes(g, "closed")
+    stamp(g, 9, 3, KEYBOARD)
+    paws = [[(9, 4), (9, 9)], [(9, 6), (9, 11)], [(9, 5), (9, 10)], [(9, 7), (9, 8)]][i]
+    put(g, paws, "p")
+    notes = [[(2, 1), (1, 1)], [(1, 14), (0, 14)], [(0, 2)], [(2, 13), (1, 13)]][i]  # a note hops up beside him
+    put(g, notes, "m")
+    return water(shift(g, [0, 0, 1, 0][i]), i // 2)
+
+
+def keyboard_rises(rows):
+    """The toy keyboard comes up out of the water onto his belly (or goes back)."""
+    def fn(i):
+        g = base()
+        remove_shell(g)
+        eyes(g, "lazy")
+        stamp(g, rows[i], 3, KEYBOARD)
+        return water(g, i)
+    return fn
+
+
+def handheld_rises(rows):
+    """The handheld comes up into his paws, headphones going on (or both away)."""
+    def fn(i):
+        g = base()
+        remove_shell(g)
+        headphones(g)
+        eyes(g, "lazy")
+        stamp(g, rows[i], 5, ["oooooo", "okkkko", "orRrMo", "oooooo"])
+        return water(g, i)
+    return fn
+
+
+def note_unrolls(widths):
+    """The note from the bottle unrolls between his paws (or rolls up)."""
+    def fn(i):
+        g = base()
+        remove_shell(g)
+        w = widths[i]
+        left = 8 - w // 2
+        stamp(g, 8, left, ["X" * w, "X" * w, "X" * w, "X" * w])
+        put(g, [(9, left - 1), (11, left - 1), (9, left + w), (11, left + w)], "p")
+        return water(g, 0)
+    return fn
+
+
 def frame_flip(i):
     """The secret: a flip out of the water with a big splash (plays once)."""
     if i == 0:  # crouch
@@ -699,6 +752,12 @@ TRANSITIONS = {
     "holdpaw>@up": (reach, 1, 8),
     "@up>water": (can([9, 8]), 2, 8),
     "water>@up": (can([8, 9]), 2, 8),
+    "@up>piano": (keyboard_rises([11, 10]), 2, 8),
+    "piano>@up": (keyboard_rises([10, 11]), 2, 8),
+    "@up>game": (handheld_rises([12, 9]), 2, 8),
+    "game>@up": (handheld_rises([9, 12]), 2, 8),
+    "@up>note": (note_unrolls([2, 5]), 2, 8),
+    "note>@up": (note_unrolls([5, 2]), 2, 8),
 }
 
 
@@ -1227,17 +1286,12 @@ def pebble(g):
     stamp(g, 11, 11, [".rrr.", "rrrrr", "RRRRR"])
 
 
-def frame_prop_streetlamp(i):
-    """Pibbo in the City: a tiny street lamp, its light flickering softly."""
+def frame_prop_piano(i):
+    """Paws on Keys: a tiny upright piano on a pebble, a note bobbing above it."""
     g = blank()
     pebble(g)
-    stamp(g, 1, 12, ["qqq", "qyq", ".q."])
-    put(g, [(r, 13) for r in range(4, 11)], "q")
-    put(g, [(10, 12), (10, 14)], "q")
-    if i % 2 == 0:
-        put(g, [(2, 11), (2, 15), (4, 12), (4, 14)], "Y")  # glow
-    else:
-        put(g, [(2, 11), (2, 15)], "Y")
+    stamp(g, 5, 11, ["ooooo", "oDDDo", "oXqXo", "oXXXo", "oDDDo", "o...o"])
+    put(g, [[(2, 13), (3, 13)], [(1, 14), (2, 14)]][i % 2], "m")
     return g
 
 
@@ -1273,7 +1327,7 @@ def frame_prop_handheld(i):
 
 
 PROPS = {
-    "streetlamp": (frame_prop_streetlamp, 2, 2),
+    "piano": (frame_prop_piano, 2, 2),
     "teacup": (frame_prop_teacup, 2, 2),
     "paperboat": (frame_prop_paperboat, 4, 2),
     "handheld": (frame_prop_handheld, 4, 3),
@@ -1312,6 +1366,7 @@ ACTIONS = {
     "friendpaw": (frame_friendpaw, 4, 2),  # holding paws with the friend otter
     "admire": (frame_admire, 4, 2),        # looking up at a rainbow
     "game": (frame_game, 4, 3),            # playing the handheld while Pixel Tide plays
+    "piano": (frame_piano, 4, 5),          # playing a toy keyboard while Paws on Keys plays
     "flip": (frame_flip, 6, 8),            # the secret: tap the water three times
     "ripple": (frame_ripple, 4, 7),        # splash effect, drawn over the water
     "note": (frame_note, 4, 2),            # reading a message in a bottle
