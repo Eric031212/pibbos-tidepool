@@ -14,6 +14,10 @@ final class SpriteRenderer {
     private let decorLayer = CALayer()
     /// Holiday extras over the meadow (a sublayer of the meadow layer).
     private let meadowDecorLayer = CALayer()
+    /// The season over the flower's rock and the meadow (v2.0): under snow,
+    /// decor and props.
+    private let seasonLayer = CALayer()
+    private let seasonMeadowLayer = CALayer()
     /// The playing radio theme's prop, beside the flower (also a sublayer of it).
     private let propLayer = CALayer()
     /// The meadow on the long rock left of the flower; a sublayer of
@@ -94,6 +98,7 @@ final class SpriteRenderer {
             showBottle(true)
         }
         showDecor()
+        showSeason()
         showProp()
         showWeather()
         showSnowCover()
@@ -146,7 +151,9 @@ final class SpriteRenderer {
         meadowLayer.isHidden = !pack.hasMeadow
         gardenLayer.insertSublayer(meadowLayer, at: 0)
         // Snow sits on the rocks under decor and props; falling weather goes on top.
-        gardenLayer.insertSublayer(snowLayers[0], at: 1)
+        gardenLayer.insertSublayer(seasonLayer, at: 1)
+        gardenLayer.insertSublayer(snowLayers[0], at: 2)
+        meadowLayer.addSublayer(seasonMeadowLayer)
         meadowLayer.addSublayer(giftLayer)
         meadowLayer.addSublayer(meadowDecorLayer)
         meadowLayer.addSublayer(rainbowLayers[0])
@@ -165,7 +172,9 @@ final class SpriteRenderer {
         bottleLayer.isHidden = true
         starLayer.isHidden = true
         visitorLayer.isHidden = true
-        for sprite in [layer, gardenLayer, rippleLayer, decorLayer, meadowDecorLayer, propLayer, meadowLayer, bottleLayer, starLayer,
+        seasonLayer.isHidden = true
+        seasonMeadowLayer.isHidden = true
+        for sprite in [layer, gardenLayer, rippleLayer, decorLayer, meadowDecorLayer, seasonLayer, seasonMeadowLayer, propLayer, meadowLayer, bottleLayer, starLayer,
                        visitorLayer, giftLayer]
             + weatherLayers + snowLayers + rainbowLayers + [driftLayer] {
             sprite.frame = CGRect(x: 0, y: 0, width: pointSize, height: pointSize)
@@ -181,7 +190,7 @@ final class SpriteRenderer {
 
     /// Shows the meadow at a stage (no-op for skins without one).
     func showMeadow(stage: Int) {
-        guard stage != meadowStage, let rect = pack.meadowFrameRect(stage: stage) else { return }
+        guard stage != meadowStage, let rect = pack.meadowFrameRect(stage: stage, season: season) else { return }
         meadowStage = stage
         meadowLayer.contents = sheet.cropping(to: CGRect(x: rect.x, y: rect.y, width: rect.width, height: rect.height))
     }
@@ -205,7 +214,7 @@ final class SpriteRenderer {
 
     /// Shows the flower at a growth stage (no-op for skins without a garden).
     func showGarden(stage: Int) {
-        guard stage != gardenStage, let rect = pack.gardenFrameRect(stage: stage) else { return }
+        guard stage != gardenStage, let rect = pack.gardenFrameRect(stage: stage, season: season) else { return }
         gardenStage = stage
         gardenLayer.contents = sheet.cropping(to: CGRect(x: rect.x, y: rect.y, width: rect.width, height: rect.height))
     }
@@ -319,6 +328,24 @@ final class SpriteRenderer {
         let key = "\(outfit ?? "")\(night ? "@night" : "")"
         loop(pack.decor(for: outfit, night: night), named: "decor#\(key)", on: decorLayer)
         loop(pack.meadowDecor(for: outfit, night: night), named: "meadowDecor#\(key)", on: meadowDecorLayer)
+    }
+
+    /// The season ("spring" … "winter"; nil = none) dressing the rocks.
+    var season: String? {
+        didSet {
+            guard season != oldValue else { return }
+            // Redraw the flower and meadow in the season's colours.
+            if let stage = gardenStage { gardenStage = nil; showGarden(stage: stage) }
+            if let stage = meadowStage { meadowStage = nil; showMeadow(stage: stage) }
+            showSeason()
+        }
+    }
+
+    private func showSeason() {
+        let night = lighting == "night"
+        let key = "\(season ?? "")\(night ? "@night" : "")"
+        loop(pack.seasonDecor(for: season, night: night), named: "season#\(key)", on: seasonLayer)
+        loop(pack.seasonMeadow(for: season, night: night), named: "seasonMeadow#\(key)", on: seasonMeadowLayer)
     }
 
     private func showProp() {

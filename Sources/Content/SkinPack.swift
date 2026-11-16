@@ -124,6 +124,16 @@ public struct SkinManifest: Codable, Equatable, Sendable {
     /// Radio props by name, played over the flower's cell while a theme that
     /// names one plays (theme.json "prop").
     public let props: [String: Clip]?
+    /// Optional season extras over the flower's cell, keyed "spring" …
+    /// "winter"; "season@night" replaces one at night (v2.0).
+    public let seasonDecor: [String: Clip]?
+    /// The same over the meadow's cell. Needs a meadow.
+    public let seasonMeadow: [String: Clip]?
+    /// Optional recoloured flower / meadow strips per season (e.g. autumn's
+    /// orange leaves), same stages as `garden` / `meadow`. Missing seasons
+    /// keep the plain strips.
+    public let seasonGarden: [String: GardenSpec]?
+    public let seasonMeadowStrip: [String: GardenSpec]?
 
     public init(id: String, name: String, author: String, version: String, type: String,
                 frameSize: Int, states: [String: Clip], actions: [String: Clip]?, garden: GardenSpec? = nil,
@@ -133,7 +143,8 @@ public struct SkinManifest: Codable, Equatable, Sendable {
                 meadow: GardenSpec? = nil, bottle: Clip? = nil, moonGlint: MoonGlint? = nil,
                 shootingStar: Clip? = nil, weatherEffects: [String: Clip]? = nil, snowCover: GardenSpec? = nil,
                 visitors: [String: Visit]? = nil, gift: GardenSpec? = nil, rainbow: GardenSpec? = nil,
-                drift: [String: Clip]? = nil) {
+                drift: [String: Clip]? = nil, seasonDecor: [String: Clip]? = nil, seasonMeadow: [String: Clip]? = nil,
+                seasonGarden: [String: GardenSpec]? = nil, seasonMeadowStrip: [String: GardenSpec]? = nil) {
         self.id = id
         self.name = name
         self.author = author
@@ -160,6 +171,10 @@ public struct SkinManifest: Codable, Equatable, Sendable {
         self.gift = gift
         self.rainbow = rainbow
         self.drift = drift
+        self.seasonDecor = seasonDecor
+        self.seasonMeadow = seasonMeadow
+        self.seasonGarden = seasonGarden
+        self.seasonMeadowStrip = seasonMeadowStrip
     }
 }
 
@@ -248,6 +263,8 @@ public struct SkinPack: Sendable {
         add("transition ", m.transitions)
         add("decor ", m.decor)
         add("meadow decor ", m.meadowDecor)
+        add("season ", m.seasonDecor)
+        add("meadow season ", m.seasonMeadow)
         add("prop ", m.props)
         add("weather ", m.weatherEffects)
         add("drift ", m.drift)
@@ -261,6 +278,8 @@ public struct SkinPack: Sendable {
     static func allStrips(_ m: SkinManifest) -> [(String, GardenSpec)] {
         [("garden", m.garden), ("meadow", m.meadow), ("snowCover", m.snowCover), ("gift", m.gift), ("rainbow", m.rainbow)]
             .compactMap { name, spec in spec.map { (name, $0) } }
+            + (m.seasonGarden ?? [:]).map { ("garden \($0.key)", $0.value) }
+            + (m.seasonMeadowStrip ?? [:]).map { ("meadow \($0.key)", $0.value) }
     }
 
     /// Rejects frames that fall outside a sheet of `width`×`height` pixels,
@@ -344,6 +363,18 @@ public struct SkinPack: Sendable {
         return Self.pick(manifest.meadowDecor, holiday: holiday, night: night)
     }
 
+    /// The season's extras over the flower (needs a garden), or nil.
+    public func seasonDecor(for season: String?, night: Bool = false) -> Clip? {
+        guard manifest.garden != nil else { return nil }
+        return Self.pick(manifest.seasonDecor, holiday: season, night: night)
+    }
+
+    /// The season's extras over the meadow (needs a meadow), or nil.
+    public func seasonMeadow(for season: String?, night: Bool = false) -> Clip? {
+        guard hasMeadow else { return nil }
+        return Self.pick(manifest.seasonMeadow, holiday: season, night: night)
+    }
+
     /// "holiday@night" at night when the skin has it, else "holiday".
     private static func pick(_ table: [String: Clip]?, holiday: String?, night: Bool) -> Clip? {
         guard let holiday, let table else { return nil }
@@ -390,16 +421,18 @@ public struct SkinPack: Sendable {
     public var hasMeadow: Bool { manifest.garden != nil && manifest.meadow != nil }
 
     /// Frame of the meadow at a stage; nil without one.
-    public func meadowFrameRect(stage: Int) -> FrameRect? {
-        guard hasMeadow, let meadow = manifest.meadow else { return nil }
+    public func meadowFrameRect(stage: Int, season: String? = nil) -> FrameRect? {
+        guard hasMeadow, let plain = manifest.meadow else { return nil }
+        let meadow = season.flatMap { manifest.seasonMeadowStrip?[$0] } ?? plain
         let size = manifest.frameSize
         let clamped = min(max(stage, 0), meadow.stages - 1)
         return FrameRect(x: clamped * size, y: meadow.row * size, width: size, height: size)
     }
 
     /// Frame of the flower at a growth stage; nil when the skin has no garden.
-    public func gardenFrameRect(stage: Int) -> FrameRect? {
-        guard let garden = manifest.garden else { return nil }
+    public func gardenFrameRect(stage: Int, season: String? = nil) -> FrameRect? {
+        guard let plain = manifest.garden else { return nil }
+        let garden = season.flatMap { manifest.seasonGarden?[$0] } ?? plain
         let size = manifest.frameSize
         let clamped = min(max(stage, 0), garden.stages - 1)
         return FrameRect(x: clamped * size, y: garden.row * size, width: size, height: size)

@@ -254,6 +254,7 @@ final class PetController {
 
     private func worldChanged(_ context: WorldContext) {
         renderer.outfit = context.holiday?.rawValue
+        renderer.season = context.season.rawValue
         renderer.lighting = context.timeOfDay.rawValue
         renderer.moonlight = context.moonlight
         renderer.drift = Drift.item(for: context)

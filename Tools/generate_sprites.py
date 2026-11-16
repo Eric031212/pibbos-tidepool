@@ -75,7 +75,15 @@ PALETTE = {
     "Q": (150, 58, 46),    # crab dark
     "B": (198, 160, 118),  # friend otter's fur (lighter than Pibbo)
     "A": (166, 128, 92),   # friend otter's dark fur / paws
+    "a": (222, 146, 66),   # autumn leaf on the plants
+    "E": (170, 92, 46),    # autumn leaf, dark
+    "i": (190, 182, 140),  # winter: dry grass
+    "I": (146, 138, 104),  # winter: dry grass, dark
 }
+
+# The plants' greens per season (flower stem/leaves and the meadow): autumn
+# turns them orange, winter dries them out. Spring and summer keep the greens.
+SEASON_GREENS = {"autumn": {"k": "a", "K": "E"}, "winter": {"k": "i", "K": "I"}}
 
 # Left half of Pibbo's base pose (columns 0-7); mirrored to columns 8-15.
 BASE_HALF = [
@@ -1133,6 +1141,82 @@ MEADOW_DECOR = {
 DECOR_ROWS = len(DECOR) + len(MEADOW_DECOR)
 
 
+# ---------------------------------------------------------------- seasons (v2.0)
+# The rocks dress for the real season, quietly: buds in spring, grass tufts in
+# summer (and fireflies on summer nights), fallen leaves and an acorn in
+# autumn, frost in winter. Static over the flower's rock / the meadow rock
+# (flower rock: rows 11-13, cols 3-11; meadow rock: rows 11-13, cols 2-15).
+
+def season_flower(season, night=False):
+    def fn(i):
+        g = blank()
+        if season == "spring":
+            put(g, [(10, 3), (10, 11)], "k")
+            put(g, [(9, 3)], "f")
+            put(g, [(9, 11)], "X")
+            put(g, [(10, 4)], "K")
+        elif season == "summer":
+            put(g, [(10, 3), (9, 3), (10, 4), (10, 11), (9, 11), (10, 10)], "k")
+            put(g, [(10, 2), (10, 12)], "K")
+            if night:  # fireflies blinking around the flower
+                spots = [[(2, 3), (5, 12)], [(3, 2), (4, 13)], [(1, 4), (6, 12)], [(2, 2), (5, 14)]][i]
+                put(g, spots, "y")
+                put(g, [[(7, 1)], [], [(6, 1)], []][i], "Y")
+        elif season == "autumn":
+            put(g, [(10, 4), (11, 9)], "L")
+            put(g, [(10, 10)], "j")
+            put(g, [(10, 3)], "M")
+            put(g, [(9, 11)], "T")   # an acorn cap...
+            put(g, [(10, 11)], "D")  # ...and its nut
+        else:  # winter: frost on the rock and the pot rim
+            put(g, [(11, 4), (11, 6), (11, 8), (11, 10)], "W")
+            put(g, [(12, 3), (12, 11)], "W")
+        return g
+    return fn
+
+
+def season_meadow(season, night=False):
+    def fn(i):
+        g = blank()
+        if season == "spring":
+            put(g, [(10, 3), (10, 8), (10, 13), (10, 15)], "k")
+            put(g, [(9, 3), (9, 13)], "f")
+            put(g, [(9, 8)], "X")
+            put(g, [(9, 15)], "m")
+        elif season == "summer":
+            for c in (3, 8, 11, 15):
+                put(g, [(10, c), (9, c)], "k")
+                put(g, [(10, c - 1)], "K")
+            if night:
+                spots = [[(4, 5), (6, 12)], [(5, 4), (5, 13)], [(3, 6), (7, 11)], [(4, 4), (6, 14)]][i]
+                put(g, spots, "y")
+        elif season == "autumn":
+            put(g, [(10, 3), (11, 7), (10, 13)], "L")
+            put(g, [(10, 9), (11, 15)], "j")
+            put(g, [(11, 11)], "M")
+        else:
+            put(g, [(11, c) for c in range(3, 15, 2)], "W")
+            put(g, [(12, 2), (12, 15)], "W")
+        return g
+    return fn
+
+
+SEASON_DECOR = {
+    "spring": (season_flower("spring"), 1, 1),
+    "summer": (season_flower("summer"), 1, 1),
+    "summer@night": (season_flower("summer", night=True), 4, 2),
+    "autumn": (season_flower("autumn"), 1, 1),
+    "winter": (season_flower("winter"), 1, 1),
+}
+SEASON_MEADOW = {
+    "spring": (season_meadow("spring"), 1, 1),
+    "summer": (season_meadow("summer"), 1, 1),
+    "summer@night": (season_meadow("summer", night=True), 4, 2),
+    "autumn": (season_meadow("autumn"), 1, 1),
+    "winter": (season_meadow("winter"), 1, 1),
+}
+
+
 # ---------------------------------------------------------------- radio props
 # While the built-in radio plays, the theme's prop stands in the gap between
 # the flower and Pibbo (columns 11-15 of the flower's cell; the left side is
@@ -1532,7 +1616,7 @@ def build_skin():
     visits = {name: fn() for name, fn in VISITORS.items()}
     max_frames = max(max(n for _, (_, n, _) in entries), GARDEN_STAGES, MEADOW_STAGES, VISIT_WRAP)
     visit_rows = {name: -(-len(fn()[0]) // VISIT_WRAP) for name, fn in VISITORS.items()}
-    rows = len(entries) + 1 + len(OUTFITS) * len(entries) + DECOR_ROWS + len(PROPS) + 6 + len(WEATHER_EFFECTS) + sum(visit_rows.values()) + len(DRIFT_SEASONS)
+    rows = len(entries) + 1 + len(OUTFITS) * len(entries) + DECOR_ROWS + len(PROPS) + 6 + len(WEATHER_EFFECTS) + sum(visit_rows.values()) + len(DRIFT_SEASONS) + len(SEASON_DECOR) + len(SEASON_MEADOW) + 2 * len(SEASON_GREENS)
     sheet = Image.new("RGBA", (SIZE * max_frames, SIZE * rows), (0, 0, 0, 0))
     frames = {}
     for row, (name, (fn, n, _)) in enumerate(entries):
@@ -1612,6 +1696,25 @@ def build_skin():
         drift_rows[season] = rainbow_row + 1 + k
         for i in range(2):
             sheet.paste(to_image(frame_drift(season, i)), (i * SIZE, drift_rows[season] * SIZE))
+    season_strip_rows = {}
+    row = drift_rows[DRIFT_SEASONS[-1]] + 1
+    for season, greens in SEASON_GREENS.items():
+        season_strip_rows[season] = (row, row + 1)
+        frames[f"garden:{season}"] = [to_image(recolor(garden_stage(s), greens)) for s in range(GARDEN_STAGES)]
+        frames[f"meadow:{season}"] = [to_image(recolor(meadow_stage(s), greens)) for s in range(MEADOW_STAGES)]
+        for s, f in enumerate(frames[f"garden:{season}"]):
+            sheet.paste(f, (s * SIZE, row * SIZE))
+        for s, f in enumerate(frames[f"meadow:{season}"]):
+            sheet.paste(f, (s * SIZE, (row + 1) * SIZE))
+        row += 2
+    season_rows, season_meadow_rows = {}, {}
+    for table, rows_out, prefix in ((SEASON_DECOR, season_rows, "season"), (SEASON_MEADOW, season_meadow_rows, "seasonMeadow")):
+        for key, (fn, n, _) in table.items():
+            rows_out[key] = row
+            row += 1
+            frames[f"{prefix}:{key}"] = [to_image(fn(i)) for i in range(n)]
+            for i, f in enumerate(frames[f"{prefix}:{key}"]):
+                sheet.paste(f, (i * SIZE, rows_out[key] * SIZE))
     sheet.save(SKIN_DIR / "sprites.png")
 
     manifest = {
@@ -1646,6 +1749,11 @@ def build_skin():
         "decor": {key: {"row": decor_rows[key], "frames": n, "fps": fps} for key, (_, n, fps) in DECOR.items()},
         "meadowDecor": {key: {"row": meadow_decor_rows[key], "frames": n, "fps": fps}
                         for key, (_, n, fps) in MEADOW_DECOR.items()},
+        "seasonDecor": {key: {"row": season_rows[key], "frames": n, "fps": fps} for key, (_, n, fps) in SEASON_DECOR.items()},
+        "seasonMeadow": {key: {"row": season_meadow_rows[key], "frames": n, "fps": fps}
+                         for key, (_, n, fps) in SEASON_MEADOW.items()},
+        "seasonGarden": {s: {"row": rows[0], "stages": GARDEN_STAGES} for s, rows in season_strip_rows.items()},
+        "seasonMeadowStrip": {s: {"row": rows[1], "stages": MEADOW_STAGES} for s, rows in season_strip_rows.items()},
     }
     for row, (name, (_, n, fps)) in enumerate(entries):
         key = "states" if name in STATES else "actions" if name in ACTIONS else "transitions"
@@ -1683,6 +1791,7 @@ def write_previews(entries, frames, garden, sheet):
     # Every visit across the whole pool, as the app plays it.
     visitor_gif(frames, garden)
     holiday_gif(frames, garden)
+    season_preview(frames, garden)
 
     # The tide pool through the day: flower + Pibbo, water coloured per time.
     scene = Image.new("RGBA", (SIZE * 2, SIZE))
@@ -1757,6 +1866,27 @@ def visitor_gif(frames, garden):
             durations.append(int(1000 / fps))
         durations[-1] += 600  # a pause between visitors
     gif[0].save(SKIN_DIR / "preview-visitors.gif", save_all=True, append_images=gif[1:], duration=durations, loop=0)
+
+
+def season_preview(frames, garden):
+    """preview-seasons.png: the full pool in spring, summer (day, night), autumn and winter."""
+    scale, pad = 5, 10
+    looks = [("spring", "spring", None), ("summer", "summer", None), ("summer@night", "summer@night", "night"),
+             ("autumn", "autumn", None), ("winter", "winter", None)]
+    w = SIZE * 3 * scale
+    strip = Image.new("RGBA", (len(looks) * (w + pad) + pad, SIZE * scale + 2 * pad), (247, 242, 232, 255))
+    for k, (flower_key, meadow_key, light) in enumerate(looks):
+        scene = Image.new("RGBA", (SIZE * 3, SIZE), (52, 58, 84, 255) if light else (0, 0, 0, 0))
+        base = flower_key.split("@")[0]
+        scene.alpha_composite(frames.get(f"meadow:{base}", frames["meadow"])[-1], (0, 0))
+        scene.alpha_composite(frames[f"seasonMeadow:{meadow_key}"][0], (0, 0))
+        scene.alpha_composite(frames.get(f"garden:{base}", garden)[-1], (SIZE, 0))
+        scene.alpha_composite(frames[f"season:{flower_key}"][0], (SIZE, 0))
+        scene.alpha_composite(frames["chill"][0], (SIZE * 2, 0))
+        if light:
+            scene = light_water(scene, light)
+        strip.alpha_composite(scene.resize((w, SIZE * scale), Image.NEAREST), (pad + k * (w + pad), pad))
+    strip.save(SKIN_DIR / "preview-seasons.png")
 
 
 def write_gif(items, path, ticks, tick=1 / 12):

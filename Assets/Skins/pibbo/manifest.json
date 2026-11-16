@@ -639,5 +639,79 @@
       "frames": 2,
       "fps": 2
     }
+  },
+  "seasonDecor": {
+    "spring": {
+      "row": 311,
+      "frames": 1,
+      "fps": 1
+    },
+    "summer": {
+      "row": 312,
+      "frames": 1,
+      "fps": 1
+    },
+    "summer@night": {
+      "row": 313,
+      "frames": 4,
+      "fps": 2
+    },
+    "autumn": {
+      "row": 314,
+      "frames": 1,
+      "fps": 1
+    },
+    "winter": {
+      "row": 315,
+      "frames": 1,
+      "fps": 1
+    }
+  },
+  "seasonMeadow": {
+    "spring": {
+      "row": 316,
+      "frames": 1,
+      "fps": 1
+    },
+    "summer": {
+      "row": 317,
+      "frames": 1,
+      "fps": 1
+    },
+    "summer@night": {
+      "row": 318,
+      "frames": 4,
+      "fps": 2
+    },
+    "autumn": {
+      "row": 319,
+      "frames": 1,
+      "fps": 1
+    },
+    "winter": {
+      "row": 320,
+      "frames": 1,
+      "fps": 1
+    }
+  },
+  "seasonGarden": {
+    "autumn": {
+      "row": 307,
+      "stages": 6
+    },
+    "winter": {
+      "row": 309,
+      "stages": 6
+    }
+  },
+  "seasonMeadowStrip": {
+    "autumn": {
+      "row": 308,
+      "stages": 7
+    },
+    "winter": {
+      "row": 310,
+      "stages": 7
+    }
   }
 }
