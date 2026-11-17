@@ -376,10 +376,11 @@ final class PetController {
                              anchorX: anchor.x, bottomY: anchor.y)
         case .nowPlaying:
             showNowPlaying()
-        case .note, .wish, .dream, .finale, .greeting:
+        case .note, .wish, .dream, .finale, .greeting, .shh:
             let text: String
             switch bubble {
             case .greeting(let greeting): text = greetingText(greeting)
+            case .shh: text = Strings.Bubble.shh
             case .note(let pick): text = Strings.bottleNote(pick: pick)
             case .dream(let pick): text = dreamText(pick: pick) ?? Strings.dreams["shell"]!
             case .finale(let move): text = move == "game" ? Strings.Bubble.gg : Strings.Bubble.taDa  // a tune ends with a bow
@@ -534,6 +535,13 @@ final class PetController {
         if games.isOpen {
             games.bringToFront()  // a click on Pibbo brings the open game back
             return
+        }
+        if callActive {
+            // In a call he stays down; a click brings him up to whisper, and a
+            // second click while he's up opens the menu as usual.
+            let isUp = brain.output.bubble == .shh
+            send(.peekedDuringCall)
+            guard isUp else { return }
         }
         if brain.output.shootingStar {
             send(.wished)  // right after a shooting star, a click is a wish

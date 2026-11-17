@@ -65,3 +65,42 @@ final class CallTests: XCTestCase {
         XCTAssertEqual(brain.output.visual, .state(.peek), "a 'not in a call' at launch doesn't hide him")
     }
 }
+
+final class CallPeekTests: XCTestCase {
+    let start = Date(timeIntervalSince1970: 1_000_000)
+    let config = BrainConfig()
+    func at(_ seconds: TimeInterval) -> Date { start.addingTimeInterval(seconds) }
+
+    func testAClickDuringACallBringsHimUpToWhisperThenDown() {
+        var brain = Brain(config: config, now: start, random: { $0.lowerBound })
+        brain.handle(.callChanged(true), at: at(1))
+        XCTAssertEqual(brain.output.visual, .submerged)
+        brain.handle(.peekedDuringCall, at: at(10))
+        XCTAssertEqual(brain.output.visual, .state(.peek))
+        XCTAssertEqual(brain.output.bubble, .shh)
+        XCTAssertEqual(brain.nextDeadline, at(10 + config.callPeekDuration))
+        brain.handle(.timerFired, at: at(10 + config.callPeekDuration))
+        XCTAssertEqual(brain.output.visual, .submerged, "back down by himself")
+        XCTAssertNil(brain.output.bubble)
+    }
+
+    func testNoPeekOutsideACallOrInDiveTime() {
+        var brain = Brain(config: config, now: start, random: { $0.lowerBound })
+        brain.handle(.peekedDuringCall, at: at(5))
+        XCTAssertNotEqual(brain.output.bubble, .shh)
+
+        brain.handle(.workModeEntered, at: at(6))
+        brain.handle(.callChanged(true), at: at(7))
+        brain.handle(.peekedDuringCall, at: at(8))
+        XCTAssertEqual(brain.output.visual, .submerged, "Dive time stays down")
+    }
+
+    func testTheCallEndingEndsThePeek() {
+        var brain = Brain(config: config, now: start, random: { $0.lowerBound })
+        brain.handle(.callChanged(true), at: at(1))
+        brain.handle(.peekedDuringCall, at: at(2))
+        brain.handle(.callChanged(false), at: at(3))
+        XCTAssertNil(brain.output.bubble)
+        XCTAssertEqual(brain.output.visual, .state(.hidden))
+    }
+}

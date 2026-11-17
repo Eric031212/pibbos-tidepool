@@ -35,11 +35,13 @@ public enum Bubble: Equatable, Sendable {
     case finale(String)
     /// Pibbo noticing you: hello, good morning, welcome back, night owl.
     case greeting(Greeting)
+    /// During a call, after a click: a whispered "quiet time".
+    case shh
 
     /// Bubbles that answer something the user just did show even over music.
     var showsOverMusic: Bool {
         switch self {
-        case .note, .wish, .finale, .greeting: return true
+        case .note, .wish, .finale, .greeting, .shh: return true
         case .musicInvitation, .nowPlaying, .dream: return false
         }
     }
@@ -95,6 +97,9 @@ public enum BrainEvent: Equatable, Sendable {
     case gameChanged(Bool)
     /// You just came back (or are up late): Pibbo comes out and says so.
     case greeted(Greeting)
+    /// A click on Pibbo during a call: he peeks up, whispers `Shh, quiet time`
+    /// and dives again. (A second click while he's up opens the menu.)
+    case peekedDuringCall
     /// Whether it is a clear night (shooting stars only fall then).
     case clearNightChanged(Bool)
     /// A click on Pibbo right after a shooting star: he makes a wish (instead
@@ -186,6 +191,8 @@ public struct BrainConfig: Sendable {
     public var toyDuration: TimeInterval = 8
     /// ...and says `GG! ✨` for the last few seconds.
     public var ggDuration: TimeInterval = 3
+    /// How long he stays up after a click during a call.
+    public var callPeekDuration: TimeInterval = 4
     /// How long a greeting stays (and Pibbo with it).
     public var greetingDuration: TimeInterval = 6
     /// The secret flip.

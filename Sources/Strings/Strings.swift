@@ -21,6 +21,8 @@ public enum Strings {
         public static let snowCocoa = "Snow! Cocoa? ❄️"
         public static let wish = "Made a wish ✨"
         public static let gg = "GG! ✨"
+        /// A click on Pibbo during a call: he peeks up and whispers.
+        public static let shh = "Shh, quiet time 🫧"
         /// The end of a little tune on the toy keyboard (Paws on Keys).
         public static let taDa = "Ta-da! ♪"
     }
@@ -107,7 +109,7 @@ public enum Strings {
     public static let allPixelText: [String] = [
         Menu.music, Menu.stopMusic, Menu.tide, Menu.tideOff, Menu.games, Menu.workMode, Menu.quit,
         Games.clickToPlay, Games.escToClose, Games.paused, Games.newBest, Games.timeUp, Games.timeLeft(60), Games.score(1_234_567_890), Games.best(1_234_567_890),
-        Bubble.musicInvitation, Bubble.goodbye, Bubble.napTime, Bubble.brb, Bubble.snowCocoa, Bubble.wish, Bubble.gg, Bubble.taDa,
+        Bubble.musicInvitation, Bubble.goodbye, Bubble.napTime, Bubble.brb, Bubble.snowCocoa, Bubble.wish, Bubble.gg, Bubble.shh, Bubble.taDa,
     ] + bottleNotes + dreams.values.sorted() + Games.titles.values.sorted() + Greetings.all
 
     public enum Errors {

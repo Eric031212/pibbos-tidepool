@@ -38,6 +38,8 @@ public struct Brain {
     /// A camera or microphone is in use (a call, most likely): Pibbo stays
     /// under water like in work mode, without the user asking.
     private var inCall = false
+    /// During a call, a click brings him up for a moment: until when.
+    private var callPeekUntil: Date?
     /// A game window is open: Pibbo plays along (`game`) and stays put.
     private var inGame = false
     /// Work mode, a call or a game: no surfacing, no bubbles, no visitors.
@@ -124,6 +126,7 @@ public struct Brain {
         if let nowPlayingUntil, nowPlayingUntil != .distantFuture { candidates.append(nowPlayingUntil) }
         if let bottleUntil { candidates.append(bottleUntil) } else if !isQuiet { candidates.append(nextBottle) }
         if let wishUntil { candidates.append(wishUntil) }
+        if let callPeekUntil { candidates.append(callPeekUntil) }
         if let nextDream, isUserAway, !isQuiet { candidates.append(nextDream) }
         if let nextToy, isListening, !isQuiet { candidates.append(nextToy) }
         if let ggAt { candidates.append(ggAt) }
@@ -192,6 +195,8 @@ public struct Brain {
         case .callChanged(let active):
             guard active != inCall else { break }
             inCall = active
+            callPeekUntil = nil
+            if bubble?.kind == .shh { bubble = nil }
             if active {
                 hovering = false
                 holdingPaw = false
@@ -216,6 +221,12 @@ public struct Brain {
             } else {
                 setPresence(.hidden, at: now)
             }
+
+        case .peekedDuringCall:
+            guard inCall, !workMode, suspendReasons.isEmpty else { break }
+            let until = now.addingTimeInterval(config.callPeekDuration)
+            callPeekUntil = until
+            bubble = (.shh, until)
 
         case .greeted(let greeting):
             guard !isQuiet, suspendReasons.isEmpty, !isUserAway else { break }
@@ -300,6 +311,7 @@ public struct Brain {
             reaction = ("look", now.addingTimeInterval(config.lookDuration))
 
         case .suspended(let reason):
+            callPeekUntil = nil
             if suspendReasons.isEmpty {
                 hovering = false
                 bubble = nil
@@ -428,6 +440,10 @@ public struct Brain {
             bottleUntil = now.addingTimeInterval(config.bottleStay)
         }
         if let until = wishUntil, until <= now { wishUntil = nil }
+        if let until = callPeekUntil, until <= now {
+            callPeekUntil = nil
+            if bubble?.kind == .shh { bubble = nil }
+        }
         if let at = ggAt, at <= now {
             ggAt = nil
             if let reaction, finaleMoves.contains(reaction.name) {  // still at it: the finale
@@ -536,7 +552,9 @@ public struct Brain {
     private mutating func refreshOutput() {
         let visual: PetVisual
         let allFading = !playingSources.isEmpty && playingSources.isSubset(of: fadingSources)
-        if workMode || inCall {
+        if inCall && callPeekUntil != nil && !workMode {
+            visual = .state(.peek)  // up for a moment after a click, then back down
+        } else if workMode || inCall {
             visual = .submerged
         } else if inGame {
             visual = .action("game")
@@ -559,7 +577,9 @@ public struct Brain {
             }
         }
         var shown: Bubble?
-        if suspendReasons.isEmpty && !isQuiet {
+        if suspendReasons.isEmpty, callPeekUntil != nil, let bubble, bubble.kind == .shh {
+            shown = .shh
+        } else if suspendReasons.isEmpty && !isQuiet {
             if let bubble, bubble.kind.showsOverMusic {
                 shown = bubble.kind
             } else if playingSources.isEmpty, let bubble {

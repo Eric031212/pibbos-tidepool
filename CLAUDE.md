@@ -172,7 +172,7 @@ Until v1.4 everything Pibbo did on his own was random; now a few moments follow 
 
 ### Quiet during calls (v1.0)
 
-While any camera or microphone is in use by any app (spike 8: a call, most likely, including browser calls and screen sharing from another app), Pibbo stays under water like in work mode: no surfacing, bubbles, bottles or shooting stars; hover and play are ignored. A call starts after 2 s of use and ends after 5 s of quiet (so Siri or a quick dictation don't count); afterwards he goes back to hidden without popping up. `Signals/CallMonitor` reads only the devices' "running somewhere" flags (property listeners, no polling); Brain's `.callChanged`. Unlike work mode a click still opens the menu.
+While any camera or microphone is in use by any app (spike 8: a call, most likely, including browser calls and screen sharing from another app), Pibbo stays under water like in work mode: no surfacing, bubbles, bottles or shooting stars; hover and play are ignored. A call starts after 2 s of use and ends after 5 s of quiet (so Siri or a quick dictation don't count); afterwards he goes back to hidden without popping up. `Signals/CallMonitor` reads only the devices' "running somewhere" flags (property listeners, no polling); Brain's `.callChanged`. **A click during a call (v2.2.1, the developer's design 2026-11-17):** Pibbo peeks up, whispers `Shh, quiet time 🫧` for 4 s and dives again by himself (Brain's `.peekedDuringCall`); a second click while he's up opens the menu as usual. There is deliberately no time limit on a call: an app that keeps the mic open (found: Zoom, all day) keeps him down, and a click is the way to say hi. Never in Dive time.
 
 ### Work mode look
 
@@ -239,7 +239,7 @@ launch → peek (~5 s) → chill → no interaction for a while → hidden
 | Click on the water / flower beside Pibbo | A `ripple` where you clicked; Pibbo plays `look` for ~1.5 s |
 | A message in a bottle is due (every 2–4 days) | The bottle floats beside Pibbo for 30 min; click it → Pibbo reads the note (~7 s) |
 | Clear night, every 20–60 min | A shooting star; a click on Pibbo within 6 s makes a wish (`wish` + `Made a wish ✨`) instead of opening the menu |
-| A camera or microphone is in use (2 s) | Pibbo dives and stays down until it has been off for 5 s |
+| A camera or microphone is in use (2 s) | Pibbo dives and stays down until it has been off for 5 s; a click brings him up to whisper `Shh, quiet time 🫧`, then he dives again |
 | A game window is open | Pibbo plays the handheld (`game`); nothing else happens until it closes |
 | Click on Pibbo | Open the menu |
 
