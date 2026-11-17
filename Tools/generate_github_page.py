@@ -236,6 +236,7 @@ def hints():
         ("💦", "Splash, splash, splash.", big(row([solo(pet("flip", k)) for k in (1, 2, 3)], gap=1)), None, "a little secret"),
         ("🎮", "Put on some music. Wait for the retro one.", big(solo(pet("game", 0))), ["GG! ✨"], None),
         ("🎹", "Or the one with the piano.", big(solo(pet("piano", 1))), ["Ta-da! ♪"], None),
+        ("🎶", "Keep listening.", big(row([solo(pet(n, 1)) for n in ("paddle", "tea", "strum")], gap=1)), None, "every album has its own moves"),
         ("🌧️", "Wait for the rain to stop.", big(scene(pet("admire", 2), extras=rainbow)), None, None),
         ("😴", "Step away for a while.", big(solo(pet("sleep"))), ["💭 🦀"], None),
         ("🌠", "Look up on a clear night.", big(scene(pet("wish", 0), sky=NIGHT_SKY, light="night")), ["Made a wish ✨"], None),

@@ -50,32 +50,36 @@ Some things are nicer to find yourself. Peek below if you can't wait 👇</p>
 <br><img src="Marketing/github/page/reveal-09.png" width="201" alt="Ta-da! ♪">
 </details>
 
+<details><summary>🎶 Keep listening.</summary>
+<br><img src="Marketing/github/page/reveal-10.png" width="372" alt="every album has its own moves">
+</details>
+
 <details><summary>🌧️ Wait for the rain to stop.</summary>
-<br><img src="Marketing/github/page/reveal-10.png" width="324" alt="">
+<br><img src="Marketing/github/page/reveal-11.png" width="324" alt="">
 </details>
 
 <details><summary>😴 Step away for a while.</summary>
-<br><img src="Marketing/github/page/reveal-11.png" width="174" alt="💭 🦀">
+<br><img src="Marketing/github/page/reveal-12.png" width="174" alt="💭 🦀">
 </details>
 
 <details><summary>🌠 Look up on a clear night.</summary>
-<br><img src="Marketing/github/page/reveal-12.png" width="372" alt="Made a wish ✨">
+<br><img src="Marketing/github/page/reveal-13.png" width="372" alt="Made a wish ✨">
 </details>
 
 <details><summary>🍾 Come back in a few days.</summary>
-<br><img src="Marketing/github/page/reveal-13.png" width="309" alt="The sea says hi 🌊">
+<br><img src="Marketing/github/page/reveal-14.png" width="309" alt="The sea says hi 🌊">
 </details>
 
 <details><summary>🌱 Come back in a few months.</summary>
-<br><img src="Marketing/github/page/reveal-14.png" width="354" alt="things grow. neighbours visit.">
+<br><img src="Marketing/github/page/reveal-15.png" width="354" alt="things grow. neighbours visit.">
 </details>
 
 <details><summary>🍂 Watch the seasons turn.</summary>
-<br><img src="Marketing/github/page/reveal-15.png" width="324" alt="">
+<br><img src="Marketing/github/page/reveal-16.png" width="324" alt="">
 </details>
 
 <details><summary>🎄 Come back in December.</summary>
-<br><img src="Marketing/github/page/reveal-16.png" width="324" alt="">
+<br><img src="Marketing/github/page/reveal-17.png" width="324" alt="">
 </details>
 
 <p><img src="Marketing/github/page/sign-get.png" width="186" alt="get pibbo"></p>

@@ -15,8 +15,8 @@ packages:
 settings:
   base:
     SWIFT_VERSION: "5.0"
-    MARKETING_VERSION: "2.1.0"
-    CURRENT_PROJECT_VERSION: "20"
+    MARKETING_VERSION: "2.2.0"
+    CURRENT_PROJECT_VERSION: "21"
 
 targets:
   Tidepool:
