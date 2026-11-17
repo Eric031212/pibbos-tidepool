@@ -218,11 +218,16 @@ final class PetController {
         }
 
         send(.builtInMusicAvailable(lofi.isAvailable))
+        sendMusicMoves()
         worldChanged(worldMonitor.context)
         panel.moveToShore()
         apply()
 
         if Self.forcedRainbow { showRainbow(true) }
+        // `--theme <title>`: the radio starts with that theme right away (for trying things).
+        if CommandLine.arguments.contains("--theme"), lofi.isAvailable {
+            DispatchQueue.main.asyncAfter(deadline: .now() + 1) { [weak self] in self?.lofi.play() }
+        }
         // `--tide`: tide sounds from the start (for listening while trying things).
         if CommandLine.arguments.contains("--tide"), tide.isAvailable { tide.start(mix: TideMix.layers(for: worldMonitor.context)) }
         // Launch (at login, most mornings): say hello once the weather is likely in.
@@ -254,7 +259,7 @@ final class PetController {
         if source === lofi {
             renderer.beat = lofi.beat
             renderer.prop = lofi.prop
-            send(.radioToyChanged(lofi.toy))
+            sendMusicMoves()
         }
         if source === lofi, event != .paused { tide.stop() }  // the radio takes over from the tide
         send(.musicChanged(source: source.id, playing: event != .paused))
@@ -371,13 +376,13 @@ final class PetController {
                              anchorX: anchor.x, bottomY: anchor.y)
         case .nowPlaying:
             showNowPlaying()
-        case .note, .wish, .dream, .gg, .greeting:
+        case .note, .wish, .dream, .finale, .greeting:
             let text: String
             switch bubble {
             case .greeting(let greeting): text = greetingText(greeting)
             case .note(let pick): text = Strings.bottleNote(pick: pick)
             case .dream(let pick): text = dreamText(pick: pick) ?? Strings.dreams["shell"]!
-            case .gg: text = lofi.toy == "piano" ? Strings.Bubble.taDa : Strings.Bubble.gg  // a tune ends with a bow
+            case .finale(let move): text = move == "game" ? Strings.Bubble.gg : Strings.Bubble.taDa  // a tune ends with a bow
             default: text = Strings.Bubble.wish
             }
             guard let image = bubbleRenderer.image(for: text) else { return }
@@ -575,6 +580,16 @@ final class PetController {
         }
         let anchor = bubbleAnchor()
         menuPanel.open(items, anchorX: anchor.x, bottomY: anchor.y)
+    }
+
+    // MARK: - Moves while listening
+
+    /// The moves the skin can show: the playing theme's own and the general ones.
+    private func sendMusicMoves() {
+        let drawn = Set(pack.availableActions)
+        send(.musicMovesChanged(themed: lofi.moves.filter(drawn.contains),
+                                general: MusicMoves.general.filter(drawn.contains),
+                                finales: MusicMoves.finales))
     }
 
     // MARK: - Greetings

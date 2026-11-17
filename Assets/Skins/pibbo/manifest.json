@@ -80,104 +80,159 @@
       "frames": 4,
       "fps": 5
     },
-    "flip": {
+    "sway": {
       "row": 14,
+      "frames": 4,
+      "fps": 3
+    },
+    "sing": {
+      "row": 15,
+      "frames": 4,
+      "fps": 4
+    },
+    "drum": {
+      "row": 16,
+      "frames": 4,
+      "fps": 6
+    },
+    "paddle": {
+      "row": 17,
+      "frames": 4,
+      "fps": 4
+    },
+    "fishing": {
+      "row": 18,
+      "frames": 4,
+      "fps": 2
+    },
+    "tea": {
+      "row": 19,
+      "frames": 4,
+      "fps": 2
+    },
+    "read": {
+      "row": 20,
+      "frames": 4,
+      "fps": 2
+    },
+    "levelup": {
+      "row": 21,
+      "frames": 4,
+      "fps": 5
+    },
+    "conduct": {
+      "row": 22,
+      "frames": 4,
+      "fps": 4
+    },
+    "strum": {
+      "row": 23,
+      "frames": 4,
+      "fps": 6
+    },
+    "whistle": {
+      "row": 24,
+      "frames": 4,
+      "fps": 3
+    },
+    "flip": {
+      "row": 25,
       "frames": 6,
       "fps": 8,
       "loop": false
     },
     "ripple": {
-      "row": 15,
+      "row": 26,
       "frames": 4,
       "fps": 7,
       "loop": false
     },
     "note": {
-      "row": 16,
-      "frames": 4,
-      "fps": 2
-    },
-    "wish": {
-      "row": 17,
-      "frames": 4,
-      "fps": 3
-    },
-    "water": {
-      "row": 18,
-      "frames": 4,
-      "fps": 3
-    },
-    "crack": {
-      "row": 19,
-      "frames": 4,
-      "fps": 4
-    },
-    "groom": {
-      "row": 20,
-      "frames": 4,
-      "fps": 4
-    },
-    "stretch": {
-      "row": 21,
-      "frames": 4,
-      "fps": 2
-    },
-    "yawn": {
-      "row": 22,
-      "frames": 4,
-      "fps": 2
-    },
-    "sunbathe": {
-      "row": 23,
-      "frames": 4,
-      "fps": 2
-    },
-    "raindrops": {
-      "row": 24,
-      "frames": 4,
-      "fps": 4
-    },
-    "cocoa": {
-      "row": 25,
-      "frames": 4,
-      "fps": 3
-    },
-    "huddle": {
-      "row": 26,
-      "frames": 4,
-      "fps": 4
-    },
-    "leaf": {
       "row": 27,
       "frames": 4,
       "fps": 2
     },
-    "petal": {
+    "wish": {
       "row": 28,
+      "frames": 4,
+      "fps": 3
+    },
+    "water": {
+      "row": 29,
+      "frames": 4,
+      "fps": 3
+    },
+    "crack": {
+      "row": 30,
+      "frames": 4,
+      "fps": 4
+    },
+    "groom": {
+      "row": 31,
+      "frames": 4,
+      "fps": 4
+    },
+    "stretch": {
+      "row": 32,
+      "frames": 4,
+      "fps": 2
+    },
+    "yawn": {
+      "row": 33,
+      "frames": 4,
+      "fps": 2
+    },
+    "sunbathe": {
+      "row": 34,
+      "frames": 4,
+      "fps": 2
+    },
+    "raindrops": {
+      "row": 35,
+      "frames": 4,
+      "fps": 4
+    },
+    "cocoa": {
+      "row": 36,
+      "frames": 4,
+      "fps": 3
+    },
+    "huddle": {
+      "row": 37,
+      "frames": 4,
+      "fps": 4
+    },
+    "leaf": {
+      "row": 38,
+      "frames": 4,
+      "fps": 2
+    },
+    "petal": {
+      "row": 39,
       "frames": 4,
       "fps": 2
     },
     "stargaze": {
-      "row": 29,
+      "row": 40,
       "frames": 4,
       "fps": 2
     }
   },
   "garden": {
-    "row": 61,
+    "row": 82,
     "stages": 6
   },
   "meadow": {
-    "row": 317,
+    "row": 423,
     "stages": 7
   },
   "bottle": {
-    "row": 318,
+    "row": 424,
     "frames": 4,
     "fps": 2
   },
   "shootingStar": {
-    "row": 319,
+    "row": 425,
     "frames": 6,
     "fps": 10,
     "loop": false
@@ -187,37 +242,37 @@
     "water": "6fb7d9"
   },
   "snowCover": {
-    "row": 320,
+    "row": 426,
     "stages": 2
   },
   "gift": {
-    "row": 337,
+    "row": 443,
     "stages": 1
   },
   "rainbow": {
-    "row": 338,
+    "row": 444,
     "stages": 3
   },
   "drift": {
     "spring": {
-      "row": 339,
+      "row": 445,
       "frames": 2,
       "fps": 2
     },
     "summer": {
-      "row": 340,
+      "row": 446,
       "frames": 2,
       "fps": 2
     },
     "autumn": {
-      "row": 341,
+      "row": 447,
       "frames": 2,
       "fps": 2
     }
   },
   "visitors": {
     "crab": {
-      "row": 323,
+      "row": 429,
       "frames": 22,
       "fps": 4,
       "wrap": 8,
@@ -247,7 +302,7 @@
       ]
     },
     "seagull": {
-      "row": 326,
+      "row": 432,
       "frames": 16,
       "fps": 3,
       "wrap": 8,
@@ -271,7 +326,7 @@
       ]
     },
     "seagullGift": {
-      "row": 328,
+      "row": 434,
       "frames": 15,
       "fps": 3,
       "wrap": 8,
@@ -294,7 +349,7 @@
       ]
     },
     "fish": {
-      "row": 330,
+      "row": 436,
       "frames": 7,
       "fps": 6,
       "wrap": 8,
@@ -309,7 +364,7 @@
       ]
     },
     "friend": {
-      "row": 331,
+      "row": 437,
       "frames": 42,
       "fps": 3,
       "wrap": 8,
@@ -361,28 +416,28 @@
   },
   "weatherEffects": {
     "rain": {
-      "row": 321,
+      "row": 427,
       "frames": 4,
       "fps": 6
     },
     "snow": {
-      "row": 322,
+      "row": 428,
       "frames": 4,
       "fps": 2
     }
   },
   "outfits": {
     "halloween": {
-      "offset": 62
+      "offset": 83
     },
     "christmas": {
-      "offset": 123
+      "offset": 165
     },
     "newYear": {
-      "offset": 184
+      "offset": 247
     },
     "lunarNewYear": {
-      "offset": 245
+      "offset": 329
     }
   },
   "poses": {
@@ -400,6 +455,17 @@
     "admire": "up",
     "game": "up",
     "piano": "up",
+    "sway": "up",
+    "sing": "up",
+    "drum": "up",
+    "paddle": "up",
+    "fishing": "up",
+    "tea": "up",
+    "read": "up",
+    "levelup": "up",
+    "conduct": "up",
+    "strum": "up",
+    "whistle": "up",
     "flip": "up",
     "note": "up",
     "wish": "up",
@@ -418,187 +484,247 @@
   },
   "transitions": {
     "@under>@low": {
-      "row": 30,
-      "frames": 2,
-      "fps": 10,
-      "loop": false
-    },
-    "@under>@peek": {
-      "row": 31,
-      "frames": 3,
-      "fps": 10,
-      "loop": false
-    },
-    "@under>@up": {
-      "row": 32,
-      "frames": 5,
-      "fps": 10,
-      "loop": false
-    },
-    "@low>@under": {
-      "row": 33,
-      "frames": 2,
-      "fps": 10,
-      "loop": false
-    },
-    "@peek>@under": {
-      "row": 34,
-      "frames": 3,
-      "fps": 10,
-      "loop": false
-    },
-    "@up>@under": {
-      "row": 35,
-      "frames": 5,
-      "fps": 10,
-      "loop": false
-    },
-    "@low>@peek": {
-      "row": 36,
-      "frames": 2,
-      "fps": 10,
-      "loop": false
-    },
-    "@low>@up": {
-      "row": 37,
-      "frames": 3,
-      "fps": 10,
-      "loop": false
-    },
-    "@peek>@low": {
-      "row": 38,
-      "frames": 2,
-      "fps": 10,
-      "loop": false
-    },
-    "@peek>@up": {
-      "row": 39,
-      "frames": 2,
-      "fps": 10,
-      "loop": false
-    },
-    "@up>@low": {
-      "row": 40,
-      "frames": 3,
-      "fps": 10,
-      "loop": false
-    },
-    "@up>@peek": {
       "row": 41,
       "frames": 2,
       "fps": 10,
       "loop": false
     },
-    "@up>@back": {
+    "@under>@peek": {
       "row": 42,
-      "frames": 2,
-      "fps": 8,
+      "frames": 3,
+      "fps": 10,
       "loop": false
     },
-    "@back>@up": {
+    "@under>@up": {
       "row": 43,
-      "frames": 2,
-      "fps": 8,
+      "frames": 5,
+      "fps": 10,
       "loop": false
     },
-    "@up>music": {
+    "@low>@under": {
       "row": 44,
       "frames": 2,
-      "fps": 6,
+      "fps": 10,
       "loop": false
     },
-    "@up>sleep": {
+    "@peek>@under": {
       "row": 45,
-      "frames": 2,
-      "fps": 4,
+      "frames": 3,
+      "fps": 10,
       "loop": false
     },
-    "sleep>@up": {
+    "@up>@under": {
       "row": 46,
-      "frames": 2,
-      "fps": 5,
+      "frames": 5,
+      "fps": 10,
       "loop": false
     },
-    "@up>sunbathe": {
+    "@low>@peek": {
       "row": 47,
       "frames": 2,
-      "fps": 6,
+      "fps": 10,
       "loop": false
     },
-    "sunbathe>@up": {
+    "@low>@up": {
       "row": 48,
-      "frames": 2,
-      "fps": 6,
+      "frames": 3,
+      "fps": 10,
       "loop": false
     },
-    "@up>cocoa": {
+    "@peek>@low": {
       "row": 49,
       "frames": 2,
-      "fps": 8,
+      "fps": 10,
       "loop": false
     },
-    "cocoa>@up": {
+    "@peek>@up": {
       "row": 50,
       "frames": 2,
-      "fps": 8,
+      "fps": 10,
       "loop": false
     },
-    "@up>holdpaw": {
+    "@up>@low": {
       "row": 51,
-      "frames": 1,
-      "fps": 8,
+      "frames": 3,
+      "fps": 10,
       "loop": false
     },
-    "holdpaw>@up": {
+    "@up>@peek": {
       "row": 52,
-      "frames": 1,
-      "fps": 8,
+      "frames": 2,
+      "fps": 10,
       "loop": false
     },
-    "@up>water": {
+    "@up>@back": {
       "row": 53,
       "frames": 2,
       "fps": 8,
       "loop": false
     },
-    "water>@up": {
+    "@back>@up": {
       "row": 54,
       "frames": 2,
       "fps": 8,
       "loop": false
     },
-    "@up>piano": {
+    "@up>music": {
       "row": 55,
+      "frames": 2,
+      "fps": 6,
+      "loop": false
+    },
+    "@up>sleep": {
+      "row": 56,
+      "frames": 2,
+      "fps": 4,
+      "loop": false
+    },
+    "sleep>@up": {
+      "row": 57,
+      "frames": 2,
+      "fps": 5,
+      "loop": false
+    },
+    "@up>sunbathe": {
+      "row": 58,
+      "frames": 2,
+      "fps": 6,
+      "loop": false
+    },
+    "sunbathe>@up": {
+      "row": 59,
+      "frames": 2,
+      "fps": 6,
+      "loop": false
+    },
+    "@up>cocoa": {
+      "row": 60,
+      "frames": 2,
+      "fps": 8,
+      "loop": false
+    },
+    "cocoa>@up": {
+      "row": 61,
+      "frames": 2,
+      "fps": 8,
+      "loop": false
+    },
+    "@up>holdpaw": {
+      "row": 62,
+      "frames": 1,
+      "fps": 8,
+      "loop": false
+    },
+    "holdpaw>@up": {
+      "row": 63,
+      "frames": 1,
+      "fps": 8,
+      "loop": false
+    },
+    "@up>water": {
+      "row": 64,
+      "frames": 2,
+      "fps": 8,
+      "loop": false
+    },
+    "water>@up": {
+      "row": 65,
+      "frames": 2,
+      "fps": 8,
+      "loop": false
+    },
+    "@up>piano": {
+      "row": 66,
       "frames": 2,
       "fps": 8,
       "loop": false
     },
     "piano>@up": {
-      "row": 56,
+      "row": 67,
       "frames": 2,
       "fps": 8,
       "loop": false
     },
     "@up>game": {
-      "row": 57,
+      "row": 68,
       "frames": 2,
       "fps": 8,
       "loop": false
     },
     "game>@up": {
-      "row": 58,
+      "row": 69,
       "frames": 2,
       "fps": 8,
       "loop": false
     },
     "@up>note": {
-      "row": 59,
+      "row": 70,
+      "frames": 2,
+      "fps": 8,
+      "loop": false
+    },
+    "@up>paddle": {
+      "row": 71,
+      "frames": 2,
+      "fps": 8,
+      "loop": false
+    },
+    "paddle>@up": {
+      "row": 72,
+      "frames": 2,
+      "fps": 8,
+      "loop": false
+    },
+    "@up>fishing": {
+      "row": 73,
+      "frames": 2,
+      "fps": 8,
+      "loop": false
+    },
+    "fishing>@up": {
+      "row": 74,
+      "frames": 2,
+      "fps": 8,
+      "loop": false
+    },
+    "@up>tea": {
+      "row": 75,
+      "frames": 2,
+      "fps": 8,
+      "loop": false
+    },
+    "tea>@up": {
+      "row": 76,
+      "frames": 2,
+      "fps": 8,
+      "loop": false
+    },
+    "@up>read": {
+      "row": 77,
+      "frames": 2,
+      "fps": 8,
+      "loop": false
+    },
+    "read>@up": {
+      "row": 78,
+      "frames": 2,
+      "fps": 8,
+      "loop": false
+    },
+    "@up>strum": {
+      "row": 79,
+      "frames": 2,
+      "fps": 8,
+      "loop": false
+    },
+    "strum>@up": {
+      "row": 80,
       "frames": 2,
       "fps": 8,
       "loop": false
     },
     "note>@up": {
-      "row": 60,
+      "row": 81,
       "frames": 2,
       "fps": 8,
       "loop": false
@@ -623,136 +749,141 @@
   },
   "props": {
     "piano": {
-      "row": 313,
+      "row": 418,
+      "frames": 2,
+      "fps": 2
+    },
+    "ukulele": {
+      "row": 419,
       "frames": 2,
       "fps": 2
     },
     "teacup": {
-      "row": 314,
+      "row": 420,
       "frames": 2,
       "fps": 2
     },
     "paperboat": {
-      "row": 315,
+      "row": 421,
       "frames": 4,
       "fps": 2
     },
     "handheld": {
-      "row": 316,
+      "row": 422,
       "frames": 4,
       "fps": 3
     }
   },
   "decor": {
     "halloween": {
-      "row": 306,
+      "row": 411,
       "frames": 4,
       "fps": 3
     },
     "christmas": {
-      "row": 307,
+      "row": 412,
       "frames": 4,
       "fps": 2
     },
     "newYear@night": {
-      "row": 308,
+      "row": 413,
       "frames": 8,
       "fps": 4
     }
   },
   "meadowDecor": {
     "christmas": {
-      "row": 309,
+      "row": 414,
       "frames": 2,
       "fps": 2
     },
     "newYear": {
-      "row": 310,
+      "row": 415,
       "frames": 2,
       "fps": 2
     },
     "newYear@night": {
-      "row": 311,
+      "row": 416,
       "frames": 2,
       "fps": 2
     },
     "lunarNewYear": {
-      "row": 312,
+      "row": 417,
       "frames": 2,
       "fps": 2
     }
   },
   "seasonDecor": {
     "spring": {
-      "row": 346,
+      "row": 452,
       "frames": 1,
       "fps": 1
     },
     "summer": {
-      "row": 347,
+      "row": 453,
       "frames": 1,
       "fps": 1
     },
     "summer@night": {
-      "row": 348,
+      "row": 454,
       "frames": 4,
       "fps": 2
     },
     "autumn": {
-      "row": 349,
+      "row": 455,
       "frames": 1,
       "fps": 1
     },
     "winter": {
-      "row": 350,
+      "row": 456,
       "frames": 1,
       "fps": 1
     }
   },
   "seasonMeadow": {
     "spring": {
-      "row": 351,
+      "row": 457,
       "frames": 1,
       "fps": 1
     },
     "summer": {
-      "row": 352,
+      "row": 458,
       "frames": 1,
       "fps": 1
     },
     "summer@night": {
-      "row": 353,
+      "row": 459,
       "frames": 4,
       "fps": 2
     },
     "autumn": {
-      "row": 354,
+      "row": 460,
       "frames": 1,
       "fps": 1
     },
     "winter": {
-      "row": 355,
+      "row": 461,
       "frames": 1,
       "fps": 1
     }
   },
   "seasonGarden": {
     "autumn": {
-      "row": 342,
+      "row": 448,
       "stages": 6
     },
     "winter": {
-      "row": 344,
+      "row": 450,
       "stages": 6
     }
   },
   "seasonMeadowStrip": {
     "autumn": {
-      "row": 343,
+      "row": 449,
       "stages": 7
     },
     "winter": {
-      "row": 345,
+      "row": 451,
       "stages": 7
     }
   }

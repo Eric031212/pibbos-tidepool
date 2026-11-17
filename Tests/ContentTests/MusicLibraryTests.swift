@@ -1,4 +1,5 @@
 import XCTest
+import World
 @testable import Content
 
 final class MusicLibraryTests: XCTestCase {
@@ -95,12 +96,20 @@ final class ThemePropTests: XCTestCase {
     func testEveryBundledThemeNamesAPropTheSkinHas() throws {
         let library = MusicLibrary.load(from: repo.appendingPathComponent("Assets/Music"))
         let pack = try SkinPack.load(from: repo.appendingPathComponent("Assets/Skins/pibbo"))
-        XCTAssertEqual(library.themes.count, 4)
+        XCTAssertEqual(library.themes.count, 5)
+        let actions = Set(pack.availableActions)
         for theme in library.themes {
             let prop = try XCTUnwrap(theme.prop, theme.title)
             XCTAssertNotNil(pack.prop(named: prop), "\(theme.title): skin has no prop \(prop)")
+            XCTAssertFalse(theme.moves.isEmpty, "\(theme.title) has moves of its own")
+            for move in theme.moves {
+                XCTAssertTrue(actions.contains(move), "\(theme.title): skin has no move \(move)")
+            }
         }
-        XCTAssertEqual(Set(library.themes.compactMap(\.prop)).count, 4, "each theme has its own prop")
+        for move in MusicMoves.general {
+            XCTAssertTrue(actions.contains(move), "skin has no general move \(move)")
+        }
+        XCTAssertEqual(Set(library.themes.compactMap(\.prop)).count, 5, "each theme has its own prop")
     }
 
     func testUnknownOrMissingPropShowsNothing() throws {

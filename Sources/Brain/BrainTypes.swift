@@ -30,15 +30,16 @@ public enum Bubble: Equatable, Sendable {
     /// A dream while Pibbo sleeps: `pick` in 0..<1 chooses which of the things
     /// he has seen lately he dreams of (Brain doesn't know them).
     case dream(pick: Double)
-    /// `GG! ✨` at the end of a little game on the handheld.
-    case gg
+    /// The little bubble at the end of a move: `GG! ✨` after a game, `Ta-da! ♪`
+    /// after a tune (the platform picks the words by move).
+    case finale(String)
     /// Pibbo noticing you: hello, good morning, welcome back, night owl.
     case greeting(Greeting)
 
     /// Bubbles that answer something the user just did show even over music.
     var showsOverMusic: Bool {
         switch self {
-        case .note, .wish, .gg, .greeting: return true
+        case .note, .wish, .finale, .greeting: return true
         case .musicInvitation, .nowPlaying, .dream: return false
         }
     }
@@ -75,9 +76,10 @@ public enum BrainEvent: Equatable, Sendable {
     case splashed
     /// A click on the message in a bottle: Pibbo comes out and reads the note.
     case bottleClicked
-    /// The playing radio theme offers something to do while listening (e.g.
-    /// "game", the handheld of Pixel Tide), or nil.
-    case radioToyChanged(String?)
+    /// What Pibbo may do while listening: the playing radio theme's own moves
+    /// (e.g. "game" for Pixel Tide; empty without the radio), the general ones
+    /// (any music), and which moves end with a finale bubble.
+    case musicMovesChanged(themed: [String], general: [String], finales: Set<String>)
     /// The water was clicked three times in a row: the secret flip.
     case splashCombo
     /// The rain just stopped and a rainbow is out: Pibbo comes up to look.
@@ -179,7 +181,7 @@ public struct BrainConfig: Sendable {
     /// Looking up at a rainbow.
     public var admireDuration: TimeInterval = 8
     /// While the radio plays a theme with a toy, he picks it up this often...
-    public var toyInterval: ClosedRange<TimeInterval> = 40...80
+    public var toyInterval: ClosedRange<TimeInterval> = 30...60
     /// ...plays for this long...
     public var toyDuration: TimeInterval = 8
     /// ...and says `GG! ✨` for the last few seconds.

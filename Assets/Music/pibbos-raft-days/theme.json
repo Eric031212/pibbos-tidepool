@@ -1,4 +1,8 @@
 {
   "title": "Pibbo's Raft Days",
-  "prop": "paperboat"
+  "prop": "paperboat",
+  "moves": [
+    "paddle",
+    "fishing"
+  ]
 }

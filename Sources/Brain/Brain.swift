@@ -82,7 +82,11 @@ public struct Brain {
     private var visitor: String?
 
     /// What the playing radio theme lets him play with, and when he picks it up next.
-    private var radioToy: String?
+    /// Moves while listening (v2.2): the playing theme's own, the general
+    /// ones, and which end with a finale bubble.
+    private var themedMoves: [String] = []
+    private var generalMoves: [String] = []
+    private var finaleMoves: Set<String> = []
     private var nextToy: Date?
     /// When the `GG! ✨` of the current game shows.
     private var ggAt: Date?
@@ -121,7 +125,7 @@ public struct Brain {
         if let bottleUntil { candidates.append(bottleUntil) } else if !isQuiet { candidates.append(nextBottle) }
         if let wishUntil { candidates.append(wishUntil) }
         if let nextDream, isUserAway, !isQuiet { candidates.append(nextDream) }
-        if let nextToy, isBuiltInPlaying, !isQuiet { candidates.append(nextToy) }
+        if let nextToy, isListening, !isQuiet { candidates.append(nextToy) }
         if let ggAt { candidates.append(ggAt) }
         if let nextStar, !workMode { candidates.append(nextStar) }
         switch presence {
@@ -161,9 +165,15 @@ public struct Brain {
                 setPresence(.chill(hideAt: now.addingTimeInterval(config.hideAfterNoInteraction)), at: now)
             }
 
-        case .radioToyChanged(let toy):
-            radioToy = toy
-            nextToy = toy == nil ? nil : now.addingTimeInterval(random(config.toyInterval))
+        case .musicMovesChanged(let themed, let general, let finales):
+            themedMoves = themed
+            generalMoves = general
+            finaleMoves = finales
+            if themed.isEmpty && general.isEmpty {
+                nextToy = nil
+            } else if nextToy == nil || !themed.isEmpty {  // a new theme: its first move comes fresh
+                nextToy = now.addingTimeInterval(random(config.toyInterval))
+            }
 
         case .splashCombo:
             guard !isQuiet else { break }
@@ -248,6 +258,9 @@ public struct Brain {
 
         case .musicChanged(let source, let playing):
             if playing {
+                if playingSources.isEmpty, !(themedMoves.isEmpty && generalMoves.isEmpty) {
+                    nextToy = now.addingTimeInterval(random(config.toyInterval))  // the music just began
+                }
                 playingSources.insert(source)
                 pendingStops[source] = nil
                 fadingSources.remove(source)
@@ -357,6 +370,11 @@ public struct Brain {
         setPresence(.chill(hideAt: now.addingTimeInterval(config.hideAfterNoInteraction)), at: now)
     }
 
+    /// Any music on (and not fading out): the moments for listening moves.
+    private var isListening: Bool {
+        !playingSources.isEmpty && !playingSources.isSubset(of: fadingSources)
+    }
+
     private var isBuiltInPlaying: Bool {
         playingSources.contains(Self.builtInSource) && !fadingSources.contains(Self.builtInSource)
     }
@@ -412,14 +430,16 @@ public struct Brain {
         if let until = wishUntil, until <= now { wishUntil = nil }
         if let at = ggAt, at <= now {
             ggAt = nil
-            if let reaction, reaction.name == radioToy {  // still playing: say GG
-                bubble = (.gg, now.addingTimeInterval(config.ggDuration))
+            if let reaction, finaleMoves.contains(reaction.name) {  // still at it: the finale
+                bubble = (.finale(reaction.name), now.addingTimeInterval(config.ggDuration))
             }
         }
-        if let toy = radioToy, let due = nextToy, due <= now, isBuiltInPlaying, !isQuiet {
-            if reaction == nil, !holdingPaw {
-                reaction = (toy, now.addingTimeInterval(config.toyDuration))
-                ggAt = now.addingTimeInterval(config.toyDuration - config.ggDuration)
+        if let due = nextToy, due <= now, isListening, !isQuiet {
+            let themed = isBuiltInPlaying ? themedMoves : []  // a theme's moves only with its music
+            if reaction == nil, !holdingPaw,
+               let move = MusicMoves.pick(themed: themed, general: generalMoves, roll: random(0...0.999_999), index: random(0...0.999_999)) {
+                reaction = (move, now.addingTimeInterval(config.toyDuration))
+                if finaleMoves.contains(move) { ggAt = now.addingTimeInterval(config.toyDuration - config.ggDuration) }
             }
             nextToy = now.addingTimeInterval(random(config.toyInterval))
         }

@@ -23,7 +23,7 @@ let package = Package(
         .target(name: "World", path: "Sources/World"),
         .testTarget(name: "BrainTests", dependencies: ["Brain"], path: "Tests/BrainTests"),
         .testTarget(name: "GamesTests", dependencies: ["Games"], path: "Tests/GamesTests"),
-        .testTarget(name: "ContentTests", dependencies: ["Content", "Games", "Strings"], path: "Tests/ContentTests"),
+        .testTarget(name: "ContentTests", dependencies: ["Content", "Games", "Strings", "World"], path: "Tests/ContentTests"),
         .testTarget(name: "WorldTests", dependencies: ["World"], path: "Tests/WorldTests"),
     ]
 )

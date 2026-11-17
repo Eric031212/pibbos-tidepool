@@ -77,6 +77,7 @@ PALETTE = {
     "A": (166, 128, 92),   # friend otter's dark fur / paws
     "a": (222, 146, 66),   # autumn leaf on the plants
     "E": (170, 92, 46),    # autumn leaf, dark
+    "U": (236, 208, 150),  # light wood: oar, rod, baton
     "i": (190, 182, 140),  # winter: dry grass
     "I": (146, 138, 104),  # winter: dry grass, dark
 }
@@ -603,6 +604,152 @@ def frame_stargaze(i):
     return water(g, i // 2)
 
 
+# ---------------------------------------------------------------- moves while listening (v2.2)
+# While music plays Pibbo now and then sets the plain bob aside for a move:
+# general ones for any music, and each radio theme's own (theme.json "moves").
+# Headphones stay on (he's listening). Props are drawn with a `dy` so the
+# in-betweens can bring them up out of the water.
+
+def listener(eye="closed"):
+    g = base()
+    headphones(g)
+    remove_shell(g)
+    eyes(g, eye)
+    return g
+
+
+def nudge(g, dx):
+    """Shifts the otter (rows 0-12) sideways by dx columns; the water stays."""
+    if dx == 0:
+        return g
+    for r in range(13):
+        row = g[r]
+        g[r] = (["."] * dx + row[:-dx]) if dx > 0 else (row[-dx:] + ["."] * -dx)
+    return g
+
+
+def move_sway(i, dy=0):
+    """General: swaying side to side to the music, a note drifting up."""
+    g = nudge(listener(), [0, 1, 0, -1][i])
+    put(g, [[(2, 14), (1, 14)], [(1, 15), (0, 15)], [(2, 1), (1, 1)], [(1, 0), (0, 0)]][i], "m")
+    return water(g, i // 2)
+
+
+def move_sing(i, dy=0):
+    """General: singing along, mouth open, notes rising from it."""
+    g = listener()
+    put(g, [(7, 7), (7, 8)] if i % 2 == 0 else [(7, 7), (7, 8), (8, 7), (8, 8)], "e")
+    put(g, [[(6, 12)], [(5, 13), (4, 13)], [(3, 13), (2, 14)], [(1, 14), (0, 14)]][i], "m")
+    return water(g, i // 2)
+
+
+def move_drum(i, dy=0):
+    """General: drumming on a little bongo on his belly, paws taking turns."""
+    g = listener()
+    stamp(g, 10, 5, ["XXXXXX", "LLLLLL", ".LLLL."])
+    left_up = i % 2 == 0
+    put(g, [(8, 5)] if left_up else [(9, 6)], "p")
+    put(g, [(9, 9)] if left_up else [(8, 10)], "p")
+    put(g, [(8, 7)] if not left_up else [(8, 8)], "W")  # the tap
+    return water(shift(g, [0, 0, 1, 0][i]), i // 2)
+
+
+def move_paddle(i, dy=0):
+    """Pibbo's Raft Days: paddling along with a little oar, splashes left and right."""
+    g = listener("lazy")
+    oar = [[(6, 13), (7, 12), (8, 11), (9, 10), (10, 9), (11, 8), (12, 7), (12, 6)],
+           [(6, 2), (7, 3), (8, 4), (9, 5), (10, 6), (11, 7), (12, 8), (12, 9)]][(i // 2) % 2]
+    put(g, [(r + dy, c) for r, c in oar], "U")
+    put(g, [(9, 5), (9, 10)], "p")
+    g = water(g, i // 2)
+    if dy == 0:
+        put(g, [(12, 1), (11, 0)] if (i // 2) % 2 == 0 else [(12, 14), (11, 15)], "W")
+    return g
+
+
+def move_fishing(i, dy=0):
+    """Pibbo's Raft Days: a little fishing line off to the side, the float bobbing."""
+    g = listener("lazy")
+    put(g, [(r + dy, c) for r, c in [(9, 11), (8, 12), (7, 13), (6, 14), (5, 15)]], "U")  # rod
+    put(g, [(9, 10)], "p")
+    g = water(g, i // 2)
+    if dy == 0:
+        put(g, [(6, 15), (7, 15), (8, 15), (9, 15), (10, 15), (11, 15)], "X")  # line
+        put(g, [(12 + (1 if i == 2 else 0), 15)], "M")  # the float dips now and then
+    return g
+
+
+def move_tea(i, dy=0):
+    """Solo Float: a cup of tea, steam curling; a sip on the third beat."""
+    g = listener("lazy")
+    top = (6 if i == 2 else 8) + dy
+    stamp(g, top, 5, ["oggo.", "oXXoo", "oXXoo", ".oo.."])
+    put(g, [(top + 1, 4), (top + 1, 10)], "p")
+    if dy == 0 and i != 2:
+        put(g, [[(7, 6), (6, 7)], [(7, 7), (6, 6)], [], [(7, 6), (5, 7)]][i], "W")
+    return water(g, 0)
+
+
+def move_read(i, dy=0):
+    """Solo Float: reading a little book, eyes down; a page turns."""
+    g = listener("closed")
+    put(g, [(3, 5), (3, 10), (4, 4), (4, 11)], "b")
+    put(g, [(4, 5), (4, 10)], "e")  # looking down at the page
+    stamp(g, 9 + dy, 4, ["gXXXXXXg", "gXzXXzXg", "GGGGGGGG"] if i != 3 else ["gXXXX.Xg", "gXzX.XXg", "GGGGGGGG"])
+    put(g, [(10 + dy, 3), (10 + dy, 12)], "p")
+    return water(g, 0)
+
+
+def move_levelup(i, dy=0):
+    """Pixel Tide: the handheld held up high after a good level, stars popping."""
+    g = listener("closed")
+    stamp(g, 1 - (i % 2), 5, ["oooooo", "okkkko", "oooooo"])
+    put(g, [(4 - (i % 2), 4), (4 - (i % 2), 11)], "p")
+    put(g, [[(2, 2), (6, 14)], [(1, 13), (5, 1)], [(3, 14), (7, 2)], [(0, 2), (4, 13)]][i], "m")
+    put(g, [[(3, 1)], [(2, 14)], [(1, 1)], [(5, 14)]][i], "X")
+    return water(g, i // 2)
+
+
+def move_conduct(i, dy=0):
+    """Paws on Keys: conducting with a twig, notes following it."""
+    g = listener("closed")
+    tip = [(4, 14), (6, 15), (8, 14), (6, 13)][i]
+    put(g, [(9, 11), (8, 12), (7, 13)] if i in (0, 3) else [(9, 11), (9, 12), (8, 13)], "U")
+    put(g, [tip], "U")
+    put(g, [(9, 11)], "p")
+    put(g, [[(2, 13)], [(3, 15)], [(5, 15)], [(1, 12)]][i], "m")
+    return water(g, i // 2)
+
+
+UKULELE = [".......oo", "......oDo", ".....oDo.", ".oLLoDo..", "oLLLLo...", "oLeLLo...", ".oLLo...."]
+
+
+def move_strum(i, dy=0):
+    """Driftwood Strings: a little ukulele across his belly, strumming."""
+    g = listener("closed")
+    stamp(g, 6 + dy, 3, UKULELE)
+    put(g, [(10 + dy, 7) if i % 2 == 0 else (11 + dy, 7)], "p")  # the strumming paw
+    if dy == 0:
+        put(g, [[(3, 14)], [(2, 15), (1, 15)], [(4, 13)], [(1, 14)]][i], "m")
+    return water(g, i // 2)
+
+
+def move_whistle(i, dy=0):
+    """Driftwood Strings: whistling a tune, lips pursed, notes floating off."""
+    g = listener("closed")
+    put(g, [(7, 8)], "e")
+    put(g, [(7, 9)] if i % 2 else [(6, 9)], "c")
+    put(g, [[(6, 11)], [(5, 12), (4, 12)], [(3, 13)], [(2, 14), (1, 14)]][i], "m")
+    return water(shift(g, [0, 1, 0, 0][i]), i // 2)
+
+
+def move_rises(fn, dys):
+    """In-between: the move's prop comes up out of the water (or goes back)."""
+    def frame(i):
+        return fn(0, dys[i])
+    return frame
+
+
 # ---------------------------------------------------------------- transitions
 # In-between frames played once when Pibbo switches clips, so he glides
 # between poses instead of jumping. Clips share transitions through their pose
@@ -757,6 +904,16 @@ TRANSITIONS = {
     "@up>game": (handheld_rises([12, 9]), 2, 8),
     "game>@up": (handheld_rises([9, 12]), 2, 8),
     "@up>note": (note_unrolls([2, 5]), 2, 8),
+    "@up>paddle": (move_rises(move_paddle, [4, 2]), 2, 8),
+    "paddle>@up": (move_rises(move_paddle, [2, 4]), 2, 8),
+    "@up>fishing": (move_rises(move_fishing, [4, 2]), 2, 8),
+    "fishing>@up": (move_rises(move_fishing, [2, 4]), 2, 8),
+    "@up>tea": (move_rises(move_tea, [5, 3]), 2, 8),
+    "tea>@up": (move_rises(move_tea, [3, 5]), 2, 8),
+    "@up>read": (move_rises(move_read, [4, 2]), 2, 8),
+    "read>@up": (move_rises(move_read, [2, 4]), 2, 8),
+    "@up>strum": (move_rises(move_strum, [5, 3]), 2, 8),
+    "strum>@up": (move_rises(move_strum, [3, 5]), 2, 8),
     "note>@up": (note_unrolls([5, 2]), 2, 8),
 }
 
@@ -1326,8 +1483,18 @@ def frame_prop_handheld(i):
     return g
 
 
+def frame_prop_ukulele(i):
+    """Driftwood Strings: a little ukulele leaning on a pebble, a note above it."""
+    g = blank()
+    pebble(g)
+    stamp(g, 3, 11, ["...oo", "..oDo", "..oD.", ".oLLo", "oLLLo", "oLeLo", ".ooo."])
+    put(g, [[(1, 11), (2, 11)], [(0, 12), (1, 12)]][i % 2], "m")
+    return g
+
+
 PROPS = {
     "piano": (frame_prop_piano, 2, 2),
+    "ukulele": (frame_prop_ukulele, 2, 2),
     "teacup": (frame_prop_teacup, 2, 2),
     "paperboat": (frame_prop_paperboat, 4, 2),
     "handheld": (frame_prop_handheld, 4, 3),
@@ -1367,6 +1534,18 @@ ACTIONS = {
     "admire": (frame_admire, 4, 2),        # looking up at a rainbow
     "game": (frame_game, 4, 3),            # playing the handheld while Pixel Tide plays
     "piano": (frame_piano, 4, 5),          # playing a toy keyboard while Paws on Keys plays
+    # moves while listening (v2.2): general, then each theme's own
+    "sway": (move_sway, 4, 3),
+    "sing": (move_sing, 4, 4),
+    "drum": (move_drum, 4, 6),
+    "paddle": (move_paddle, 4, 4),
+    "fishing": (move_fishing, 4, 2),
+    "tea": (move_tea, 4, 2),
+    "read": (move_read, 4, 2),
+    "levelup": (move_levelup, 4, 5),
+    "conduct": (move_conduct, 4, 4),
+    "strum": (move_strum, 4, 6),
+    "whistle": (move_whistle, 4, 3),
     "flip": (frame_flip, 6, 8),            # the secret: tap the water three times
     "ripple": (frame_ripple, 4, 7),        # splash effect, drawn over the water
     "note": (frame_note, 4, 2),            # reading a message in a bottle

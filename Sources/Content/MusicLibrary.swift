@@ -20,9 +20,10 @@ public struct MusicLibrary: Sendable {
         public let tracks: [Track]
         /// Skin prop shown beside the flower while this theme plays (theme.json "prop").
         public var prop: String? = nil
-        /// Something Pibbo plays with while this theme plays (theme.json "toy",
-        /// a skin action such as "game").
-        public var toy: String? = nil
+        /// What Pibbo does now and then while this theme plays, in its own
+        /// style (theme.json "moves", skin actions such as "game"; an older
+        /// "toy" key counts as one move).
+        public var moves: [String] = []
     }
 
     public let themes: [Theme]
@@ -37,6 +38,7 @@ public struct MusicLibrary: Sendable {
         let title: String
         let prop: String?
         let toy: String?
+        let moves: [String]?
     }
     private struct BeatMap: Decodable {
         let track: String
@@ -64,7 +66,8 @@ public struct MusicLibrary: Sendable {
                     guard fm.fileExists(atPath: audio.path) else { return nil }
                     return Track(title: map.title ?? audio.deletingPathExtension().lastPathComponent, url: audio, bpm: map.bpm, offset: map.offset)
                 }
-            themes.append(Theme(title: theme.title, tracks: tracks, prop: theme.prop, toy: theme.toy))
+            themes.append(Theme(title: theme.title, tracks: tracks, prop: theme.prop,
+                                moves: theme.moves ?? theme.toy.map { [$0] } ?? []))
         }
         return MusicLibrary(themes: themes)
     }

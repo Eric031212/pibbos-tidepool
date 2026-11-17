@@ -33,8 +33,8 @@ final class BuiltInLofiSource: NSObject, MusicSource, AVAudioPlayerDelegate {
     private(set) var beat: BeatSync?
     /// The playing theme's skin prop (nil when stopped or the theme has none).
     private(set) var prop: String?
-    /// The playing theme's toy (e.g. "game"), nil when stopped or none.
-    private(set) var toy: String?
+    /// The playing theme's own moves (e.g. ["game"]), empty when stopped.
+    private(set) var moves: [String] = []
     /// `--theme <title>`: start the radio with that theme (testing).
     private static let forcedTheme: String? = {
         let args = CommandLine.arguments
@@ -90,7 +90,7 @@ final class BuiltInLofiSource: NSObject, MusicSource, AVAudioPlayerDelegate {
             self.nowPlaying = nil
             self.beat = nil
             self.prop = nil
-            self.toy = nil
+            self.moves = []
             self.continuation.yield(.paused)
         }
         RunLoop.main.add(timer, forMode: .common)
@@ -116,7 +116,7 @@ final class BuiltInLofiSource: NSObject, MusicSource, AVAudioPlayerDelegate {
             }
             nowPlaying = "\(theme) - \(track.title)"
             prop = plan.theme.prop
-            toy = plan.theme.toy
+            moves = plan.theme.moves
             return true
         }
         return false
@@ -131,7 +131,7 @@ final class BuiltInLofiSource: NSObject, MusicSource, AVAudioPlayerDelegate {
         nowPlaying = nil
         beat = nil
         prop = nil
-        toy = nil
+        moves = []
         continuation.yield(.paused)
     }
 
