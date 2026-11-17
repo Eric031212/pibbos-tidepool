@@ -3,6 +3,10 @@
   "prop": "teacup",
   "moves": [
     "tea",
-    "read"
+    "read",
+    "knit",
+    "write",
+    "doze",
+    "cookie"
   ]
 }

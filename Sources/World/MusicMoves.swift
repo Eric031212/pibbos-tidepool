@@ -4,8 +4,9 @@ import Foundation
 /// headphone bob aside for a move. Each radio theme brings moves in its own
 /// style (theme.json "moves"); the general ones fit any music, also Apple Music.
 public enum MusicMoves {
-    /// Moves for any music: swaying, singing along, drumming on his belly.
-    public static let general = ["sway", "sing", "drum"]
+    /// Moves for any music: swaying, singing along, a little bongo, clapping,
+    /// a shimmy, humming, blowing bubbles.
+    public static let general = ["sway", "sing", "drum", "clap", "shimmy", "hum", "bubbles"]
     /// Moves that end with a little bubble (a game won, a tune finished).
     public static let finales: Set<String> = ["game", "piano", "strum"]
     /// Chance that a move comes from the theme rather than the general ones.

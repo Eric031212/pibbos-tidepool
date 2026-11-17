@@ -743,6 +743,272 @@ def move_whistle(i, dy=0):
     return water(shift(g, [0, 1, 0, 0][i]), i // 2)
 
 
+# ---- more moves (v2.2): four more general ones and four more per theme
+
+def held(g, top, left, rows, dy):
+    """Draws a held prop `dy` rows lower (in-betweens raise it out of the water)."""
+    stamp(g, top + dy, left, rows)
+
+
+# general
+def move_clap(i, dy=0):
+    """Clapping along: paws meet in front of him, a little sparkle on the beat."""
+    g = listener()
+    put(g, [(7, 5), (7, 10)] if i % 2 == 0 else [(7, 7), (7, 8)], "p")  # in front of his cream chin
+    if i % 2:
+        put(g, [(6, 3), (5, 12), (8, 13)], "m")
+    return water(g, i // 2)
+
+
+def move_shimmy(i, dy=0):
+    """A little shimmy: shoulders up and down, ears wiggling."""
+    g = listener("closed")
+    up = i % 2 == 0
+    put(g, [(3, 1), (3, 14)] if up else [(4, 1), (4, 14)], "d")
+    put(g, [(9, 2), (9, 13)] if up else [(10, 2), (10, 13)], "p")
+    put(g, [[(1, 15), (2, 15)], [], [(1, 0), (2, 0)], []][i], "m")
+    return water(nudge(g, [0, 1, 0, -1][i]), i // 2)
+
+
+def move_hum(i, dy=0):
+    """Humming with eyes closed, soft waves of sound drifting off."""
+    g = listener()
+    put(g, [(7, 7), (7, 8)], "d")
+    waves = [[(5, 13)], [(5, 13), (4, 14)], [(4, 14), (3, 15)], [(3, 15)]][i]
+    put(g, waves, "z")
+    put(g, [[(2, 1)], [(1, 1), (2, 1)], [(1, 0)], [(0, 0), (1, 0)]][i], "m")
+    return water(g, i // 2)
+
+
+def move_bubbles(i, dy=0):
+    """Blowing bubbles to the beat, one floating up each time."""
+    g = listener()
+    put(g, [(7, 8)], "e")
+    trail = [[(6, 10)], [(5, 11), (6, 10)], [(3, 12), (5, 11)], [(1, 12), (3, 12)]][i]
+    put(g, trail, "u")
+    return water(g, i // 2)
+
+
+# Pibbo's Raft Days
+def move_spyglass(i, dy=0):
+    """Looking out over the water through a little spyglass."""
+    g = listener("closed")
+    held(g, 4, 9, ["oUUUUq"], dy if dy else (1 if i == 2 else 0))
+    put(g, [(5 + dy, 9)], "p")
+    put(g, [(4, 4)], "e")
+    return water(g, 0)
+
+
+def move_map(i, dy=0):
+    """Studying a treasure map, a little red X on it."""
+    g = listener("lazy")
+    held(g, 8, 4, ["XXXXXXXX", "XzXXXMXX", "XXzzXXXX"], dy)
+    put(g, [(9 + dy, 3), (9 + dy, 12)], "p")
+    put(g, [(4, 4), (4, 11)], "b")
+    put(g, [(4, 5), (4, 10)], "e")
+    return water(g, 0)
+
+
+def move_wave(i, dy=0):
+    """Waving to a passing boat."""
+    g = listener("closed")
+    col = [12, 13, 12, 11][i]  # a raised arm, waving to and fro
+    stamp(g, 1, col - 1, ["opo", "opp", ".bbo", ".bbo"])
+    return water(g, i // 2)
+
+
+def move_kite(i, dy=0):
+    """Flying a little kite on a string."""
+    g = listener("closed")
+    put(g, [(9, 11)], "p")
+    put(g, [(8, 12), (6, 13), (4, 14)], "X")  # the string
+    kite = [(0, 13), (1, 12), (1, 14), (2, 13)] if i % 2 == 0 else [(0, 14), (1, 13), (1, 15), (2, 14)]
+    put(g, kite, "M")
+    put(g, [(3, 13 + i % 2)], "m")  # its tail
+    return water(g, i // 2)
+
+
+# Solo Float
+def move_knit(i, dy=0):
+    """Knitting something cosy, needles clicking, a ball of yarn."""
+    g = listener("lazy")
+    held(g, 9, 5, ["fFffF", "FffFf"], dy)
+    put(g, [(8 + dy, 6 + i % 2), (8 + dy, 9 - i % 2)], "U")
+    put(g, [(9 + dy, 4), (9 + dy, 11)], "p")
+    return water(g, 0)
+
+
+def move_write(i, dy=0):
+    """Writing in a journal, pencil moving along the line."""
+    g = listener("lazy")
+    held(g, 9, 4, ["XXXXXXXX", "XzzzXzzX"], dy)
+    put(g, [(8 + dy, 5 + i)], "U")
+    put(g, [(9 + dy, 5 + i)], "p")
+    put(g, [(4, 4), (4, 11)], "b")
+    put(g, [(4, 5), (4, 10)], "e")
+    return water(g, 0)
+
+
+def move_doze(i, dy=0):
+    """Dozing off to a slow song, headphones still on, a tiny z."""
+    g = listener("closed")
+    g = shift(g, [0, 1, 1, 0][i])
+    put(g, [[(2, 14)], [(1, 15)], [(0, 14)], []][i], "z")
+    return water(g, 0)
+
+
+def move_cookie(i, dy=0):
+    """Nibbling a cookie, crumbs falling."""
+    g = listener("lazy")
+    held(g, 7, 9, ["LL", "LD"] if i != 2 else ["L.", "LD"], dy)
+    put(g, [(8 + dy, 8)], "p")
+    put(g, [[(10, 9)], [(11, 10)], [(10, 10), (12, 9)], [(11, 9)]][i], "L")
+    return water(g, 0)
+
+
+# Pixel Tide
+def move_joystick(i, dy=0):
+    """Playing with a little arcade stick, the ball top wobbling."""
+    g = listener("lazy")
+    held(g, 10, 5, ["qqqqqq", "qMqqgq"], dy)
+    put(g, [(8 + dy, 7 + (i % 2)), (9 + dy, 7)], "q")
+    put(g, [(8 + dy, 7 + (i % 2))], "M")
+    put(g, [(9 + dy, 6), (9 + dy, 10)], "p")
+    return water(g, 0)
+
+
+def move_coin(i, dy=0):
+    """Coins popping up out of his paws, one per beat: ding!"""
+    g = listener("closed")
+    put(g, [(9, 6), (9, 9)], "p")
+    coin = [(7, 7)], [(5, 7), (5, 8)], [(3, 8)], [(1, 8)]
+    put(g, coin[i], "m")
+    put(g, [(6, 6)] if i == 1 else [], "X")
+    return water(g, i // 2)
+
+
+def move_pixelheart(i, dy=0):
+    """Pixel hearts floating up: he likes this level."""
+    g = listener("closed")
+    heart = ["M.M", "MMM", ".M."]
+    stamp(g, [5, 3, 1, 0][i], 12, heart)
+    if i >= 2:
+        stamp(g, [0, 0, 3, 1][i], 1, heart)
+    return water(g, i // 2)
+
+
+def move_robot(i, dy=0):
+    """A stiff little 8-bit robot dance, arms out at right angles."""
+    g = listener("open")
+    if i % 2 == 0:
+        put(g, [(8, 1), (8, 0), (7, 0)], "p")
+        put(g, [(10, 14), (10, 15)], "p")
+    else:
+        put(g, [(10, 0), (10, 1)], "p")
+        put(g, [(8, 14), (8, 15), (7, 15)], "p")
+    return water(g, i // 2)
+
+
+# Paws on Keys
+def move_xylophone(i, dy=0):
+    """A toy xylophone with rainbow bars, a little mallet hopping across."""
+    g = listener("closed")
+    held(g, 9, 3, ["MLmkhF..", "MLmkhF.."], dy)
+    put(g, [(8 + dy, 3 + 2 * i), (7 + dy, 4 + 2 * i)], "U")
+    if dy == 0:
+        put(g, [(4, 14 - i % 2)], "m")
+    return water(g, 0)
+
+
+def move_metronome(i, dy=0):
+    """Watching a little metronome tick to and fro."""
+    g = listener("lazy")
+    held(g, 8, 6, ["..UU..", ".UUUU.", "UUqqUU"], dy)
+    arm = [(6, 6), (7, 7)] if i % 2 == 0 else [(6, 11), (7, 10)]
+    put(g, [(r + dy, c) for r, c in arm], "q")
+    put(g, [(4, 4 + 2 * (i % 2)), (4, 9 + 2 * (i % 2))], "e")
+    return water(g, 0)
+
+
+def move_sheet(i, dy=0):
+    """Reading sheet music, a note lifting off the page."""
+    g = listener("lazy")
+    held(g, 9, 4, ["XXXXXXXX", "XzqXXqzX", "XXXzXXXX"], dy)
+    put(g, [(10 + dy, 3), (10 + dy, 12)], "p")
+    put(g, [(4, 4), (4, 11)], "b")
+    put(g, [(4, 5), (4, 10)], "e")
+    if dy == 0:
+        put(g, [[(7, 12)], [(6, 13)], [(4, 13)], [(2, 14)]][i], "m")
+    return water(g, 0)
+
+
+def move_bow(i, dy=0):
+    """A little bow after a piece, then up again with a flower in his paw."""
+    g = listener("closed")
+    g = shift(g, [0, 2, 2, 0][i])
+    put(g, [(8 + [0, 2, 2, 0][i], 12)], "p")
+    put(g, [(7 + [0, 2, 2, 0][i], 12)], "f")
+    return water(g, 0)
+
+
+# Driftwood Strings
+def move_marshmallow(i, dy=0):
+    """Toasting a marshmallow on a stick over an imaginary campfire."""
+    g = listener("lazy")
+    put(g, [(r + dy, c) for r, c in [(9, 10), (8, 11), (7, 12), (6, 13)]], "U")
+    held(g, 4, 13, ["XX", "XX"] if i < 2 else ["LX", "XL"], dy)
+    put(g, [(9 + dy, 10)], "p")
+    if dy == 0:
+        put(g, [[(3, 14)], [(2, 13)], [(2, 15)], [(1, 14)]][i], "W")
+    return water(g, 0)
+
+
+def move_harmonica(i, dy=0):
+    """Playing a harmonica, sliding it side to side."""
+    g = listener("closed")
+    held(g, 7, 5 + (i % 2), ["MXMXM"], dy)
+    put(g, [(7 + dy, 4 + (i % 2)), (7 + dy, 10 + (i % 2))], "p")
+    if dy == 0:
+        put(g, [[(5, 13)], [(4, 14)], [(5, 1)], [(4, 2)]][i], "m")
+    return water(g, 0)
+
+
+def move_maracas(i, dy=0):
+    """Shaking two little maracas."""
+    g = listener("closed")
+    up = i % 2 == 0
+    for c, high in ((1, up), (13, not up)):
+        top = 6 if high else 8
+        stamp(g, top + dy, c, ["LL", "Lm", ".U"])
+    if dy == 0:
+        put(g, [(5, 0), (5, 3)] if up else [(7, 12), (7, 15)], "m")
+    return water(g, 0)
+
+
+def move_tailtap(i, dy=0):
+    """Keeping time with his tail: a little tap on the water each beat."""
+    g = listener("closed")
+    g = water(g, i // 2)
+    if i % 2 == 0:
+        put(g, [(12, 14), (12, 15)], "d")
+    else:
+        put(g, [(13, 14), (12, 15)], "d")
+        put(g, [(11, 15), (12, 13)], "W")
+    return g
+
+
+MORE_MOVES = {
+    "clap": (move_clap, 4, 6), "shimmy": (move_shimmy, 4, 5), "hum": (move_hum, 4, 3), "bubbles": (move_bubbles, 4, 3),
+    "spyglass": (move_spyglass, 4, 2), "map": (move_map, 4, 2), "wave": (move_wave, 4, 5), "kite": (move_kite, 4, 3),
+    "knit": (move_knit, 4, 4), "write": (move_write, 4, 3), "doze": (move_doze, 4, 1), "cookie": (move_cookie, 4, 3),
+    "joystick": (move_joystick, 4, 6), "coin": (move_coin, 4, 5), "pixelheart": (move_pixelheart, 4, 3), "robot": (move_robot, 4, 4),
+    "xylophone": (move_xylophone, 4, 5), "metronome": (move_metronome, 4, 2), "sheet": (move_sheet, 4, 2), "bow": (move_bow, 4, 2),
+    "marshmallow": (move_marshmallow, 4, 2), "harmonica": (move_harmonica, 4, 4), "maracas": (move_maracas, 4, 6), "tailtap": (move_tailtap, 4, 4),
+}
+# moves holding something get an in-between that brings it up out of the water
+HELD_MOVES = ["map", "knit", "write", "cookie", "joystick", "xylophone", "metronome", "sheet", "marshmallow", "harmonica", "maracas"]
+
+
 def move_rises(fn, dys):
     """In-between: the move's prop comes up out of the water (or goes back)."""
     def frame(i):
@@ -914,6 +1180,8 @@ TRANSITIONS = {
     "read>@up": (move_rises(move_read, [2, 4]), 2, 8),
     "@up>strum": (move_rises(move_strum, [5, 3]), 2, 8),
     "strum>@up": (move_rises(move_strum, [3, 5]), 2, 8),
+    **{f"@up>{name}": (move_rises(MORE_MOVES[name][0], [5, 3]), 2, 8) for name in HELD_MOVES},
+    **{f"{name}>@up": (move_rises(MORE_MOVES[name][0], [3, 5]), 2, 8) for name in HELD_MOVES},
     "note>@up": (note_unrolls([5, 2]), 2, 8),
 }
 
@@ -1546,6 +1814,7 @@ ACTIONS = {
     "conduct": (move_conduct, 4, 4),
     "strum": (move_strum, 4, 6),
     "whistle": (move_whistle, 4, 3),
+    **MORE_MOVES,
     "flip": (frame_flip, 6, 8),            # the secret: tap the water three times
     "ripple": (frame_ripple, 4, 7),        # splash effect, drawn over the water
     "note": (frame_note, 4, 2),            # reading a message in a bottle

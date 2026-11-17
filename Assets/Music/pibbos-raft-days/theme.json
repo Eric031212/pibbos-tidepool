@@ -3,6 +3,10 @@
   "prop": "paperboat",
   "moves": [
     "paddle",
-    "fishing"
+    "fishing",
+    "spyglass",
+    "map",
+    "wave",
+    "kite"
   ]
 }

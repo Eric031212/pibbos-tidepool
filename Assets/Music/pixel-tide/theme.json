@@ -3,6 +3,10 @@
   "prop": "handheld",
   "moves": [
     "game",
-    "levelup"
+    "levelup",
+    "joystick",
+    "coin",
+    "pixelheart",
+    "robot"
   ]
 }

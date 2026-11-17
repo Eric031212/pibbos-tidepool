@@ -3,6 +3,10 @@
   "prop": "piano",
   "moves": [
     "piano",
-    "conduct"
+    "conduct",
+    "xylophone",
+    "metronome",
+    "sheet",
+    "bow"
   ]
 }
