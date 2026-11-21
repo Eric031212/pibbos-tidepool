@@ -98,6 +98,7 @@ final class GameArt {
         case .splash: return Strings.Garden.splash
         case .planted: return Strings.Garden.planted
         case .forThePool: return Strings.Garden.forThePool
+        case .flowerName(let kind): return Strings.Garden.flowerNames[kind] ?? kind
         case .timeLeft(let seconds): return Strings.Games.timeLeft(seconds)
         case .score(let value): return Strings.Games.score(value)
         case .best(let value): return Strings.Games.best(value)

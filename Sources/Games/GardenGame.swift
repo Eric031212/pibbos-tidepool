@@ -10,10 +10,13 @@ public struct GardenGame: Game {
     /// Soil patches: left edge, top (art pixels). Two rows of three.
     static let plots: [(x: Int, y: Int)] = [(22, 64), (68, 64), (114, 64), (22, 92), (68, 92), (114, 92)]
     static let soilSize = (w: 24, h: 8)
-    /// The seed picker panel and its icons.
-    static let panel = (x: 38, y: 18, w: 84, h: 20)
-    static let seedSize = 12
-    static func seedOrigin(_ i: Int) -> (x: Int, y: Int) { (panel.x + 3 + i * 13, panel.y + 4) }
+    /// The seed picker for every kind there is, on a page.
+    static func picker(page: Int) -> SeedPicker.Layout { SeedPicker.layout(count: FlowerKind.allCases.count, page: page) }
+    /// Where a kind's packet is on the first page (tests).
+    static func seedOrigin(_ i: Int) -> (x: Int, y: Int) {
+        let slot = picker(page: 0).slots[i]
+        return (slot.x, slot.y)
+    }
     static let walkSpeed: Double = 70
     static let messageLength: Double = 2
     static let actionLength: Double = 1.2
@@ -39,6 +42,9 @@ public struct GardenGame: Game {
     public private(set) var state: GardenState
     /// The plot whose seed picker is open.
     public private(set) var picking: Int?
+    public private(set) var pickerPage = 0
+    /// The last place the pointer was seen over the playfield (for naming a seed).
+    private var pointer: GamePoint?
     private var pibbo = (x: 4.0, y: 82.0)
     private var target: (x: Double, y: Double)?
     private var action: (name: Int, until: Double)?  // frame of the action pose
@@ -59,6 +65,7 @@ public struct GardenGame: Game {
 
     public mutating func step(_ input: GameInput, dt: Double) {
         time += dt
+        if let p = input.pointer { pointer = p }
         if let tap = input.tap {
             handle(tap)
             nextWander = time + random(Self.wanderAfter)
@@ -83,20 +90,22 @@ public struct GardenGame: Game {
 
     private mutating func handle(_ tap: GamePoint) {
         if let plot = picking {
-            picking = nil
-            for (i, kind) in FlowerKind.allCases.enumerated() {
-                let o = Self.seedOrigin(i)
-                if tap.x >= Double(o.x), tap.x < Double(o.x + Self.seedSize), tap.y >= Double(o.y), tap.y < Double(o.y + Self.seedSize) {
-                    change(GardenRules.plant(kind, in: plot, of: state, now: now()))
-                    goTo(plot, pose: 6, say: .planted)
-                    return
-                }
+            let layout = Self.picker(page: pickerPage)
+            if layout.isPrevious(tap) { pickerPage -= 1; return }
+            if layout.isNext(tap) { pickerPage += 1; return }
+            if let slot = layout.slot(at: tap) {
+                picking = nil
+                change(GardenRules.plant(FlowerKind.allCases[slot.index], in: plot, of: state, now: now()))
+                goTo(plot, pose: 6, say: .planted)
+                return
             }
-            return  // a tap elsewhere just closes the picker
+            if !layout.contains(tap) { picking = nil }  // a tap outside closes it; inside, nothing happens
+            return
         }
         guard let index = Self.plotIndex(at: tap) else { return }
         guard let plot = state.plots[index] else {
             picking = index
+            pickerPage = 0
             goTo(index, pose: nil, say: nil)
             return
         }
@@ -180,16 +189,22 @@ public struct GardenGame: Game {
                 scene.sprites.append(GameSprite(weather, x: (x + Playfield.width) % Playfield.width, y: y))
             }
         }
-        if picking != nil {
-            scene.sprites.append(GameSprite("panel", x: Self.panel.x, y: Self.panel.y))
-            for i in FlowerKind.allCases.indices {
-                let o = Self.seedOrigin(i)
-                scene.sprites.append(GameSprite("seeds", frame: i, x: o.x, y: o.y))
-            }
-        }
         let middle = Playfield.width / 2
-        let line: GameText.Key = message?.key ?? (picking != nil ? .pickSeed : .gardenHint)
-        scene.texts.append(GameText(line, x: middle, y: picking != nil ? 42 : 3, align: .center))
+        if picking != nil {
+            // The picker carries its own title, on its own cream panel: readable over anything.
+            let layout = Self.picker(page: pickerPage)
+            scene.sprites.append(GameSprite(layout.panel, x: layout.x, y: layout.y))
+            for slot in layout.slots {
+                scene.sprites.append(GameSprite("seeds", frame: slot.index, x: slot.x, y: slot.y))
+            }
+            if let a = layout.previous { scene.sprites.append(GameSprite("arrows", frame: 0, x: a.x, y: a.y)) }
+            if let a = layout.next { scene.sprites.append(GameSprite("arrows", frame: 1, x: a.x, y: a.y)) }
+            let hovered = pointer.flatMap { layout.slot(at: $0) }
+            let title: GameText.Key = hovered.map { .flowerName(FlowerKind.allCases[$0.index].rawValue) } ?? .pickSeed
+            scene.texts.append(GameText(title, x: layout.titleX, y: layout.titleY, align: .center))
+        } else {
+            scene.texts.append(GameText(message?.key ?? .gardenHint, x: middle, y: 3, align: .center))
+        }
         return scene
     }
 }

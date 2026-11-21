@@ -95,6 +95,12 @@ final class GardenAndFontTests: XCTestCase {
         XCTAssertEqual(font.layout("€").placed.first?.glyph, font.glyphs["?"])
     }
 
+    func testEveryFlowerHasAName() {
+        for kind in FlowerKind.allCases {
+            XCTAssertNotNil(Strings.Garden.flowerNames[kind.rawValue], "no name for \(kind)")
+        }
+    }
+
     func testEveryGameHasATitle() {
         for entry in GameCatalog.all {
             XCTAssertNotNil(Strings.Games.titles[entry.id], "no title for \(entry.id)")

@@ -37,6 +37,8 @@ public struct GameInput: Equatable, Sendable {
     public var pressed = false
     /// Where a click on the playfield landed since the last step (the latest).
     public var tap: GamePoint?
+    /// Where the pointer is over the playfield, set only when it moved.
+    public var pointer: GamePoint?
 
     public init() {}
 
@@ -47,6 +49,7 @@ public struct GameInput: Equatable, Sendable {
         swipe = 0
         pressed = false
         tap = nil
+        pointer = nil
     }
 }
 
@@ -81,6 +84,8 @@ public struct GameText: Equatable, Sendable {
         case clickToPlay, escToClose, newBest, timeUp
         /// The garden (v2.3).
         case gardenHint, pickSeed, splash, planted, forThePool
+        /// A flower's name (its kind's raw value), shown over its seed packet.
+        case flowerName(String)
         case score(Int)
         /// Seconds left in the round.
         case timeLeft(Int)

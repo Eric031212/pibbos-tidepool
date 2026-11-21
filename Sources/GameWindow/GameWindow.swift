@@ -84,6 +84,9 @@ final class GameView: NSView {
         case "press": pending.pressed = true
         case "right": held.right = true
         case "stop": held = (false, false)
+        case let point where point.hasPrefix("point:"):  // "point:50,30" = the pointer moved there
+            let xy = point.dropFirst(6).split(separator: ",").compactMap { Double($0) }
+            if xy.count == 2 { pending.pointer = GamePoint(x: xy[0], y: xy[1]) }
         case let tap where tap.hasPrefix("tap:"):  // "tap:80,66" = a click at that playfield point
             let xy = tap.dropFirst(4).split(separator: ",").compactMap { Double($0) }
             if xy.count == 2 { pending.tap = GamePoint(x: xy[0], y: xy[1]); pending.pressed = true }
@@ -117,6 +120,7 @@ final class GameView: NSView {
         setCloseHovered(closeRect.contains(p))
         if playfield.insetBy(dx: 0, dy: -4).contains(p) {
             pending.pointerX = Double(p.x - playfield.minX)
+            pending.pointer = GamePoint(x: Double(p.x - playfield.minX), y: Double(p.y - playfield.minY))
         }
     }
 

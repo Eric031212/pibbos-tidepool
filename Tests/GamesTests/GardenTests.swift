@@ -100,7 +100,7 @@ final class GardenGameTests: XCTestCase {
         let (x, y) = plotCentre(0)
         tap(&game, x, y)
         XCTAssertEqual(game.picking, 0)
-        XCTAssertTrue(game.scene.sprites.contains { $0.name == "panel" })
+        XCTAssertTrue(game.scene.sprites.contains { $0.name.hasPrefix("panel") })
         let seed = GardenGame.seedOrigin(2)  // sunflower
         tap(&game, seed.x + 4, seed.y + 4)
         XCTAssertNil(game.picking)
@@ -161,7 +161,7 @@ final class GardenSheetTests: XCTestCase {
     func testTheSheetHasEverythingTheGardenDraws() throws {
         let repo = URL(fileURLWithPath: #filePath).deletingLastPathComponent().deletingLastPathComponent().deletingLastPathComponent()
         let sheet = try GameSheet(json: Data(contentsOf: repo.appendingPathComponent("Assets/Games/games.json")))
-        let names = ["background", "soil", "panel", "pibbo", "seeds", "rain", "snow"] + FlowerKind.allCases.map(\.rawValue)
+        let names = ["background", "soil", "panel1", "panel2", "arrows", "pibbo", "seeds", "rain", "snow", "butterfly", "cloud", "glint"] + FlowerKind.allCases.map(\.rawValue)
         for name in names {
             XCTAssertNotNil(sheet.item(game: GardenGame.id, name: name), "garden.\(name)")
         }
@@ -170,5 +170,65 @@ final class GardenSheetTests: XCTestCase {
         for kind in FlowerKind.allCases {
             XCTAssertEqual(sheet.item(game: GardenGame.id, name: kind.rawValue)?.frames, GardenRules.stages)
         }
+    }
+}
+
+final class SeedPickerTests: XCTestCase {
+    func testSixSeedsFitOneRowOnOnePage() {
+        let layout = SeedPicker.layout(count: 6, page: 0)
+        XCTAssertEqual(layout.slots.count, 6)
+        XCTAssertEqual(layout.pages, 1)
+        XCTAssertEqual(layout.panel, "panel1")
+        XCTAssertNil(layout.previous)
+        XCTAssertNil(layout.next)
+        XCTAssertEqual(Set(layout.slots.map(\.y)).count, 1, "one row")
+        XCTAssertTrue(layout.slots.allSatisfy { $0.x >= layout.x && $0.x + SeedPicker.seedSize <= layout.x + layout.w }, "inside the panel")
+        XCTAssertTrue(layout.slots.allSatisfy { $0.y >= layout.y + SeedPicker.titleBand }, "under the title")
+    }
+
+    func testMoreSeedsUseTwoRowsThenPages() {
+        let nine = SeedPicker.layout(count: 9, page: 0)
+        XCTAssertEqual(nine.panel, "panel2")
+        XCTAssertEqual(Set(nine.slots.map(\.y)).count, 2)
+
+        let twenty = SeedPicker.layout(count: 20, page: 0)
+        XCTAssertEqual(twenty.pages, 2)
+        XCTAssertEqual(twenty.slots.count, 12)
+        XCTAssertNil(twenty.previous)
+        XCTAssertNotNil(twenty.next)
+        let second = SeedPicker.layout(count: 20, page: 1)
+        XCTAssertEqual(second.slots.map(\.index), Array(12..<20))
+        XCTAssertNotNil(second.previous)
+        XCTAssertNil(second.next)
+        XCTAssertEqual(SeedPicker.layout(count: 20, page: 7).slots.map(\.index), Array(12..<20), "pages clamp")
+    }
+
+    func testTheWholePanelFitsThePlayfield() {
+        for count in [1, 6, 12, 40] {
+            let l = SeedPicker.layout(count: count, page: 0)
+            XCTAssertGreaterThanOrEqual(l.x, 0)
+            XCTAssertLessThanOrEqual(l.x + l.w, Playfield.width)
+            XCTAssertLessThanOrEqual(l.y + l.h, 60, "clear of the beds")
+        }
+    }
+
+    func testHoveringASeedNamesItInThePanelTitle() {
+        let fixed = Date(timeIntervalSince1970: 86_400 * 20_000)
+        var game = GardenGame(store: MemoryGardenStore(), now: { fixed })
+        var tap = GameInput()
+        let p = GardenGame.plots[0]
+        tap.tap = GamePoint(x: Double(p.x + 12), y: Double(p.y + 2))
+        game.step(tap, dt: 1.0 / 60)
+        let layout = SeedPicker.layout(count: FlowerKind.allCases.count, page: 0)
+        XCTAssertTrue(game.scene.texts.contains { $0.key == .pickSeed && $0.y == layout.titleY })
+        var hover = GameInput()
+        let seed = layout.slots[3]
+        hover.pointer = GamePoint(x: Double(seed.x + 5), y: Double(seed.y + 5))
+        game.step(hover, dt: 1.0 / 60)
+        XCTAssertTrue(game.scene.texts.contains { $0.key == .flowerName(FlowerKind.allCases[3].rawValue) })
+        var inside = GameInput()
+        inside.tap = GamePoint(x: Double(layout.x + 2), y: Double(layout.y + 2))
+        game.step(inside, dt: 1.0 / 60)
+        XCTAssertNotNil(game.picking, "a tap inside the panel (not on a seed) keeps it open")
     }
 }

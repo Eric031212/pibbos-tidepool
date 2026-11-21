@@ -2975,8 +2975,10 @@ def garden_seed_packet(kind):
     return to_image(rows, GARDEN_PALETTE)
 
 
-def garden_panel():
-    w, h = 84, 20
+def garden_panel(rows=1):
+    """The seed picker: a cream panel like the speech bubbles, a title line
+    on top (Games/SeedPicker: 6 packets of 14 px per row, 13 px title)."""
+    w, h = 6 * 14 + 4, 13 + rows * 14 + 3
     img = Image.new("RGBA", (w, h), (0, 0, 0, 0))
     px = img.load()
     for y in range(h):
@@ -2986,7 +2988,14 @@ def garden_panel():
                 continue
             edge = x in (0, w - 1) or y in (0, h - 1)
             px[x, y] = (TEXT if edge else BUBBLE_FILL) + (255,)
+    for x in range(3, w - 3):  # a soft line under the title
+        if x % 2 == 0:
+            px[x, 12] = (226, 214, 190, 255)
     return img
+
+
+GARDEN_ARROWS = [["....o", "...oo", "..ooo", ".oooo", "..ooo", "...oo", "....o"],
+                 ["o....", "oo...", "ooo..", "oooo.", "ooo..", "oo...", "o...."]]
 
 
 def garden_pibbo(i):
@@ -3016,7 +3025,8 @@ def garden_pibbo(i):
 def garden_items():
     """(name, [frames]) for the garden, in sheet order."""
     items = [("background", [garden_background()]), ("soil", [garden_soil(False), garden_soil(True)]),
-             ("panel", [garden_panel()]), ("pibbo", [garden_pibbo(i) for i in range(7)]),
+             ("panel1", [garden_panel(1)]), ("panel2", [garden_panel(2)]),
+             ("arrows", [to_image(a, {"o": TEXT}) for a in GARDEN_ARROWS]), ("pibbo", [garden_pibbo(i) for i in range(7)]),
              ("seeds", [garden_seed_packet(k) for k in FLOWER_COLORS])]
     items += [(kind, [garden_plant(kind, s) for s in range(5)]) for kind in FLOWER_COLORS]
     items += [("rain", [to_image(["w", "w", "W"], GARDEN_PALETTE)]), ("snow", [to_image(["XX", "XX"], GARDEN_PALETTE)])]

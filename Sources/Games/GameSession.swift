@@ -36,6 +36,7 @@ public struct GameSession {
         input.swipe += new.swipe
         input.pressed = input.pressed || new.pressed
         if let tap = new.tap { input.tap = tap }
+        if let pointer = new.pointer { input.pointer = pointer }
     }
 
     /// Steps the game for `seconds` of real time. Returns how many steps ran

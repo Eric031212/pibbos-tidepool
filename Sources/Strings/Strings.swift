@@ -52,7 +52,13 @@ public enum Strings {
         public static let splash = "Splash! 🫧"
         public static let planted = "Planted! 🌷"
         public static let forThePool = "For the pool 🌷"
-        static let all = [hint, pickSeed, splash, planted, forThePool]
+        /// Each flower's name, shown in the seed picker over its packet. A new
+        /// kind needs one here (a test checks).
+        public static let flowerNames: [String: String] = [
+            "tulip": "Tulip 🌷", "daisy": "Daisy 🌷", "sunflower": "Sunflower 🌷",
+            "lavender": "Lavender 🌷", "poppy": "Poppy 🌷", "bluebell": "Bluebell 🌷",
+        ]
+        static let all = [hint, pickSeed, splash, planted, forThePool] + flowerNames.values.sorted()
     }
 
     /// When Pibbo notices you (v1.4).
