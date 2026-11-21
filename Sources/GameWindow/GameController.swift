@@ -119,7 +119,8 @@ private final class OpenGame {
         session = GameSession(game: game, best: best)
         savedBest = best
         self.art = art
-        let scale = Self.scale(for: art.chromeSize)
+        // The garden is a quiet place to visit: a smaller window than the games'.
+        let scale = Self.scale(for: art.chromeSize, largest: id == GardenGame.id ? 3 : 4)
         view = GameView(scale: scale, sheet: art.sheet)
         window = GameWindow(size: view.frame.size)
         window.contentView = view
@@ -150,9 +151,9 @@ private final class OpenGame {
     }
 
     /// The largest integer scale (4× at most, 2× at least) that fits the screen above the pool.
-    private static func scale(for size: CGSize) -> Int {
-        guard let visible = NSScreen.screens.first?.visibleFrame else { return 4 }
-        for scale in stride(from: 4, through: 2, by: -1) {
+    private static func scale(for size: CGSize, largest: Int) -> Int {
+        guard let visible = NSScreen.screens.first?.visibleFrame else { return largest }
+        for scale in stride(from: largest, through: 2, by: -1) {
             if size.width * CGFloat(scale) <= visible.width - 16 && size.height * CGFloat(scale) <= visible.height - 96 {
                 return scale
             }

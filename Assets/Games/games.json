@@ -238,6 +238,27 @@
    "w": 2,
    "h": 2,
    "frames": 1
+  },
+  "garden.butterfly": {
+   "x": 0,
+   "y": 720,
+   "w": 5,
+   "h": 4,
+   "frames": 4
+  },
+  "garden.cloud": {
+   "x": 0,
+   "y": 724,
+   "w": 10,
+   "h": 3,
+   "frames": 1
+  },
+  "garden.glint": {
+   "x": 0,
+   "y": 727,
+   "w": 3,
+   "h": 3,
+   "frames": 2
   }
  }
 }

@@ -17,6 +17,16 @@ public struct GardenGame: Game {
     static let walkSpeed: Double = 70
     static let messageLength: Double = 2
     static let actionLength: Double = 1.2
+    /// Left alone this long, Pibbo wanders off to potter about.
+    static let wanderAfter: ClosedRange<Double> = 5...9
+    /// Spots he likes to stand: beside each bed, by the shed, on the path.
+    static let wanderSpots: [(x: Double, y: Double)] = {
+        var spots: [(x: Double, y: Double)] = plots.map { p in (x: Double(p.x - 14), y: Double(p.y - 12)) }
+        spots.append((x: 126, y: 40))
+        spots.append((x: 24, y: 102))
+        spots.append((x: 90, y: 76))
+        return spots
+    }()
 
     public let score = 0
     public let phase: GamePhase = .playing
@@ -34,18 +44,31 @@ public struct GardenGame: Game {
     private var action: (name: Int, until: Double)?  // frame of the action pose
     private var message: (key: GameText.Key, until: Double)?
     private var time: Double = 0
+    private var nextWander: Double = 6
+    private let random: (ClosedRange<Double>) -> Double
 
-    public init(store: GardenStore, clock: GardenClock = GardenClock(), weather: String? = nil, now: @escaping () -> Date = Date.init) {
+    public init(store: GardenStore, clock: GardenClock = GardenClock(), weather: String? = nil, now: @escaping () -> Date = Date.init,
+                random: @escaping (ClosedRange<Double>) -> Double = { Double.random(in: $0) }) {
         self.store = store
         self.clock = clock
         self.weather = weather
         self.now = now
+        self.random = random
         state = store.load()
     }
 
     public mutating func step(_ input: GameInput, dt: Double) {
         time += dt
-        if let tap = input.tap { handle(tap) }
+        if let tap = input.tap {
+            handle(tap)
+            nextWander = time + random(Self.wanderAfter)
+        }
+        if target == nil, action == nil, picking == nil, time >= nextWander {
+            // Nobody about: he potters off somewhere in the garden.
+            let index = min(Int(random(0...0.999) * Double(Self.wanderSpots.count)), Self.wanderSpots.count - 1)
+            target = Self.wanderSpots[index]
+            nextWander = time + random(Self.wanderAfter)
+        }
         if let (tx, ty) = target {
             let dx = tx - pibbo.x, dy = ty - pibbo.y
             let distance = (dx * dx + dy * dy).squareRoot()
@@ -110,6 +133,15 @@ public struct GardenGame: Game {
         var scene = GameScene(background: "background")
         scene.showsBest = false
         let at = now()
+        // Life that needs no state: clouds drifting, glints on the sea.
+        for (k, base) in [20.0, 110.0].enumerated() {
+            let drift: Double = base + time * (1.5 + Double(k))
+            let x = Int(drift.truncatingRemainder(dividingBy: 176)) - 12
+            scene.sprites.append(GameSprite("cloud", x: x, y: 6 + k * 10))
+        }
+        for (k, x) in [18, 57, 96, 128].enumerated() {
+            scene.sprites.append(GameSprite("glint", frame: Int(time * 1.5 + Double(k) * 0.7) % 3 == 0 ? 0 : 1, x: x, y: 31 + (k % 2) * 3))
+        }
         for (i, p) in Self.plots.enumerated() {
             let plot = state.plots[i]
             let wet = plot.map { GardenRules.wateredToday($0, now: at, clock: clock) } ?? false
@@ -118,6 +150,17 @@ public struct GardenGame: Game {
                 scene.sprites.append(GameSprite(plot.kind.rawValue, frame: GardenRules.stage(plot, now: at, clock: clock),
                                                 x: p.x + 4, y: p.y - 12))
             }
+        }
+        // Two butterflies fluttering over the beds.
+        for k in 0..<2 {
+            let phase = Double(k) * 2.4
+            let wide: Double = 50 * sin(time * 0.35 + phase)
+            let flit: Double = 8 * sin(time * 1.7 + phase)
+            let rise: Double = 18 * sin(time * 0.5 + phase * 1.3)
+            let flap: Double = 3 * sin(time * 4 + phase)
+            let x = Int(70 + wide + flit)
+            let y = Int(66 + rise + flap)
+            scene.sprites.append(GameSprite("butterfly", frame: k * 2 + Int(time * 7 + phase) % 2, x: x, y: y))
         }
         // Pibbo's frames: 0-1 idle, 2-3 walking, 4-5 watering, 6 holding a flower.
         let frame: Int

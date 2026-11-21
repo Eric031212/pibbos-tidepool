@@ -2821,39 +2821,106 @@ FLOWER_COLORS = {  # kind -> (main, dark, centre)
 
 
 def garden_background():
-    """Sky, a strip of sea, a sandy edge and a grassy plot."""
+    """Sky, a strip of sea, sand, a little fence, the shed, a stone path,
+    bushes and wildflowers on the grass. Clouds and glints are sprites (they move)."""
     img = Image.new("RGBA", (GAME_W, GAME_H), (0, 0, 0, 255))
     px = img.load()
     sky = [(214, 236, 248), (200, 228, 244), (188, 220, 240)]
     for y in range(GAME_H):
         for x in range(GAME_W):
-            if y < 34:
-                c = sky[min(y * 3 // 34, 2)]
-            elif y < 42:
-                c = PALETTE["W"] if y == 34 and (x // 3) % 4 == 0 else PALETTE["w"] if y < 38 else PALETTE["x"]
-                if (x * 7 + y * 11) % 31 == 0:
-                    c = PALETTE["W"]
-            elif y < 46:
+            if y < 30:
+                c = sky[min(y * 3 // 30, 2)]
+            elif y < 39:
+                c = PALETTE["W"] if y == 30 and (x // 3) % 4 == 0 else PALETTE["w"] if y < 34 else PALETTE["x"]
+            elif y < 44:
                 c = GARDEN_PALETTE["3"]
             else:
                 c = GARDEN_PALETTE["2"] if (x * 5 + y * 3) % 17 == 0 else GARDEN_PALETTE["1"]
             px[x, y] = c + (255,)
-    cloud = ["...XXX....", ".XXXXXXX..", "XXXXXXXXXX"]
-    img.alpha_composite(to_image(cloud, {"X": (250, 252, 255)}), (20, 8))
-    img.alpha_composite(to_image(cloud, {"X": (250, 252, 255)}), (118, 16))
-    for x0 in (6, 150):  # little tufts at the edges
-        img.alpha_composite(to_image(["k.k", ".kk", "kKk"], GARDEN_PALETTE), (x0, 108))
+    # the fence between the sand and the grass
+    for x in range(0, GAME_W):
+        for y in (45, 48):
+            px[x, y] = GARDEN_PALETTE["U"] + (255,)
+        px[x, y + 1] = PALETTE["D"] + (255,)
+    for x in range(2, GAME_W, 10):
+        for y in range(42, 51):
+            px[x, y] = GARDEN_PALETTE["U"] + (255,)
+            px[x + 1, y] = PALETTE["D"] + (255,)
+    # a border of little flowers along the fence
+    for i, x in enumerate(range(4, GAME_W - 24, 6)):
+        c = "fXm8"[i % 4]
+        for (dy, dx, ch) in ((51, 0, "k"), (52, 1, "K"), (50, 1, c), (51, 1, c), (51, 2, c), (52, 0, "k")):
+            px[x + dx, dy] = GARDEN_PALETTE[ch] + (255,)
+    # a gravel path between the two rows of beds
+    for y in range(75, 80):
+        for x in range(0, GAME_W):
+            edge = y in (75, 79)
+            c = "2" if edge and (x % 3 == 0) else "3"
+            if not edge and (x * 7 + y * 5) % 13 == 0:
+                c = "r"
+            px[x, y] = GARDEN_PALETTE[c] + (255,)
+    # a little tree on the left
+    tree = [
+        "....kkkk....",
+        "..kkkkKkkk..",
+        ".kkKkkkkkKk.",
+        "kkkkkkKkkkkk",
+        "kKkkMkkkkKkk",
+        ".kkkkkkMkkk.",
+        "..kkKkkkkk..",
+        "....kDDk....",
+        ".....DD.....",
+        ".....DD.....",
+        "....DDDD....",
+    ]
+    img.alpha_composite(to_image(tree, GARDEN_PALETTE), (0, 46))
+    # the shed, top right, with a watering can beside it
+    shed = [
+        ".......MMMM.......",
+        ".....MMMMMMMM.....",
+        "...MMMMMMMMMMMM...",
+        ".MMMMMMMMMMMMMMMM.",
+        "MMMMMMMMMMMMMMMMMM",
+        ".oUUUUUUUUUUUUUUo.",
+        ".oUzzzUUUUUoooUUo.",
+        ".oUzXzUUUUUoDDoUo.",
+        ".oUzzzUUUUUoDDoUo.",
+        ".oUUUUUUUUUoDmoUo.",
+        ".oUUUUUUUUUoDDoUo.",
+        ".oooooooooooooooo.",
+    ]
+    img.alpha_composite(to_image(shed, GARDEN_PALETTE), (141, 37))
+    img.alpha_composite(to_image(["..GG.", ".g..g", "gggg.", "gggg."], GARDEN_PALETTE), (134, 45))
+    # bushes at the right edge
+    bush = ["...kkkk...", ".kkkKkkkk.", "kkkkkkKkkk", "kKkkfkkkkk", "kkkkkkkKkk", ".kkKkkkkk."]
+    img.alpha_composite(to_image(bush, GARDEN_PALETTE), (150, 84))
+    img.alpha_composite(to_image([r.replace("f", "M") for r in bush], GARDEN_PALETTE), (146, 108))
+    # clusters of wildflowers away from the beds and the path
+    for (x, y, c) in ((50, 58, "f"), (98, 56, "X"), (140, 66, "m"), (10, 66, "8"), (50, 86, "X"), (100, 88, "f"),
+                      (142, 100, "m"), (50, 112, "f"), (98, 110, "8"), (12, 108, "X"), (124, 114, "f"), (12, 88, "m")):
+        for dx, dy in ((0, 0), (2, 1), (1, -1)):
+            px[x + dx, y + dy] = GARDEN_PALETTE[c] + (255,)
+        px[x + 1, y + 1] = GARDEN_PALETTE["K"] + (255,)
     return img
 
 
 def garden_soil(wet):
+    """A raised bed: wooden planks round the soil."""
     a, b = ("6", "7") if wet else ("4", "5")
     rows = []
     for r in range(8):
-        row = "".join(b if (c * 3 + r * 5) % 7 == 0 else a for c in range(24))
         if r == 0:
-            row = "." + row[1:-1] + "."
-        rows.append(row)
+            rows.append("U" * 24)
+        elif r == 7:
+            rows.append("D" * 24)
+        else:
+            rows.append("D" + "".join(b if (c * 3 + r * 5) % 7 == 0 else a for c in range(22)) + "D")
+    return to_image(rows, GARDEN_PALETTE)
+
+
+def garden_butterfly(color, open_):
+    rows = [f"{color}{color}.{color}{color}", f"{color}{color}q{color}{color}", f".{color}q{color}.", "..q.."] if open_ else \
+           ["..q..", f".{color}q{color}.", f".{color}q{color}.", "..q.."]
     return to_image(rows, GARDEN_PALETTE)
 
 
@@ -2953,6 +3020,10 @@ def garden_items():
              ("seeds", [garden_seed_packet(k) for k in FLOWER_COLORS])]
     items += [(kind, [garden_plant(kind, s) for s in range(5)]) for kind in FLOWER_COLORS]
     items += [("rain", [to_image(["w", "w", "W"], GARDEN_PALETTE)]), ("snow", [to_image(["XX", "XX"], GARDEN_PALETTE)])]
+    items += [("butterfly", [garden_butterfly("f", True), garden_butterfly("f", False),
+                             garden_butterfly("m", True), garden_butterfly("m", False)]),
+              ("cloud", [to_image(["...XXX....", ".XXXXXXX..", "XXXXXXXXXX"], {"X": (250, 252, 255)})]),
+              ("glint", [to_image([".W.", "WXW", ".W."], GARDEN_PALETTE), to_image(["...", ".W.", "..."], GARDEN_PALETTE)])]
     return items
 
 
