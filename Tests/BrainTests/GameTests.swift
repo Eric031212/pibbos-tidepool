@@ -117,3 +117,34 @@ final class GreetingBrainTests: XCTestCase {
         }
     }
 }
+
+final class GardenBrainTests: XCTestCase {
+    let start = Date(timeIntervalSince1970: 1_000_000)
+    let config = BrainConfig()
+    func at(_ seconds: TimeInterval) -> Date { start.addingTimeInterval(seconds) }
+
+    func testHesAwayInTheGardenAndQuiet() {
+        var brain = Brain(config: config, now: start, nextBottle: at(100), random: { $0.lowerBound })
+        brain.handle(.gardenChanged(open: true, picked: false), at: at(1))
+        XCTAssertEqual(brain.output.visual, .state(.hidden))
+        brain.handle(.hoverBegan, at: at(2))
+        while let d = brain.nextDeadline, d <= at(3600) { brain.handle(.timerFired, at: d) }
+        XCTAssertEqual(brain.output.visual, .state(.hidden))
+        XCTAssertFalse(brain.output.bottle)
+        XCTAssertNil(brain.output.bubble)
+    }
+
+    func testBackFromTheGardenHeTendsAPickedFlower() {
+        var brain = Brain(config: config, now: start, random: { $0.lowerBound })
+        brain.handle(.gardenChanged(open: true, picked: false), at: at(1))
+        brain.handle(.gardenChanged(open: false, picked: true), at: at(60))
+        XCTAssertEqual(brain.output.visual, .action("water"))
+        brain.handle(.timerFired, at: at(60 + config.tendDuration))
+        XCTAssertEqual(brain.output.visual, .state(.chill))
+
+        var plain = Brain(config: config, now: start, random: { $0.lowerBound })
+        plain.handle(.gardenChanged(open: true, picked: false), at: at(1))
+        plain.handle(.gardenChanged(open: false, picked: false), at: at(60))
+        XCTAssertEqual(plain.output.visual, .state(.chill), "nothing picked: he just stays out a while")
+    }
+}

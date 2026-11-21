@@ -211,6 +211,17 @@ def shell_catch():
     return img
 
 
+def garden_corner():
+    """A corner of Pibbo's garden: two patches, a flower in bloom, Pibbo watering."""
+    items = dict(art.garden_items())
+    img = items["background"][0].crop((14, 36, 92, 80)).copy()
+    for i, (x, kind, stage) in enumerate(((6, "tulip", 4), (52, "sunflower", 3))):
+        img.alpha_composite(items["soil"][i], (x, 28))
+        img.alpha_composite(items[kind][stage], (x + 4, 16))
+    img.alpha_composite(items["pibbo"][4], (32, 16))
+    return img
+
+
 def autumn():
     """The pool in autumn: orange plants, fallen leaves, an acorn."""
     img = Image.new("RGBA", (FS * 3, FS), (0, 0, 0, 0))
@@ -243,6 +254,7 @@ def hints():
         ("🍾", "Come back in a few days.", big(solo(pet("note", 0))), ["The sea says hi 🌊"], None),
         ("🌱", "Come back in a few months.",
          big(scene(pet("look"), extras=[(promo.visit_frame("crab", 9), 4)])), None, "things grow. neighbours visit."),
+        ("🌷", "Visit his garden.", big(garden_corner()), None, "plant, water, pick one for the pool"),
         ("🍂", "Watch the seasons turn.", big(autumn()), None, None),
         ("🎄", "Come back in December.", big(holiday("christmas")), None, None),
     ]

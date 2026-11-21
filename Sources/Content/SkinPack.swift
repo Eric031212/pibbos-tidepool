@@ -134,6 +134,9 @@ public struct SkinManifest: Codable, Equatable, Sendable {
     /// keep the plain strips.
     public let seasonGarden: [String: GardenSpec]?
     public let seasonMeadowStrip: [String: GardenSpec]?
+    /// Optional flowers picked in the garden (v2.3), shown in the pot by the
+    /// pool instead of the growing flower: per kind, frames plain / autumn / winter.
+    public let potFlowers: [String: GardenSpec]?
 
     public init(id: String, name: String, author: String, version: String, type: String,
                 frameSize: Int, states: [String: Clip], actions: [String: Clip]?, garden: GardenSpec? = nil,
@@ -144,7 +147,8 @@ public struct SkinManifest: Codable, Equatable, Sendable {
                 shootingStar: Clip? = nil, weatherEffects: [String: Clip]? = nil, snowCover: GardenSpec? = nil,
                 visitors: [String: Visit]? = nil, gift: GardenSpec? = nil, rainbow: GardenSpec? = nil,
                 drift: [String: Clip]? = nil, seasonDecor: [String: Clip]? = nil, seasonMeadow: [String: Clip]? = nil,
-                seasonGarden: [String: GardenSpec]? = nil, seasonMeadowStrip: [String: GardenSpec]? = nil) {
+                seasonGarden: [String: GardenSpec]? = nil, seasonMeadowStrip: [String: GardenSpec]? = nil,
+                potFlowers: [String: GardenSpec]? = nil) {
         self.id = id
         self.name = name
         self.author = author
@@ -175,6 +179,7 @@ public struct SkinManifest: Codable, Equatable, Sendable {
         self.seasonMeadow = seasonMeadow
         self.seasonGarden = seasonGarden
         self.seasonMeadowStrip = seasonMeadowStrip
+        self.potFlowers = potFlowers
     }
 }
 
@@ -280,6 +285,7 @@ public struct SkinPack: Sendable {
             .compactMap { name, spec in spec.map { (name, $0) } }
             + (m.seasonGarden ?? [:]).map { ("garden \($0.key)", $0.value) }
             + (m.seasonMeadowStrip ?? [:]).map { ("meadow \($0.key)", $0.value) }
+            + (m.potFlowers ?? [:]).map { ("pot flower \($0.key)", $0.value) }
     }
 
     /// Rejects frames that fall outside a sheet of `width`×`height` pixels,
@@ -427,6 +433,14 @@ public struct SkinPack: Sendable {
         let size = manifest.frameSize
         let clamped = min(max(stage, 0), meadow.stages - 1)
         return FrameRect(x: clamped * size, y: meadow.row * size, width: size, height: size)
+    }
+
+    /// The picked flower `kind` in the pot, dressed for `season`; nil if the skin has none.
+    public func potFlowerFrameRect(kind: String, season: String?) -> FrameRect? {
+        guard manifest.garden != nil, let spec = manifest.potFlowers?[kind] else { return nil }
+        let frame = min(season == "autumn" ? 1 : season == "winter" ? 2 : 0, spec.stages - 1)
+        let size = manifest.frameSize
+        return FrameRect(x: frame * size, y: spec.row * size, width: size, height: size)
     }
 
     /// Frame of the flower at a growth stage; nil when the skin has no garden.

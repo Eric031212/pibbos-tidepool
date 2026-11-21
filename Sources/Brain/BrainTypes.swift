@@ -100,6 +100,9 @@ public enum BrainEvent: Equatable, Sendable {
     /// A click on Pibbo during a call: he peeks up, whispers `Shh, quiet time`
     /// and dives again. (A second click while he's up opens the menu.)
     case peekedDuringCall
+    /// The garden window opened / closed (v2.3). He's away in the garden
+    /// meanwhile; back, he tends the flower if one was just picked for it.
+    case gardenChanged(open: Bool, picked: Bool)
     /// Whether it is a clear night (shooting stars only fall then).
     case clearNightChanged(Bool)
     /// A click on Pibbo right after a shooting star: he makes a wish (instead
@@ -191,6 +194,8 @@ public struct BrainConfig: Sendable {
     public var toyDuration: TimeInterval = 8
     /// ...and says `GG! ✨` for the last few seconds.
     public var ggDuration: TimeInterval = 3
+    /// Tending a freshly picked flower in the pot after the garden closes.
+    public var tendDuration: TimeInterval = 5
     /// How long he stays up after a click during a call.
     public var callPeekDuration: TimeInterval = 4
     /// How long a greeting stays (and Pibbo with it).

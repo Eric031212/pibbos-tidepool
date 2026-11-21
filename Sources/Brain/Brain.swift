@@ -42,8 +42,10 @@ public struct Brain {
     private var callPeekUntil: Date?
     /// A game window is open: Pibbo plays along (`game`) and stays put.
     private var inGame = false
+    /// The garden window is open: he's over there (quiet, out of the pool).
+    private var inGarden = false
     /// Work mode, a call or a game: no surfacing, no bubbles, no visitors.
-    private var isQuiet: Bool { workMode || inCall || inGame }
+    private var isQuiet: Bool { workMode || inCall || inGame || inGarden }
     private var suspendReasons: Set<SuspendReason> = []
     private var playingSources: Set<String> = []
     private var pendingStops: [String: Date] = [:]
@@ -218,6 +220,22 @@ public struct Brain {
                 setPresence(.hidden, at: now)
             } else if suspendReasons.isEmpty && !workMode && !inCall {
                 interact(at: now)  // just played together: he stays out a while
+            } else {
+                setPresence(.hidden, at: now)
+            }
+
+        case .gardenChanged(let open, let picked):
+            guard open != inGarden else { break }
+            inGarden = open
+            hovering = false
+            holdingPaw = false
+            reaction = nil
+            bubble = nil
+            if open {
+                setPresence(.hidden, at: now)
+            } else if suspendReasons.isEmpty && !workMode && !inCall {
+                interact(at: now)
+                if picked { reaction = ("water", now.addingTimeInterval(config.tendDuration)) }  // tends the new flower
             } else {
                 setPresence(.hidden, at: now)
             }
@@ -558,6 +576,8 @@ public struct Brain {
             visual = .submerged
         } else if inGame {
             visual = .action("game")
+        } else if inGarden {
+            visual = .state(.hidden)  // he's over in the garden
         } else if allFading || unplugUntil != nil {
             visual = .action("unplug")
         } else if holdingPaw {

@@ -74,12 +74,16 @@ Some things are nicer to find yourself. Peek below if you can't wait 👇</p>
 <br><img src="Marketing/github/page/reveal-15.png" width="354" alt="things grow. neighbours visit.">
 </details>
 
+<details><summary>🌷 Visit his garden.</summary>
+<br><img src="Marketing/github/page/reveal-16.png" width="504" alt="plant, water, pick one for the pool">
+</details>
+
 <details><summary>🍂 Watch the seasons turn.</summary>
-<br><img src="Marketing/github/page/reveal-16.png" width="324" alt="">
+<br><img src="Marketing/github/page/reveal-17.png" width="324" alt="">
 </details>
 
 <details><summary>🎄 Come back in December.</summary>
-<br><img src="Marketing/github/page/reveal-17.png" width="324" alt="">
+<br><img src="Marketing/github/page/reveal-18.png" width="324" alt="">
 </details>
 
 <p><img src="Marketing/github/page/sign-get.png" width="186" alt="get pibbo"></p>

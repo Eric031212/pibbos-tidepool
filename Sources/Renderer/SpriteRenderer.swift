@@ -215,7 +215,8 @@ final class SpriteRenderer {
 
     /// Shows the flower at a growth stage (no-op for skins without a garden).
     func showGarden(stage: Int) {
-        guard stage != gardenStage, let rect = pack.gardenFrameRect(stage: stage, season: season) else { return }
+        let picked = potFlower.flatMap { pack.potFlowerFrameRect(kind: $0, season: season) }
+        guard stage != gardenStage, let rect = picked ?? pack.gardenFrameRect(stage: stage, season: season) else { return }
         gardenStage = stage
         gardenLayer.contents = sheet.cropping(to: CGRect(x: rect.x, y: rect.y, width: rect.width, height: rect.height))
     }
@@ -330,6 +331,15 @@ final class SpriteRenderer {
         let key = "\(outfit ?? "")\(night ? "@night" : "")"
         loop(pack.decor(for: outfit, night: night), named: "decor#\(key)", on: decorLayer)
         loop(pack.meadowDecor(for: outfit, night: night), named: "meadowDecor#\(key)", on: meadowDecorLayer)
+    }
+
+    /// The flower picked in the garden (v2.3), shown in the pot; nil = the growing one.
+    var potFlower: String? {
+        didSet {
+            guard potFlower != oldValue, let stage = gardenStage else { return }
+            gardenStage = nil
+            showGarden(stage: stage)
+        }
     }
 
     /// The season ("spring" … "winter"; nil = none) dressing the rocks.

@@ -28,6 +28,12 @@ final class PetController {
     private let marqueePanel: MarqueePanel
     private let games: GameController
     private let tide: TideSounds
+    /// Pibbo's garden (v2.3): saved plots, and the flower picked for the pot.
+    private lazy var garden = GardenDefaults(demo: demo)
+    /// Garden days: real days, or 30 s in `--demo`.
+    private var gardenClock: GardenClock {
+        GardenClock(dayLength: demo ? 30 : 86_400, offset: TimeInterval(TimeZone.current.secondsFromGMT()))
+    }
     private var callActive = false
     private let brainConfig: BrainConfig
     private let demo: Bool
@@ -182,7 +188,18 @@ final class PetController {
         panel.petView.onHoldEnded = { [weak self] in self?.send(.holdEnded) }
         panel.petView.onSplash = { [weak self] x in self?.splashed(atX: x) }
         bubblePanel.onClick = { [weak self] in self?.bubbleClicked() }
-        games.onOpenChanged = { [weak self] open in self?.send(.gameChanged(open)) }
+        games.onOpenChanged = { [weak self] id, open in self?.gameOpenChanged(id: id, open: open) }
+        games.makeGarden = { [weak self] in
+            guard let self else { return GardenGame(store: GardenDefaults(demo: false)) }
+            let weather: String?
+            switch self.worldMonitor.context.weather {
+            case .rain, .storm: weather = "rain"
+            case .snow: weather = "snow"
+            default: weather = nil
+            }
+            return GardenGame(store: self.garden, clock: self.gardenClock, weather: weather)
+        }
+        renderer.potFlower = garden.load().potFlower?.rawValue
 
         idleMonitor.onSample = { [weak self] seconds in
             self?.send(.userIdle(seconds: seconds))
@@ -571,6 +588,10 @@ final class PetController {
         }
         if games.isAvailable {
             items.append(.init(title: Strings.Menu.games) { [weak self] in self?.openGameList() })
+            items.append(.init(title: Strings.Menu.garden) { [weak self] in
+                guard let self else { return }
+                self.games.show(id: GardenGame.id, above: self.panel.frame)
+            })
         }
         items.append(.init(title: Strings.Menu.workMode) { [weak self] in self?.send(.workModeEntered) })
         items.append(.init(title: Strings.Menu.quit) { NSApp.terminate(nil) })
@@ -588,6 +609,25 @@ final class PetController {
         }
         let anchor = bubbleAnchor()
         menuPanel.open(items, anchorX: anchor.x, bottomY: anchor.y)
+    }
+
+    // MARK: - Games and the garden
+
+    private func gameOpenChanged(id: String, open: Bool) {
+        guard id == GardenGame.id else {
+            send(.gameChanged(open))
+            return
+        }
+        let state = garden.load()
+        if open {
+            send(.gardenChanged(open: true, picked: false))
+            return
+        }
+        // Back from the garden: a newly picked flower goes into the pot by the pool.
+        let picked = garden.pickedSinceOpen
+        renderer.potFlower = state.potFlower?.rawValue
+        garden.pickedSinceOpen = false
+        send(.gardenChanged(open: false, picked: picked))
     }
 
     // MARK: - Moves while listening
@@ -684,5 +724,28 @@ final class PetController {
             case nil: return Strings.Greetings.morning
             }
         }
+    }
+}
+
+/// The garden kept in UserDefaults as JSON (`--demo` keeps its own, so trying
+/// things out never touches the real garden).
+final class GardenDefaults: GardenStore {
+    private let key: String
+    /// Set when a flower is picked, so Pibbo can tend it once he's back at the pool.
+    var pickedSinceOpen = false
+
+    init(demo: Bool) {
+        key = demo ? "garden.demo" : "garden.v1"
+    }
+
+    func load() -> GardenState {
+        guard let data = UserDefaults.standard.data(forKey: key),
+              let state = try? JSONDecoder().decode(GardenState.self, from: data) else { return GardenState() }
+        return state
+    }
+
+    func save(_ state: GardenState) {
+        if state.picks > load().picks { pickedSinceOpen = true }
+        if let data = try? JSONEncoder().encode(state) { UserDefaults.standard.set(data, forKey: key) }
     }
 }

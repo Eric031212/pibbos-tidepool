@@ -78,6 +78,9 @@ PALETTE = {
     "a": (222, 146, 66),   # autumn leaf on the plants
     "E": (170, 92, 46),    # autumn leaf, dark
     "U": (236, 208, 150),  # light wood: oar, rod, baton
+    "8": (156, 120, 196),  # lavender
+    "9": (120, 88, 168),   # lavender, darker
+    "0": (110, 150, 214),  # bluebell
     "i": (190, 182, 140),  # winter: dry grass
     "I": (146, 138, 104),  # winter: dry grass, dark
 }
@@ -1217,6 +1220,26 @@ def garden_stage(stage):
 
 GARDEN_STAGES = 6
 
+POT_FLOWER_KINDS = ["tulip", "daisy", "sunflower", "lavender", "poppy", "bluebell"]
+
+
+def pot_flower(kind):
+    """v2.3: the flower picked in the garden, in the pot by the pool."""
+    g = garden_stage(1)
+    put(g, [(r, 8) for r in range(2, 7)], "K")
+    put(g, [(5, 7), (4, 9), (6, 6)], "k")
+    heads = {
+        "tulip": (0, 7, ["f.f", "fff", "FfF"]),
+        "daisy": (0, 6, [".X.X.", "XXmXX", ".XXX."]),
+        "sunflower": (0, 6, [".mmm.", "mmDmm", ".mmm."]),
+        "lavender": (0, 7, ["898", ".8.", "898"]),
+        "poppy": (0, 7, ["MMM", "MqM", ".M."]),
+        "bluebell": (1, 7, ["KK.", "0.0", "h.h"]),
+    }
+    top, left, rows = heads[kind]
+    stamp(g, top, left, rows)
+    return g
+
 # The meadow: a long rock to the left of the flower that slowly fills up over
 # a few months after the flower blooms (World.Garden.meadowDays). Each stage
 # keeps everything from the ones before; nothing ever wilts or resets.
@@ -2123,7 +2146,7 @@ def build_skin():
     visits = {name: fn() for name, fn in VISITORS.items()}
     max_frames = max(max(n for _, (_, n, _) in entries), GARDEN_STAGES, MEADOW_STAGES, VISIT_WRAP)
     visit_rows = {name: -(-len(fn()[0]) // VISIT_WRAP) for name, fn in VISITORS.items()}
-    rows = len(entries) + 1 + len(OUTFITS) * len(entries) + DECOR_ROWS + len(PROPS) + 6 + len(WEATHER_EFFECTS) + sum(visit_rows.values()) + len(DRIFT_SEASONS) + len(SEASON_DECOR) + len(SEASON_MEADOW) + 2 * len(SEASON_GREENS)
+    rows = len(entries) + 1 + len(OUTFITS) * len(entries) + DECOR_ROWS + len(PROPS) + 6 + len(WEATHER_EFFECTS) + sum(visit_rows.values()) + len(DRIFT_SEASONS) + len(SEASON_DECOR) + len(SEASON_MEADOW) + 2 * len(SEASON_GREENS) + len(POT_FLOWER_KINDS)
     sheet = Image.new("RGBA", (SIZE * max_frames, SIZE * rows), (0, 0, 0, 0))
     frames = {}
     for row, (name, (fn, n, _)) in enumerate(entries):
@@ -2214,6 +2237,13 @@ def build_skin():
         for s, f in enumerate(frames[f"meadow:{season}"]):
             sheet.paste(f, (s * SIZE, (row + 1) * SIZE))
         row += 2
+    pot_rows = {}
+    for kind in POT_FLOWER_KINDS:  # one row each: plain, autumn, winter
+        pot_rows[kind] = row
+        frames[f"pot:{kind}"] = [to_image(pot_flower(kind))] + [to_image(recolor(pot_flower(kind), SEASON_GREENS[s])) for s in ("autumn", "winter")]
+        for i, f in enumerate(frames[f"pot:{kind}"]):
+            sheet.paste(f, (i * SIZE, row * SIZE))
+        row += 1
     season_rows, season_meadow_rows = {}, {}
     for table, rows_out, prefix in ((SEASON_DECOR, season_rows, "season"), (SEASON_MEADOW, season_meadow_rows, "seasonMeadow")):
         for key, (fn, n, _) in table.items():
@@ -2260,6 +2290,7 @@ def build_skin():
         "seasonMeadow": {key: {"row": season_meadow_rows[key], "frames": n, "fps": fps}
                          for key, (_, n, fps) in SEASON_MEADOW.items()},
         "seasonGarden": {s: {"row": rows[0], "stages": GARDEN_STAGES} for s, rows in season_strip_rows.items()},
+        "potFlowers": {kind: {"row": pot_rows[kind], "stages": 3} for kind in POT_FLOWER_KINDS},
         "seasonMeadowStrip": {s: {"row": rows[1], "stages": MEADOW_STAGES} for s, rows in season_strip_rows.items()},
     }
     for row, (name, (_, n, fps)) in enumerate(entries):
@@ -2762,6 +2793,169 @@ def catch_frames(name):
     return [to_image(f, CATCH_PALETTE) for f in frames]
 
 
+# ---------------------------------------------------------------- Pibbo's garden (v2.3)
+# A little seaside plot with six patches of soil, six kinds of flowers in five
+# stages (seed, sprout, leaves, bud, bloom), seed packets, Pibbo on land.
+
+GARDEN_PALETTE = dict(CATCH_PALETTE, **{
+    "1": (150, 198, 118),  # grass
+    "2": (124, 172, 98),   # grass, darker
+    "3": (236, 214, 166),  # sand
+    "4": (126, 84, 54),    # soil
+    "5": (98, 62, 40),     # soil, darker
+    "6": (78, 50, 34),     # wet soil
+    "7": (60, 38, 26),     # wet soil, darker
+    "8": (156, 120, 196),  # lavender
+    "9": (120, 88, 168),   # lavender, darker
+    "0": (110, 150, 214),  # bluebell
+})
+
+FLOWER_COLORS = {  # kind -> (main, dark, centre)
+    "tulip": ("f", "F", "F"),
+    "daisy": ("X", "W", "m"),
+    "sunflower": ("m", "Y", "D"),
+    "lavender": ("8", "9", "8"),
+    "poppy": ("M", "Q", "q"),
+    "bluebell": ("0", "h", "0"),
+}
+
+
+def garden_background():
+    """Sky, a strip of sea, a sandy edge and a grassy plot."""
+    img = Image.new("RGBA", (GAME_W, GAME_H), (0, 0, 0, 255))
+    px = img.load()
+    sky = [(214, 236, 248), (200, 228, 244), (188, 220, 240)]
+    for y in range(GAME_H):
+        for x in range(GAME_W):
+            if y < 34:
+                c = sky[min(y * 3 // 34, 2)]
+            elif y < 42:
+                c = PALETTE["W"] if y == 34 and (x // 3) % 4 == 0 else PALETTE["w"] if y < 38 else PALETTE["x"]
+                if (x * 7 + y * 11) % 31 == 0:
+                    c = PALETTE["W"]
+            elif y < 46:
+                c = GARDEN_PALETTE["3"]
+            else:
+                c = GARDEN_PALETTE["2"] if (x * 5 + y * 3) % 17 == 0 else GARDEN_PALETTE["1"]
+            px[x, y] = c + (255,)
+    cloud = ["...XXX....", ".XXXXXXX..", "XXXXXXXXXX"]
+    img.alpha_composite(to_image(cloud, {"X": (250, 252, 255)}), (20, 8))
+    img.alpha_composite(to_image(cloud, {"X": (250, 252, 255)}), (118, 16))
+    for x0 in (6, 150):  # little tufts at the edges
+        img.alpha_composite(to_image(["k.k", ".kk", "kKk"], GARDEN_PALETTE), (x0, 108))
+    return img
+
+
+def garden_soil(wet):
+    a, b = ("6", "7") if wet else ("4", "5")
+    rows = []
+    for r in range(8):
+        row = "".join(b if (c * 3 + r * 5) % 7 == 0 else a for c in range(24))
+        if r == 0:
+            row = "." + row[1:-1] + "."
+        rows.append(row)
+    return to_image(rows, GARDEN_PALETTE)
+
+
+def garden_plant(kind, stage):
+    """16x16; the base sits on the soil at rows 12-13 (drawn 12 px above the soil's top)."""
+    main, dark, centre = FLOWER_COLORS[kind]
+    g = [["."] * 16 for _ in range(16)]
+    if stage == 0:  # a mound with seeds
+        put(g, [(13, 5), (13, 6), (13, 7), (13, 8), (13, 9), (13, 10), (12, 6), (12, 7), (12, 8), (12, 9)], "3")  # a little mound
+        put(g, [(12, 7), (13, 9)], "D")  # seeds peeking out
+        put(g, [(11, 8)], "k")
+        return to_image(g, GARDEN_PALETTE)
+    tall = 2 if kind == "sunflower" else 0
+    top = {1: 10, 2: 7, 3: 5, 4: 4}[stage] - (tall if stage >= 2 else 0)
+    put(g, [(r, 8) for r in range(top, 14)], "K")  # stem
+    if stage == 1:
+        put(g, [(top, 7), (top, 9)], "k")
+    else:
+        leaf = top + 3
+        put(g, [(leaf, 6), (leaf, 7), (leaf + 2, 9), (leaf + 2, 10)], "k")
+        put(g, [(leaf + 1, 6), (leaf + 3, 10)], "K")
+    if stage == 3:  # a closed bud in the flower's colour
+        put(g, [(top - 1, 8), (top - 2, 8)], main)
+        put(g, [(top - 1, 7), (top - 1, 9)], "K")
+    if stage == 4:
+        t = top - 1
+        if kind == "tulip":
+            stamp(g, t - 3, 6, ["f.f.f", "fffff", "FfffF", ".FfF."])
+        elif kind == "daisy":
+            stamp(g, t - 3, 6, [".X.X.", "XXmXX", ".XmX.", "X.X.X"])
+        elif kind == "sunflower":
+            stamp(g, 0, 5, [".mmmmm.", "mmDDDmm", "mDDDDDm", "mmDDDmm", ".mmmmm."])
+        elif kind == "lavender":  # three purple spikes
+            for c, h in ((8, 5), (6, 3), (10, 3)):
+                for r in range(t - h + 1, t + 1):
+                    put(g, [(r, c)], "8" if (r + c) % 2 else "9")
+            put(g, [(t + 1, 6), (t + 1, 10), (t + 2, 7), (t + 2, 9)], "K")
+        elif kind == "poppy":
+            stamp(g, t - 3, 6, [".MMM.", "MMqMM", "MqqqM", ".MMM."])
+        elif kind == "bluebell":  # the stem arches over, bells hanging from it
+            put(g, [(t - 1, 8), (t - 2, 9), (t - 2, 10), (t - 1, 11)], "K")
+            for r, c in ((t - 1, 9), (t, 11), (t, 7)):
+                stamp(g, r + 1, c - 1, ["000", "0h0"])
+    return to_image(g, GARDEN_PALETTE)
+
+
+def garden_seed_packet(kind):
+    main, dark, centre = FLOWER_COLORS[kind]
+    rows = ["oooooooooooo", "o" + main * 10 + "o", "o" + dark * 10 + "o", "oXXXXXXXXXXo",
+            "oXXXX" + main * 2 + "XXXXo", "oXXX" + main + centre * 2 + main + "XXXo", "oXXXX" + main * 2 + "XXXXo",
+            "oXXXXXKXXXXo", "oXXXXkKXXXXo", "oXXXXXKkXXXo", "oXXXXXXXXXXo", "oooooooooooo"]
+    return to_image(rows, GARDEN_PALETTE)
+
+
+def garden_panel():
+    w, h = 84, 20
+    img = Image.new("RGBA", (w, h), (0, 0, 0, 0))
+    px = img.load()
+    for y in range(h):
+        for x in range(w):
+            corner = (x in (0, w - 1) and y in (0, h - 1))
+            if corner:
+                continue
+            edge = x in (0, w - 1) or y in (0, h - 1)
+            px[x, y] = (TEXT if edge else BUBBLE_FILL) + (255,)
+    return img
+
+
+def garden_pibbo(i):
+    """Pibbo on land: 0-1 idle, 2-3 walking, 4-5 watering, 6 holding a flower."""
+    g = base()
+    remove_shell(g)
+    eyes(g, "closed" if i == 1 else "lazy")
+    for r in range(13, 16):
+        g[r] = list("................")
+    feet = [[(13, 5), (13, 10)], [(13, 5), (13, 10)], [(13, 4), (13, 10)], [(13, 5), (13, 11)]]
+    put(g, [(12, c) for c in range(3, 13)], "b")
+    put(g, [(12, 2), (12, 13)], "o")
+    put(g, feet[i] if i < 4 else feet[0], "p")
+    if i in (2, 3):
+        g = shift(g, 1) if i == 3 else g
+    if i in (4, 5):
+        stamp(g, 7, 11, ["..GG.", ".g..g", "gggg.", "gggg."])
+        put(g, [(9, 10)], "p")
+        put(g, [(8, 15), (10, 15)] if i == 4 else [(9, 15), (11, 15)], "w")
+    if i == 6:
+        put(g, [(r, 12) for r in range(4, 10)], "K")
+        stamp(g, 1, 11, ["f.f", "fmf", ".f."])
+        put(g, [(9, 11)], "p")
+    return to_image(g, GARDEN_PALETTE)
+
+
+def garden_items():
+    """(name, [frames]) for the garden, in sheet order."""
+    items = [("background", [garden_background()]), ("soil", [garden_soil(False), garden_soil(True)]),
+             ("panel", [garden_panel()]), ("pibbo", [garden_pibbo(i) for i in range(7)]),
+             ("seeds", [garden_seed_packet(k) for k in FLOWER_COLORS])]
+    items += [(kind, [garden_plant(kind, s) for s in range(5)]) for kind in FLOWER_COLORS]
+    items += [("rain", [to_image(["w", "w", "W"], GARDEN_PALETTE)]), ("snow", [to_image(["XX", "XX"], GARDEN_PALETTE)])]
+    return items
+
+
 def build_games():
     """games.png + games.json: the game window frame and every game's art."""
     GAMES_DIR.mkdir(parents=True, exist_ok=True)
@@ -2781,7 +2975,17 @@ def build_games():
     # one 12-px row per item, frames left to right
     y_catch = y_pibbo + 8
     y_pop = y_catch + 12 * len(catch)
-    sheet = Image.new("RGBA", (width, y_pop + 12 * len(pop_art)), (0, 0, 0, 0))
+    garden = garden_items()
+    y_garden = y_pop + 12 * len(pop_art)
+    garden_rows = []
+    y = y_garden
+    for name, frames in garden:
+        garden_rows.append((name, frames, y))
+        y += frames[0].height
+    sheet = Image.new("RGBA", (width, y), (0, 0, 0, 0))
+    for name, frames, top in garden_rows:
+        for i, frame in enumerate(frames):
+            sheet.alpha_composite(frame, (i * frame.width, top))
     catch_meta = {}
     for row, (name, frames) in enumerate(catch.items()):
         for i, frame in enumerate(frames):
@@ -2813,6 +3017,8 @@ def build_games():
             "bubblePop.background": {"x": 0, "y": y_bg, "w": GAME_W, "h": GAME_H, "frames": 1},
             "bubblePop.pibbo": {"x": 0, "y": y_pibbo, "w": SIZE, "h": 8, "frames": 4},
             **catch_meta,
+            **{f"garden.{name}": {"x": 0, "y": top, "w": frames[0].width, "h": frames[0].height, "frames": len(frames)}
+               for name, frames, top in garden_rows},
         },
     }
     (GAMES_DIR / "games.json").write_text(json.dumps(meta, indent=1) + "\n")
@@ -2834,6 +3040,22 @@ def build_games():
                                       ("rainbow", 128, 74), ("bubble", 64, 84), ("pop", 96, 86)]):
         bubbles.alpha_composite(pop_art[name][0 if name != "pop" else 1], (PLAYFIELD_X + x, PLAYFIELD_Y + y))
     bubbles.resize((CHROME_W * 4, CHROME_H * 4), Image.NEAREST).save(GAMES_DIR / "preview-bubblepop.png")
+
+    # the garden with something in every stage
+    art = dict((name, frames) for name, frames, _ in garden_rows)
+    view = chrome.copy()
+    view.alpha_composite(art["background"][0], (PLAYFIELD_X, PLAYFIELD_Y))
+    plots = [(22, 64), (68, 64), (114, 64), (22, 92), (68, 92), (114, 92)]
+    for k, ((px_, py_), kind) in enumerate(zip(plots, FLOWER_COLORS)):
+        view.alpha_composite(art["soil"][1 if k % 2 else 0], (PLAYFIELD_X + px_, PLAYFIELD_Y + py_))
+        view.alpha_composite(art[kind][4 if k < 4 else k - 3], (PLAYFIELD_X + px_ + 4, PLAYFIELD_Y + py_ - 12))
+    view.alpha_composite(art["pibbo"][4], (PLAYFIELD_X + 54, PLAYFIELD_Y + 52))
+    view.resize((CHROME_W * 4, CHROME_H * 4), Image.NEAREST).save(GAMES_DIR / "preview-garden.png")
+    stages = Image.new("RGBA", (5 * 18, len(FLOWER_COLORS) * 18), (150, 198, 118, 255))
+    for r, kind in enumerate(FLOWER_COLORS):
+        for s in range(5):
+            stages.alpha_composite(art[kind][s], (s * 18 + 1, r * 18 + 1))
+    stages.resize((stages.width * 5, stages.height * 5), Image.NEAREST).save(GAMES_DIR / "preview-garden-stages.png")
 
 
 def main():

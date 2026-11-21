@@ -79,6 +79,8 @@ public struct GameSprite: Equatable, Sendable {
 public struct GameText: Equatable, Sendable {
     public enum Key: Equatable, Sendable {
         case clickToPlay, escToClose, newBest, timeUp
+        /// The garden (v2.3).
+        case gardenHint, pickSeed, splash, planted, forThePool
         case score(Int)
         /// Seconds left in the round.
         case timeLeft(Int)
@@ -106,6 +108,8 @@ public struct GameText: Equatable, Sendable {
 public struct GameScene: Equatable, Sendable {
     /// The game's static background (a sheet key), drawn first.
     public var background: String?
+    /// Whether the platform adds the best score (games yes, the garden no).
+    public var showsBest = true
     public var sprites: [GameSprite] = []
     public var texts: [GameText] = []
 

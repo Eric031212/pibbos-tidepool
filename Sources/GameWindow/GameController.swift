@@ -7,8 +7,11 @@ import Strings
 /// 60 fps frame loop. Closing releases all of it, so Tidepool goes back to
 /// ~0 % CPU and its usual memory (docs/games-plan.md).
 final class GameController {
-    /// A game opened (true) or closed (false): Brain plays along.
-    var onOpenChanged: ((Bool) -> Void)?
+    /// A game (or the garden, by id) opened (true) or closed (false): Brain plays along.
+    var onOpenChanged: ((String, Bool) -> Void)?
+    /// Makes the garden when it's opened (it needs the app's store, clock and weather).
+    var makeGarden: (() -> GardenGame)?
+    private var openID: String?
 
     private let directory: URL?
     private let text: BubbleRenderer
@@ -32,6 +35,7 @@ final class GameController {
             switch command {
             case "close": self.close()
             case "open": self.show(id: ShellCatch.id, above: NSRect(x: 900, y: 0, width: 192, height: 64))
+            case "garden": self.show(id: GardenGame.id, above: NSRect(x: 900, y: 0, width: 192, height: 64))
             default: self.open?.debug(command)
             }
         }
@@ -47,12 +51,18 @@ final class GameController {
             open.bringToFront()
             return
         }
-        guard let directory, let entry = GameCatalog.entry(id: id),
-              let art = GameArt(directory: directory, text: text) else { return }
-        let game = OpenGame(entry: entry, art: art, best: BestScores.best(for: id))
+        let made: (any Game)?
+        if id == GardenGame.id {
+            made = makeGarden?()
+        } else {
+            made = GameCatalog.entry(id: id)?.make { Double.random(in: $0) }
+        }
+        guard let directory, let made, let art = GameArt(directory: directory, text: text) else { return }
+        let game = OpenGame(id: id, game: made, art: art, best: BestScores.best(for: id))
         game.onClose = { [weak self] in self?.close() }
         open = game
-        onOpenChanged?(true)
+        openID = id
+        onOpenChanged?(id, true)
         game.present(above: pool)
     }
 
@@ -66,7 +76,8 @@ final class GameController {
         guard let game = open else { return }
         open = nil
         game.tearDown()
-        onOpenChanged?(false)
+        onOpenChanged?(openID ?? "", false)
+        openID = nil
     }
 }
 
@@ -102,10 +113,10 @@ private final class OpenGame {
     /// The app that was in front before the game: it gets focus back afterwards.
     private let previousApp: NSRunningApplication?
 
-    init(entry: GameCatalog.Entry, art: GameArt, best: Int) {
-        id = entry.id
-        title = Strings.Games.titles[entry.id] ?? entry.id
-        session = GameSession(game: entry.make { Double.random(in: $0) }, best: best)
+    init(id: String, game: any Game, art: GameArt, best: Int) {
+        self.id = id
+        title = Strings.Games.titles[id] ?? id
+        session = GameSession(game: game, best: best)
         savedBest = best
         self.art = art
         let scale = Self.scale(for: art.chromeSize)

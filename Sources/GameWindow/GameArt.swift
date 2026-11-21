@@ -64,7 +64,9 @@ final class GameArt {
             context.draw(image, in: CGRect(x: sprite.x, y: h - sprite.y - item.h, width: item.w, height: item.h))
         }
         var lines = scene.texts.map { (Self.string(for: $0.key), $0) }
-        lines.append((Strings.Games.best(session.best), GameText(.best(session.best), x: Playfield.width - 4, y: 3, align: .right)))
+        if scene.showsBest {
+            lines.append((Strings.Games.best(session.best), GameText(.best(session.best), x: Playfield.width - 4, y: 3, align: .right)))
+        }
         if session.isNewBest && session.game.phase == .over {
             lines.append((Strings.Games.newBest, GameText(.newBest, x: Playfield.width / 2, y: 24, align: .center)))
         }
@@ -91,6 +93,11 @@ final class GameArt {
         case .escToClose: return Strings.Games.escToClose
         case .newBest: return Strings.Games.newBest
         case .timeUp: return Strings.Games.timeUp
+        case .gardenHint: return Strings.Garden.hint
+        case .pickSeed: return Strings.Garden.pickSeed
+        case .splash: return Strings.Garden.splash
+        case .planted: return Strings.Garden.planted
+        case .forThePool: return Strings.Garden.forThePool
         case .timeLeft(let seconds): return Strings.Games.timeLeft(seconds)
         case .score(let value): return Strings.Games.score(value)
         case .best(let value): return Strings.Games.best(value)

@@ -147,6 +147,97 @@
    "w": 12,
    "h": 12,
    "frames": 3
+  },
+  "garden.background": {
+   "x": 0,
+   "y": 443,
+   "w": 160,
+   "h": 120,
+   "frames": 1
+  },
+  "garden.soil": {
+   "x": 0,
+   "y": 563,
+   "w": 24,
+   "h": 8,
+   "frames": 2
+  },
+  "garden.panel": {
+   "x": 0,
+   "y": 571,
+   "w": 84,
+   "h": 20,
+   "frames": 1
+  },
+  "garden.pibbo": {
+   "x": 0,
+   "y": 591,
+   "w": 16,
+   "h": 16,
+   "frames": 7
+  },
+  "garden.seeds": {
+   "x": 0,
+   "y": 607,
+   "w": 12,
+   "h": 12,
+   "frames": 6
+  },
+  "garden.tulip": {
+   "x": 0,
+   "y": 619,
+   "w": 16,
+   "h": 16,
+   "frames": 5
+  },
+  "garden.daisy": {
+   "x": 0,
+   "y": 635,
+   "w": 16,
+   "h": 16,
+   "frames": 5
+  },
+  "garden.sunflower": {
+   "x": 0,
+   "y": 651,
+   "w": 16,
+   "h": 16,
+   "frames": 5
+  },
+  "garden.lavender": {
+   "x": 0,
+   "y": 667,
+   "w": 16,
+   "h": 16,
+   "frames": 5
+  },
+  "garden.poppy": {
+   "x": 0,
+   "y": 683,
+   "w": 16,
+   "h": 16,
+   "frames": 5
+  },
+  "garden.bluebell": {
+   "x": 0,
+   "y": 699,
+   "w": 16,
+   "h": 16,
+   "frames": 5
+  },
+  "garden.rain": {
+   "x": 0,
+   "y": 715,
+   "w": 1,
+   "h": 3,
+   "frames": 1
+  },
+  "garden.snow": {
+   "x": 0,
+   "y": 718,
+   "w": 2,
+   "h": 2,
+   "frames": 1
   }
  }
 }

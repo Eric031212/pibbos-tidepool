@@ -9,6 +9,7 @@ public enum Strings {
         public static let tide = "Tide sounds 🌊"
         public static let tideOff = "Hush now 🫧"
         public static let games = "Game time 🎮"
+        public static let garden = "Garden 🌷"
         public static let workMode = "Dive time 🫧"
         public static let quit = "Swim away 👋"
     }
@@ -32,6 +33,7 @@ public enum Strings {
         public static let titles: [String: String] = [
             "shellCatch": "Shell Catch 🐚",
             "bubblePop": "Bubble Pop 🫧",
+            "garden": "Pibbo's garden 🌷",
         ]
         public static let clickToPlay = "Click to play 🎮"
         public static let escToClose = "Esc to close 👋"
@@ -41,6 +43,16 @@ public enum Strings {
         public static func timeLeft(_ seconds: Int) -> String { "\(seconds)s" }
         public static func score(_ value: Int) -> String { "Score \(value)" }
         public static func best(_ value: Int) -> String { "Best \(value)" }
+    }
+
+    /// Pibbo's garden (v2.3).
+    public enum Garden {
+        public static let hint = "Tap a plot 🌷"
+        public static let pickSeed = "Pick a seed 🌷"
+        public static let splash = "Splash! 🫧"
+        public static let planted = "Planted! 🌷"
+        public static let forThePool = "For the pool 🌷"
+        static let all = [hint, pickSeed, splash, planted, forThePool]
     }
 
     /// When Pibbo notices you (v1.4).
@@ -107,10 +119,10 @@ public enum Strings {
 
     /// Everything above that is drawn in pixel text.
     public static let allPixelText: [String] = [
-        Menu.music, Menu.stopMusic, Menu.tide, Menu.tideOff, Menu.games, Menu.workMode, Menu.quit,
+        Menu.music, Menu.stopMusic, Menu.tide, Menu.tideOff, Menu.games, Menu.garden, Menu.workMode, Menu.quit,
         Games.clickToPlay, Games.escToClose, Games.paused, Games.newBest, Games.timeUp, Games.timeLeft(60), Games.score(1_234_567_890), Games.best(1_234_567_890),
         Bubble.musicInvitation, Bubble.goodbye, Bubble.napTime, Bubble.brb, Bubble.snowCocoa, Bubble.wish, Bubble.gg, Bubble.shh, Bubble.taDa,
-    ] + bottleNotes + dreams.values.sorted() + Games.titles.values.sorted() + Greetings.all
+    ] + bottleNotes + dreams.values.sorted() + Games.titles.values.sorted() + Greetings.all + Garden.all
 
     public enum Errors {
         /// Shown in the log only (the app has no error UI).

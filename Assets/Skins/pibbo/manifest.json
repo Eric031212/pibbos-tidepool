@@ -1091,54 +1091,54 @@
   },
   "seasonDecor": {
     "spring": {
-      "row": 682,
+      "row": 688,
       "frames": 1,
       "fps": 1
     },
     "summer": {
-      "row": 683,
+      "row": 689,
       "frames": 1,
       "fps": 1
     },
     "summer@night": {
-      "row": 684,
+      "row": 690,
       "frames": 4,
       "fps": 2
     },
     "autumn": {
-      "row": 685,
+      "row": 691,
       "frames": 1,
       "fps": 1
     },
     "winter": {
-      "row": 686,
+      "row": 692,
       "frames": 1,
       "fps": 1
     }
   },
   "seasonMeadow": {
     "spring": {
-      "row": 687,
+      "row": 693,
       "frames": 1,
       "fps": 1
     },
     "summer": {
-      "row": 688,
+      "row": 694,
       "frames": 1,
       "fps": 1
     },
     "summer@night": {
-      "row": 689,
+      "row": 695,
       "frames": 4,
       "fps": 2
     },
     "autumn": {
-      "row": 690,
+      "row": 696,
       "frames": 1,
       "fps": 1
     },
     "winter": {
-      "row": 691,
+      "row": 697,
       "frames": 1,
       "fps": 1
     }
@@ -1151,6 +1151,32 @@
     "winter": {
       "row": 680,
       "stages": 6
+    }
+  },
+  "potFlowers": {
+    "tulip": {
+      "row": 682,
+      "stages": 3
+    },
+    "daisy": {
+      "row": 683,
+      "stages": 3
+    },
+    "sunflower": {
+      "row": 684,
+      "stages": 3
+    },
+    "lavender": {
+      "row": 685,
+      "stages": 3
+    },
+    "poppy": {
+      "row": 686,
+      "stages": 3
+    },
+    "bluebell": {
+      "row": 687,
+      "stages": 3
     }
   },
   "seasonMeadowStrip": {
